@@ -268,8 +268,8 @@ function App() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-950 md:grid md:place-items-center md:px-6 md:py-8">
-      <div className="h-[100dvh] w-full overflow-hidden bg-white md:h-[932px] md:max-w-[430px] md:rounded-[28px] md:shadow-2xl md:shadow-slate-300/80">
+    <main className="min-h-screen overflow-x-hidden bg-slate-100 text-slate-950 md:grid md:place-items-center md:px-6 md:py-8">
+      <div className="fixed inset-0 h-[100dvh] w-[100dvw] max-w-none overflow-hidden bg-white md:static md:mx-auto md:h-[932px] md:w-full md:max-w-[430px] md:rounded-[28px] md:shadow-2xl md:shadow-slate-300/80">
         {screen === 'intro' && <OnboardingScreen onContinue={() => showScreen('menu')} />}
 
         {screen === 'menu' && (
@@ -330,38 +330,40 @@ function App() {
 
 function OnboardingScreen({ onContinue }) {
   return (
-    <section className="relative flex h-full flex-col bg-white pb-7 pt-9">
-      <div className="flex flex-1 flex-col items-center">
+    <section className="grid h-full w-full max-w-full grid-rows-[minmax(0,1fr)_auto] overflow-x-hidden overflow-y-auto bg-white pb-[max(24px,env(safe-area-inset-bottom))] pt-6">
+      <div className="flex min-h-0 flex-col items-center justify-center gap-5 px-6 py-4">
         <img
           src={onboardingFood}
           alt="Pessoa usando celular com comidas ao redor"
-          className="mt-4 w-full max-w-[360px] select-none object-contain"
+          className="max-h-[min(42dvh,340px)] w-full max-w-[340px] select-none object-contain"
           draggable="false"
         />
 
-        <h1 className="mt-[72px] text-center text-[25px] font-black leading-[1.45] text-black">
-          TESTE
-          <br />
-          CARDÁPIO
-        </h1>
+        <div className="flex flex-col items-center">
+          <h1 className="text-center text-[25px] font-black leading-[1.45] text-black">
+            TESTE
+            <br />
+            CARDÁPIO
+          </h1>
 
-        <div className="mt-[44px] flex items-center justify-center gap-3">
-          {[0, 1, 2, 3].map((dot) => (
-            <span
-              key={dot}
-              className={`block rounded-full ${
-                dot === 1 ? 'size-3 bg-orange-500' : 'size-3 bg-orange-100'
-              }`}
-            />
-          ))}
+          <div className="mt-7 flex items-center justify-center gap-3">
+            {[0, 1, 2, 3].map((dot) => (
+              <span
+                key={dot}
+                className={`block rounded-full ${
+                  dot === 1 ? 'size-3 bg-orange-500' : 'size-3 bg-orange-100'
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="absolute bottom-7 left-6 w-[382px] max-w-[calc(100vw-48px)] space-y-7">
+      <div className="ml-6 w-[calc(100%-48px)] max-w-[calc(100vw-48px)] space-y-5 md:max-w-[382px]">
         <button
           type="button"
           onClick={onContinue}
-          className="h-[75px] w-full rounded-[14px] bg-[#ffda16] text-[24px] font-black text-black shadow-sm transition active:scale-[0.99]"
+          className="h-16 w-full rounded-[14px] bg-[#ffda16] text-[22px] font-black text-black shadow-sm transition active:scale-[0.99]"
         >
           PROSSEGUIR
         </button>
