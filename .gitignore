@@ -1,0 +1,12 @@
+node_modules/
+dist/
+
+*.log
+dev-server.err
+dev-server.log
+
+screenshot-*.png
+
+.env
+.env.*
+!.env.example
