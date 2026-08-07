@@ -11,12 +11,21 @@ npm.cmd run dev
 
 Abra no navegador:
 
-- `http://localhost:5173/` para a tela de introdução.
-- `http://localhost:5173/#menu` para abrir direto no cardápio.
+- `http://localhost:5173/` para abrir direto no cardápio.
+- `http://localhost:5173/#menu` para manter um link explícito do cardápio.
 - `http://localhost:5173/#produto=cheddar-bacon` para abrir um produto direto.
 - `http://localhost:5173/#configuracoes` para abrir o painel administrativo.
 - `http://localhost:5173/#pedido` para abrir a tela de pedido.
 - `http://localhost:5173/?mesa=05#menu` para simular abertura por NFC/QR da mesa 05.
+- `http://localhost:5173/?tema=escuro` para abrir o cardápio já no modo noturno.
+
+## Acessibilidade
+
+- A primeira tela agora é o cardápio, reduzindo um passo para quem usa leitor de tela.
+- O botão discreto no topo esquerdo ativa a leitura automática de ingredientes ao abrir um item.
+- Na tela do produto, o botão de alto-falante lê os ingredientes do item sob demanda.
+- A leitura por voz expande abreviações como `150g` para `150 gramas` e ajusta termos como bacon para uma pronúncia mais natural.
+- Os cards, categorias, mesas e controles de quantidade possuem labels e estados para leitores de tela.
 
 ## Deploy Vercel
 

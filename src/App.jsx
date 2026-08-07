@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   BadgePlus,
@@ -9,6 +9,7 @@ import {
   Hamburger,
   Leaf,
   Minus,
+  Moon,
   Nfc,
   Pizza,
   Plus,
@@ -18,9 +19,11 @@ import {
   Sandwich,
   Settings,
   ShoppingCart,
+  Sun,
   Table2,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
-import onboardingFood from './assets/onboarding-food.png'
 import heroBurger from './assets/hero-burger-fries.png'
 import cheddarBacon from './assets/burger-cheddar-bacon.png'
 import classicCheddar from './assets/burger-classic-cheddar.png'
@@ -189,7 +192,7 @@ const baseProducts = [
 
 function App() {
   const initialTable = getTableFromUrl()
-  const [screen, setScreen] = useState(() => getInitialScreen(initialTable))
+  const [screen, setScreen] = useState(() => getInitialScreen())
   const [activeCategory, setActiveCategory] = useState('hamburgueres')
   const [selectedProductId, setSelectedProductId] = useState(() => getProductFromHash())
   const [cart, setCart] = useState([])
@@ -198,6 +201,9 @@ function App() {
   const [copied, setCopied] = useState(false)
   const [orderSent, setOrderSent] = useState(false)
   const [adminItems, setAdminItems] = useState([])
+  const [voiceReaderEnabled, setVoiceReaderEnabled] = useState(false)
+  const [readerStatus, setReaderStatus] = useState('')
+  const [darkMenuEnabled, setDarkMenuEnabled] = useState(() => getInitialMenuTheme())
 
   const products = useMemo(() => [...baseProducts, ...adminItems], [adminItems])
   const selectedProduct = products.find((product) => product.id === selectedProductId) ?? products[0]
@@ -211,17 +217,35 @@ function App() {
   const cartQuantity = cartItems.reduce((total, item) => total + item.quantity, 0)
   const generatedNfcLink = buildNfcUrl(nfcTable || tableNumber || '01')
 
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      document.querySelector('[data-screen-title="true"]')?.focus()
+    })
+
+    return () => window.cancelAnimationFrame(frameId)
+  }, [screen, selectedProductId])
+
+  useEffect(() => {
+    return () => window.speechSynthesis?.cancel()
+  }, [])
+
   function showScreen(nextScreen, hashValue = nextScreen) {
     setScreen(nextScreen)
-    window.location.hash = nextScreen === 'intro' ? '' : hashValue
+    window.location.hash = hashValue
   }
 
   function openProduct(product) {
     setSelectedProductId(product.id)
     showScreen('produto', `produto=${product.id}`)
+
+    if (voiceReaderEnabled) {
+      readProductIngredients(product)
+    }
   }
 
   function addToCart(productId, quantity = 1, note = '') {
+    const product = products.find((item) => item.id === productId)
+
     setCart((items) => {
       const existing = items.find((item) => item.productId === productId && item.note === note)
 
@@ -235,6 +259,8 @@ function App() {
 
       return [...items, { productId, quantity, note }]
     })
+
+    setReaderStatus(`${product?.name ?? 'Item'} adicionado ao pedido.`)
   }
 
   function updateCartItem(productId, quantity) {
@@ -267,11 +293,66 @@ function App() {
     showScreen('menu')
   }
 
-  return (
-    <main className="min-h-screen overflow-x-hidden bg-slate-100 text-slate-950 md:grid md:place-items-center md:px-6 md:py-8">
-      <div className="fixed inset-0 h-[100dvh] w-[100dvw] max-w-none overflow-hidden bg-white md:static md:mx-auto md:h-[932px] md:w-full md:max-w-[430px] md:rounded-[28px] md:shadow-2xl md:shadow-slate-300/80">
-        {screen === 'intro' && <OnboardingScreen onContinue={() => showScreen('menu')} />}
+  function toggleVoiceReader() {
+    const nextValue = !voiceReaderEnabled
 
+    setVoiceReaderEnabled(nextValue)
+
+    if (nextValue) {
+      speakText('Leitor automático ativado. Ao abrir um item, vou falar os ingredientes.')
+      return
+    }
+
+    window.speechSynthesis?.cancel()
+    setReaderStatus('Leitor automático desativado.')
+  }
+
+  function readProductIngredients(product) {
+    speakText(buildProductSpeech(product))
+  }
+
+  function speakText(message) {
+    setReaderStatus(message)
+
+    if (
+      typeof window === 'undefined' ||
+      !window.speechSynthesis ||
+      !window.SpeechSynthesisUtterance
+    ) {
+      setReaderStatus('Leitura por voz indisponível neste navegador.')
+      return
+    }
+
+    window.speechSynthesis.cancel()
+
+    const utterance = new window.SpeechSynthesisUtterance(prepareSpeechText(message))
+    utterance.lang = 'pt-BR'
+    utterance.rate = 0.92
+    utterance.pitch = 1
+    utterance.onerror = () => setReaderStatus('Não foi possível iniciar a leitura por voz.')
+
+    window.speechSynthesis.speak(utterance)
+  }
+
+  function sendOrder() {
+    setOrderSent(true)
+    setReaderStatus(`Pedido enviado para a mesa ${tableNumber || 'selecionada'}.`)
+  }
+
+  function toggleDarkMenu() {
+    setDarkMenuEnabled((enabled) => {
+      const nextValue = !enabled
+      saveMenuTheme(nextValue)
+      return nextValue
+    })
+  }
+
+  return (
+    <main
+      aria-label="Cardápio digital FOOD99LIKE"
+      className="min-h-screen overflow-x-hidden bg-slate-100 text-slate-950 md:grid md:place-items-center md:px-6 md:py-8"
+    >
+      <div className="fixed inset-0 h-[100dvh] w-[100dvw] max-w-none overflow-hidden bg-white md:static md:mx-auto md:h-[932px] md:w-full md:max-w-[430px] md:rounded-[28px] md:shadow-2xl md:shadow-slate-300/80">
         {screen === 'menu' && (
           <MenuScreen
             products={products}
@@ -279,12 +360,15 @@ function App() {
             cartQuantity={cartQuantity}
             cartTotal={cartTotal}
             tableNumber={tableNumber}
-            onBack={() => showScreen('intro')}
             onCategoryChange={setActiveCategory}
             onOpenSettings={() => showScreen('configuracoes')}
             onOpenProduct={openProduct}
             onAddToCart={addToCart}
             onOpenOrder={() => showScreen('pedido')}
+            onToggleVoiceReader={toggleVoiceReader}
+            voiceReaderEnabled={voiceReaderEnabled}
+            darkMode={darkMenuEnabled}
+            onToggleDarkMode={toggleDarkMenu}
           />
         )}
 
@@ -294,6 +378,7 @@ function App() {
             onBack={() => showScreen('menu')}
             onAddToCart={addToCart}
             onOrderNow={() => showScreen('pedido')}
+            onReadProduct={readProductIngredients}
           />
         )}
 
@@ -302,6 +387,7 @@ function App() {
             copied={copied}
             nfcTable={nfcTable}
             categories={categories}
+            products={products}
             generatedNfcLink={generatedNfcLink}
             onBack={() => showScreen('menu')}
             onAddAdminItem={addAdminItem}
@@ -318,64 +404,17 @@ function App() {
             orderSent={orderSent}
             tableNumber={tableNumber}
             onBack={() => showScreen('menu')}
-            onSendOrder={() => setOrderSent(true)}
+            onSendOrder={sendOrder}
             onTableChange={setTableNumber}
             onUpdateCartItem={updateCartItem}
           />
         )}
+
+        <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {readerStatus}
+        </p>
       </div>
     </main>
-  )
-}
-
-function OnboardingScreen({ onContinue }) {
-  return (
-    <section className="grid h-full w-full max-w-full grid-rows-[minmax(0,1fr)_auto] overflow-x-hidden overflow-y-auto bg-white pb-[max(24px,env(safe-area-inset-bottom))] pt-6">
-      <div className="flex min-h-0 flex-col items-center justify-center gap-5 px-6 py-4">
-        <img
-          src={onboardingFood}
-          alt="Pessoa usando celular com comidas ao redor"
-          className="max-h-[min(42dvh,340px)] w-full max-w-[340px] select-none object-contain"
-          draggable="false"
-        />
-
-        <div className="flex flex-col items-center">
-          <h1 className="text-center text-[25px] font-black leading-[1.45] text-black">
-            TESTE
-            <br />
-            CARDÁPIO
-          </h1>
-
-          <div className="mt-7 flex items-center justify-center gap-3">
-            {[0, 1, 2, 3].map((dot) => (
-              <span
-                key={dot}
-                className={`block rounded-full ${
-                  dot === 1 ? 'size-3 bg-orange-500' : 'size-3 bg-orange-100'
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="ml-6 w-[calc(100%-48px)] max-w-[calc(100vw-48px)] space-y-5 md:max-w-[382px]">
-        <button
-          type="button"
-          onClick={onContinue}
-          className="h-16 w-full rounded-[14px] bg-[#ffda16] text-[22px] font-black text-black shadow-sm transition active:scale-[0.99]"
-        >
-          PROSSEGUIR
-        </button>
-
-        <button
-          type="button"
-          className="h-10 w-full text-[24px] font-black text-black transition active:scale-[0.99]"
-        >
-          VOLTAR
-        </button>
-      </div>
-    </section>
   )
 }
 
@@ -385,19 +424,27 @@ function MenuScreen({
   cartQuantity,
   cartTotal,
   tableNumber,
-  onBack,
   onCategoryChange,
   onOpenSettings,
   onOpenProduct,
   onAddToCart,
   onOpenOrder,
+  onToggleVoiceReader,
+  voiceReaderEnabled,
+  darkMode,
+  onToggleDarkMode,
 }) {
   const categoryProducts = products.filter((product) => product.category === activeCategory)
   const activeCategoryLabel =
     categories.find((category) => category.id === activeCategory)?.label ?? 'Cardápio'
 
   return (
-    <section className="relative h-full overflow-y-auto bg-white pb-28">
+    <section
+      className={`relative h-full overflow-y-auto pb-28 transition-colors ${
+        darkMode ? 'bg-slate-950' : 'bg-white'
+      }`}
+      aria-labelledby="menu-title"
+    >
       <div className="relative ml-2 mt-2 h-[168px] w-[414px] max-w-[calc(100vw-16px)] overflow-hidden rounded-[18px] bg-slate-900">
         <img
           src={heroBurger}
@@ -410,11 +457,27 @@ function MenuScreen({
 
         <button
           type="button"
-          onClick={onBack}
-          aria-label="Voltar"
-          className="absolute left-3 top-3 grid size-[38px] place-items-center rounded-full bg-white text-slate-900 shadow-lg shadow-black/20 transition active:scale-95"
+          onClick={onToggleVoiceReader}
+          aria-label={
+            voiceReaderEnabled
+              ? 'Desativar leitor automático de ingredientes'
+              : 'Ativar leitor automático de ingredientes'
+          }
+          aria-pressed={voiceReaderEnabled}
+          title={
+            voiceReaderEnabled
+              ? 'Desativar leitor automático'
+              : 'Ativar leitor automático'
+          }
+          className={`absolute left-3 top-3 grid size-[38px] place-items-center rounded-full shadow-lg shadow-black/20 transition active:scale-95 ${
+            voiceReaderEnabled ? 'bg-[#ffda16] text-slate-950' : 'bg-white text-slate-900'
+          }`}
         >
-          <ArrowLeft size={21} strokeWidth={2.7} />
+          {voiceReaderEnabled ? (
+            <Volume2 size={19} strokeWidth={2.7} />
+          ) : (
+            <VolumeX size={19} strokeWidth={2.7} />
+          )}
         </button>
 
         <button
@@ -440,10 +503,14 @@ function MenuScreen({
             type="button"
             key={category.id}
             onClick={() => onCategoryChange(category.id)}
+            aria-pressed={category.id === activeCategory}
+            aria-label={`Mostrar categoria ${category.label}`}
             className={`flex h-[36px] w-[88px] shrink-0 items-center justify-center gap-1.5 rounded-full px-2 text-[9px] font-bold shadow-sm transition active:scale-[0.98] ${
               category.id === activeCategory
                 ? 'bg-[#ffd51a] text-slate-950'
-                : 'bg-white text-slate-700 ring-1 ring-slate-100'
+                : darkMode
+                  ? 'bg-slate-900 text-slate-200 ring-1 ring-white/10'
+                  : 'bg-white text-slate-700 ring-1 ring-slate-100'
             }`}
           >
             <category.icon size={15} strokeWidth={2.4} />
@@ -452,15 +519,23 @@ function MenuScreen({
         ))}
       </div>
 
-      <h2 className="mt-[17px] px-[18px] text-[19px] font-black leading-none text-slate-800">
+      <h1
+        id="menu-title"
+        data-screen-title="true"
+        tabIndex={-1}
+        className={`mt-[17px] px-[18px] text-[19px] font-black leading-none outline-none ${
+          darkMode ? 'text-white' : 'text-slate-800'
+        }`}
+      >
         {activeCategoryLabel} ({categoryProducts.length})
-      </h2>
+      </h1>
 
       <div className="ml-4 mt-4 grid w-[398px] max-w-[calc(100vw-32px)] grid-cols-2 gap-[10px]">
         {categoryProducts.map((product) => (
           <ProductCard
             key={product.id}
             product={product}
+            darkMode={darkMode}
             onAdd={() => onAddToCart(product.id)}
             onOpen={() => onOpenProduct(product)}
           />
@@ -470,53 +545,78 @@ function MenuScreen({
       {cartQuantity > 0 && (
         <CartBar quantity={cartQuantity} total={cartTotal} onOpenOrder={onOpenOrder} />
       )}
+
+      <MenuThemeToggle
+        darkMode={darkMode}
+        hasCart={cartQuantity > 0}
+        onToggle={onToggleDarkMode}
+      />
     </section>
   )
 }
 
-function ProductCard({ product, onAdd, onOpen }) {
+function ProductCard({ product, darkMode, onAdd, onOpen }) {
   const BadgeIcon = product.badgeIcon
 
   return (
     <article
-      className="relative min-h-[248px] overflow-hidden rounded-[14px] bg-white p-2 shadow-[0_3px_20px_rgba(15,23,42,0.09)] ring-1 ring-slate-100"
-      onClick={onOpen}
+      className={`relative min-h-[248px] overflow-hidden rounded-[14px] shadow-[0_3px_20px_rgba(15,23,42,0.09)] ring-1 transition-colors ${
+        darkMode ? 'bg-slate-900 ring-white/10' : 'bg-white ring-slate-100'
+      }`}
     >
-      <span
-        className={`absolute left-2 top-2 z-10 inline-flex h-[20px] items-center gap-1 rounded-full border px-2 text-[8px] font-black ${product.badgeTone}`}
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={buildProductAriaLabel(product)}
+        className="block min-h-[248px] w-full p-2 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-orange-500"
       >
-        <BadgeIcon size={10} strokeWidth={2.5} className={product.badgeIconTone} />
-        {product.badge}
-      </span>
+        <span
+          className={`absolute left-2 top-2 z-10 inline-flex h-[20px] items-center gap-1 rounded-full border px-2 text-[8px] font-black ${product.badgeTone}`}
+        >
+          <BadgeIcon size={10} strokeWidth={2.5} className={product.badgeIconTone} />
+          {product.badge}
+        </span>
 
-      <div className="flex h-[126px] items-end justify-center overflow-hidden pt-3">
-        <img
-          src={product.image}
-          alt={product.name}
-          className="h-[116px] w-full scale-[1.2] object-contain"
-          draggable="false"
-        />
-      </div>
+        <div className="flex h-[126px] items-end justify-center overflow-hidden pt-3">
+          <img
+            src={product.image}
+            alt=""
+            aria-hidden="true"
+            className="h-[116px] w-full scale-[1.2] object-contain"
+            draggable="false"
+          />
+        </div>
 
-      <div className="mt-2 pr-5">
-        <h3 className="text-[15px] font-black leading-[1.1] text-slate-800">
-          {product.name}
-        </h3>
-        <p className="mt-1 text-[14px] font-black leading-none text-slate-800">
-          {formatCurrency(product.price)}
-        </p>
-      </div>
-
-      <div className="mt-3 flex max-w-[142px] flex-wrap gap-1">
-        {product.tags.slice(0, 5).map((tag) => (
-          <span
-            key={tag}
-            className="rounded-md bg-slate-100 px-[7px] py-[5px] text-[7px] font-bold leading-none text-slate-500"
+        <div className="mt-2 pr-5">
+          <h3
+            className={`text-[15px] font-black leading-[1.1] ${
+              darkMode ? 'text-white' : 'text-slate-800'
+            }`}
           >
-            {tag}
-          </span>
-        ))}
-      </div>
+            {product.name}
+          </h3>
+          <p
+            className={`mt-1 text-[14px] font-black leading-none ${
+              darkMode ? 'text-slate-100' : 'text-slate-800'
+            }`}
+          >
+            {formatCurrency(product.price)}
+          </p>
+        </div>
+
+        <div className="mt-3 flex max-w-[142px] flex-wrap gap-1" aria-hidden="true">
+          {product.tags.slice(0, 5).map((tag) => (
+            <span
+              key={tag}
+              className={`rounded-md px-[7px] py-[5px] text-[7px] font-bold leading-none ${
+                darkMode ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'
+              }`}
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      </button>
 
       <button
         type="button"
@@ -525,7 +625,7 @@ function ProductCard({ product, onAdd, onOpen }) {
           event.stopPropagation()
           onAdd()
         }}
-        className="absolute bottom-3 right-3 grid size-[24px] place-items-center rounded-full bg-[#ffc10e] text-white shadow-md shadow-yellow-300/50 transition active:scale-95"
+        className="absolute bottom-3 right-3 z-20 grid size-[24px] place-items-center rounded-full bg-[#ffc10e] text-white shadow-md shadow-yellow-300/50 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-orange-500"
       >
         <Plus size={18} strokeWidth={3} />
       </button>
@@ -533,7 +633,28 @@ function ProductCard({ product, onAdd, onOpen }) {
   )
 }
 
-function ProductScreen({ product, onBack, onAddToCart, onOrderNow }) {
+function MenuThemeToggle({ darkMode, hasCart, onToggle }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={darkMode ? 'Ativar modo claro do cardápio' : 'Ativar modo noturno do cardápio'}
+      aria-pressed={darkMode}
+      title={darkMode ? 'Modo claro' : 'Modo noturno'}
+      className={`fixed right-4 z-30 grid size-11 place-items-center rounded-lg shadow-lg transition active:scale-95 focus-visible:ring-2 focus-visible:ring-orange-500 ${
+        hasCart ? 'bottom-[92px]' : 'bottom-4'
+      } ${
+        darkMode
+          ? 'bg-white text-slate-950 shadow-black/30'
+          : 'bg-slate-950 text-white shadow-slate-400/50'
+      }`}
+    >
+      {darkMode ? <Sun size={19} strokeWidth={2.5} /> : <Moon size={18} strokeWidth={2.5} />}
+    </button>
+  )
+}
+
+function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct }) {
   const [quantity, setQuantity] = useState(1)
   const [note, setNote] = useState('')
   const BadgeIcon = product.badgeIcon
@@ -543,7 +664,7 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow }) {
   }
 
   return (
-    <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8">
+    <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8" aria-labelledby="product-title">
       <div className="relative min-h-[308px] bg-slate-50 px-5 pb-5 pt-4">
         <button
           type="button"
@@ -552,6 +673,16 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow }) {
           className="absolute left-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-white text-slate-900 shadow-lg shadow-slate-200 transition active:scale-95"
         >
           <ArrowLeft size={21} strokeWidth={2.7} />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onReadProduct(product)}
+          aria-label={`Ouvir ingredientes de ${product.name}`}
+          title="Ouvir ingredientes"
+          className="absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-white text-slate-900 shadow-lg shadow-slate-200 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-orange-500"
+        >
+          <Volume2 size={19} strokeWidth={2.7} />
         </button>
 
         <img
@@ -571,7 +702,12 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow }) {
         </span>
 
         <div className="mt-3">
-          <h1 className="text-[26px] font-black leading-tight text-slate-900">
+          <h1
+            id="product-title"
+            data-screen-title="true"
+            tabIndex={-1}
+            className="text-[26px] font-black leading-tight text-slate-900 outline-none"
+          >
             {product.name}
           </h1>
           <p className="mt-1 text-[20px] font-black text-slate-900">
@@ -582,7 +718,7 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow }) {
           </p>
         </div>
 
-        <div className="mt-5 flex max-w-full flex-wrap gap-2">
+        <div className="mt-5 flex max-w-full flex-wrap gap-2" aria-label="Ingredientes principais">
           {product.tags.map((tag) => (
             <span
               key={tag}
@@ -599,13 +735,13 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow }) {
             <div className="flex items-center gap-3">
               <StepperButton
                 icon={Minus}
-                label="Diminuir"
+                label={`Diminuir quantidade de ${product.name}`}
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
               />
               <span className="w-7 text-center text-lg font-black">{quantity}</span>
               <StepperButton
                 icon={Plus}
-                label="Aumentar"
+                label={`Aumentar quantidade de ${product.name}`}
                 onClick={() => setQuantity(quantity + 1)}
               />
             </div>
@@ -651,23 +787,30 @@ function SettingsScreen({
   copied,
   generatedNfcLink,
   nfcTable,
+  products,
   onAddAdminItem,
   onBack,
   onCopyNfcLink,
   onNfcTableChange,
   onOpenNfcPreview,
 }) {
+  const [activeTab, setActiveTab] = useState('cardapio')
   const [form, setForm] = useState({
     name: '',
     category: 'hamburgueres',
     price: '',
     description: '',
+    ingredients: '',
   })
 
   function submitItem(event) {
     event.preventDefault()
 
     const price = Number(String(form.price).replace(',', '.'))
+    const ingredients = form.ingredients
+      .split(',')
+      .map((ingredient) => ingredient.trim())
+      .filter(Boolean)
 
     if (!form.name.trim() || !price) {
       return
@@ -684,137 +827,242 @@ function SettingsScreen({
       badgeIcon: Save,
       badgeIconTone: 'text-slate-600',
       description: form.description.trim() || 'Item cadastrado pelo administrador do cardápio.',
-      tags: ['Cadastro admin', 'Disponível', 'Novo item'],
+      tags: ingredients.length ? ingredients : ['Cadastro admin', 'Disponível', 'Novo item'],
     })
 
-    setForm({ name: '', category: 'hamburgueres', price: '', description: '' })
+    setForm({
+      name: '',
+      category: 'hamburgueres',
+      price: '',
+      description: '',
+      ingredients: '',
+    })
   }
+
+  const settingsTabs = [
+    { id: 'cardapio', label: 'Cardápio', icon: BadgePlus },
+    { id: 'mesas', label: 'Mesas', icon: Nfc },
+    { id: 'resumo', label: 'Resumo', icon: Settings },
+  ]
 
   return (
     <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8">
-      <HeaderBar title="Configurações" onBack={onBack} />
+      <HeaderBar title="Admin" onBack={onBack} />
 
-      <div className="ml-5 w-[390px] max-w-[calc(100vw-40px)] space-y-4 pt-5">
-        <section className="rounded-[18px] bg-slate-950 p-4 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase text-white/55">Administração</p>
-              <h1 className="mt-1 text-xl font-black">Gerenciar cardápio</h1>
-            </div>
-            <div className="grid size-11 place-items-center rounded-full bg-white/10">
-              <Settings size={21} />
-            </div>
-          </div>
+      <div className="ml-5 w-[390px] max-w-[calc(100vw-40px)] pt-5">
+        <div className="border-b border-slate-200 pb-4">
+          <p className="text-[11px] font-black uppercase text-slate-400">Configurações</p>
+          <h2 className="mt-1 text-2xl font-black leading-tight text-slate-950">
+            Gerenciar cardápio
+          </h2>
+        </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {[
-              ['Itens', '10+'],
-              ['Categorias', '4'],
-              ['Mesas NFC', '12'],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-[14px] bg-white/10 p-3">
-                <p className="text-lg font-black">{value}</p>
-                <p className="text-[10px] font-bold text-white/60">{label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <form onSubmit={submitItem} className="rounded-[18px] bg-slate-50 p-4">
-          <div className="flex items-center gap-2">
-            <BadgePlus size={18} className="text-orange-500" />
-            <h2 className="text-base font-black text-slate-900">Adicionar item</h2>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            <AdminInput
-              label="Nome"
-              value={form.name}
-              placeholder="Ex.: Combo da Casa"
-              onChange={(value) => setForm((current) => ({ ...current, name: value }))}
-            />
-
-            <label className="block text-xs font-black text-slate-600">
-              Categoria
-              <select
-                value={form.category}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, category: event.target.value }))
-                }
-                className="mt-2 h-11 w-full rounded-[12px] bg-white px-3 text-sm font-bold text-slate-800 outline-none ring-1 ring-slate-100"
-              >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <AdminInput
-              label="Preço"
-              value={form.price}
-              placeholder="Ex.: 39,90"
-              onChange={(value) => setForm((current) => ({ ...current, price: value }))}
-            />
-
-            <AdminInput
-              label="Descrição"
-              value={form.description}
-              placeholder="Resumo do item"
-              onChange={(value) => setForm((current) => ({ ...current, description: value }))}
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-[#ffda16] text-sm font-black text-black transition active:scale-[0.99]"
-          >
-            <Save size={17} />
-            SALVAR ITEM
-          </button>
-        </form>
-
-        <section className="rounded-[18px] bg-slate-50 p-4">
-          <div className="flex items-center gap-2">
-            <Nfc size={18} className="text-orange-500" />
-            <h2 className="text-base font-black text-slate-900">Mesa por NFC/QR</h2>
-          </div>
-
-          <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-            <AdminInput
-              label="Mesa"
-              value={nfcTable}
-              placeholder="01"
-              onChange={onNfcTableChange}
-            />
+        <div
+          role="tablist"
+          aria-label="Áreas de administração"
+          className="mt-4 grid grid-cols-3 gap-1 border-b border-slate-200"
+        >
+          {settingsTabs.map(({ id, label, icon: Icon }) => (
             <button
               type="button"
-              onClick={onOpenNfcPreview}
-              className="mt-[22px] grid size-11 place-items-center rounded-[12px] bg-white text-slate-900 ring-1 ring-slate-100"
-              aria-label="Abrir link da mesa"
+              key={id}
+              role="tab"
+              aria-selected={activeTab === id}
+              onClick={() => setActiveTab(id)}
+              className={`flex h-11 items-center justify-center gap-1.5 border-b-2 text-[11px] font-black transition ${
+                activeTab === id
+                  ? 'border-slate-950 text-slate-950'
+                  : 'border-transparent text-slate-500'
+              }`}
             >
-              <QrCode size={19} />
+              <Icon size={15} strokeWidth={2.4} />
+              {label}
             </button>
-          </div>
+          ))}
+        </div>
 
-          <div className="mt-3 rounded-[14px] bg-white p-3 ring-1 ring-slate-100">
-            <p className="line-clamp-2 break-all text-[11px] font-bold leading-5 text-slate-600">
-              {generatedNfcLink}
-            </p>
-          </div>
+        {activeTab === 'cardapio' && (
+          <form onSubmit={submitItem} className="mt-5 space-y-4">
+            <section className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-black text-slate-950">Novo item</h2>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Cadastro rápido para o menu.
+                  </p>
+                </div>
+                <Save size={19} className="text-slate-400" />
+              </div>
 
-          <button
-            type="button"
-            onClick={onCopyNfcLink}
-            className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-slate-950 text-sm font-black text-white transition active:scale-[0.99]"
-          >
-            {copied ? <CircleCheck size={17} /> : <Clipboard size={17} />}
-            {copied ? 'LINK COPIADO' : 'COPIAR LINK NFC'}
-          </button>
-        </section>
+              <div className="mt-4 space-y-3">
+                <AdminInput
+                  label="Nome"
+                  value={form.name}
+                  placeholder="Ex.: Combo da Casa"
+                  onChange={(value) => setForm((current) => ({ ...current, name: value }))}
+                />
+
+                <div className="grid grid-cols-[1fr_104px] gap-3">
+                  <label className="block text-xs font-black text-slate-600">
+                    Categoria
+                    <select
+                      value={form.category}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, category: event.target.value }))
+                      }
+                      className="mt-2 h-11 w-full rounded-lg bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none ring-1 ring-slate-200"
+                    >
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <AdminInput
+                    label="Preço"
+                    value={form.price}
+                    placeholder="39,90"
+                    onChange={(value) => setForm((current) => ({ ...current, price: value }))}
+                  />
+                </div>
+
+                <AdminInput
+                  label="Ingredientes"
+                  value={form.ingredients}
+                  placeholder="Pão, carne 150g, queijo"
+                  onChange={(value) =>
+                    setForm((current) => ({ ...current, ingredients: value }))
+                  }
+                />
+
+                <AdminInput
+                  label="Descrição"
+                  value={form.description}
+                  placeholder="Resumo do item"
+                  onChange={(value) =>
+                    setForm((current) => ({ ...current, description: value }))
+                  }
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 text-sm font-black text-white transition active:scale-[0.99]"
+              >
+                <Save size={17} />
+                SALVAR ITEM
+              </button>
+            </section>
+          </form>
+        )}
+
+        {activeTab === 'mesas' && (
+          <section className="mt-5 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-black text-slate-950">Mesa por NFC/QR</h2>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Link pronto para etiqueta ou QR.
+                  </p>
+                </div>
+                <Nfc size={19} className="text-slate-400" />
+              </div>
+
+              <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+                <AdminInput
+                  label="Mesa"
+                  value={nfcTable}
+                  placeholder="01"
+                  onChange={onNfcTableChange}
+                />
+                <button
+                  type="button"
+                  onClick={onOpenNfcPreview}
+                  className="mt-[22px] grid size-11 place-items-center rounded-lg bg-slate-950 text-white"
+                  aria-label="Abrir link da mesa"
+                >
+                  <QrCode size={19} />
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-4 gap-2">
+                {tableOptions.map((table) => (
+                  <button
+                    type="button"
+                    key={table}
+                    onClick={() => onNfcTableChange(table)}
+                    aria-pressed={nfcTable === table}
+                    className={`h-10 rounded-md text-sm font-black transition active:scale-[0.98] ${
+                      nfcTable === table
+                        ? 'bg-[#ffda16] text-slate-950'
+                        : 'bg-slate-50 text-slate-700 ring-1 ring-slate-200'
+                    }`}
+                  >
+                    {table}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-black uppercase text-slate-400">Link gerado</p>
+              <p className="mt-2 line-clamp-2 break-all text-[11px] font-bold leading-5 text-slate-700">
+                {generatedNfcLink}
+              </p>
+
+              <button
+                type="button"
+                onClick={onCopyNfcLink}
+                className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-white text-sm font-black text-slate-950 ring-1 ring-slate-200 transition active:scale-[0.99]"
+              >
+                {copied ? <CircleCheck size={17} /> : <Clipboard size={17} />}
+                {copied ? 'LINK COPIADO' : 'COPIAR LINK'}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'resumo' && (
+          <section className="mt-5 space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              <SettingsMetric label="Itens" value={products.length} />
+              <SettingsMetric label="Categorias" value={categories.length} />
+              <SettingsMetric label="Mesas" value={tableOptions.length} />
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h2 className="text-base font-black text-slate-950">Operação</h2>
+              <div className="mt-4 divide-y divide-slate-100">
+                <SettingsRow label="Cardápio" value="Ativo" />
+                <SettingsRow label="Pedidos" value="Mesa e balcão" />
+                <SettingsRow label="NFC/QR" value={`Mesa ${nfcTable || '01'}`} />
+              </div>
+            </div>
+          </section>
+        )}
       </div>
     </section>
+  )
+}
+
+function SettingsMetric({ label, value }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <p className="text-lg font-black text-slate-950">{value}</p>
+      <p className="mt-1 text-[10px] font-bold text-slate-500">{label}</p>
+    </div>
+  )
+}
+
+function SettingsRow({ label, value }) {
+  return (
+    <div className="flex items-center justify-between py-3">
+      <span className="text-sm font-bold text-slate-600">{label}</span>
+      <span className="text-sm font-black text-slate-950">{value}</span>
+    </div>
   )
 }
 
@@ -861,6 +1109,8 @@ function OrderScreen({
                     type="button"
                     key={table}
                     onClick={() => onTableChange(table)}
+                    aria-pressed={tableNumber === table}
+                    aria-label={`Selecionar mesa ${table}`}
                     className={`h-10 rounded-[12px] text-sm font-black transition active:scale-[0.98] ${
                       tableNumber === table
                         ? 'bg-[#ffda16] text-black'
@@ -902,7 +1152,8 @@ function OrderScreen({
                     >
                       <img
                         src={item.product.image}
-                        alt={item.product.name}
+                        alt=""
+                        aria-hidden="true"
                         className="size-16 rounded-[12px] object-contain"
                       />
                       <div className="min-w-0 flex-1">
@@ -919,13 +1170,13 @@ function OrderScreen({
                       <div className="flex items-center gap-2">
                         <StepperButton
                           icon={Minus}
-                          label="Diminuir"
+                          label={`Diminuir quantidade de ${item.product.name}`}
                           onClick={() => onUpdateCartItem(item.productId, item.quantity - 1)}
                         />
                         <span className="w-5 text-center text-sm font-black">{item.quantity}</span>
                         <StepperButton
                           icon={Plus}
-                          label="Aumentar"
+                          label={`Aumentar quantidade de ${item.product.name}`}
                           onClick={() => onUpdateCartItem(item.productId, item.quantity + 1)}
                         />
                       </div>
@@ -986,6 +1237,7 @@ function CartBar({ quantity, total, onOpenOrder }) {
       <button
         type="button"
         onClick={onOpenOrder}
+        aria-label={`Fazer pedido com ${quantity} ${quantity === 1 ? 'item' : 'itens'}, total de ${formatCurrency(total)}`}
         className="flex h-12 w-full items-center justify-between gap-3"
       >
         <span className="flex items-center gap-3">
@@ -1016,7 +1268,9 @@ function HeaderBar({ title, onBack }) {
       >
         <ArrowLeft size={21} strokeWidth={2.7} />
       </button>
-      <h1 className="text-lg font-black text-slate-900">{title}</h1>
+      <h1 data-screen-title="true" tabIndex={-1} className="text-lg font-black text-slate-900 outline-none">
+        {title}
+      </h1>
     </header>
   )
 }
@@ -1044,6 +1298,7 @@ function OptionGroup({ label, value, options, onChange }) {
             type="button"
             key={id}
             onClick={() => onChange(id)}
+            aria-pressed={value === id}
             className={`h-11 rounded-[12px] text-xs font-black transition active:scale-[0.98] ${
               value === id
                 ? 'bg-[#ffda16] text-black'
@@ -1066,7 +1321,7 @@ function AdminInput({ label, value, placeholder, onChange }) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="mt-2 h-11 w-full rounded-[12px] bg-white px-3 text-sm font-bold text-slate-800 outline-none ring-1 ring-slate-100 placeholder:text-slate-400"
+        className="mt-2 h-11 w-full rounded-lg bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none ring-1 ring-slate-200 placeholder:text-slate-400"
       />
     </label>
   )
@@ -1076,15 +1331,27 @@ function getTableFromUrl() {
   return new URLSearchParams(window.location.search).get('mesa') ?? ''
 }
 
-function getInitialScreen(initialTable) {
+function getInitialScreen() {
   const hash = window.location.hash
 
   if (hash.startsWith('#produto=')) return 'produto'
   if (hash === '#pedido') return 'pedido'
   if (hash === '#configuracoes') return 'configuracoes'
-  if (hash === '#menu' || initialTable) return 'menu'
 
-  return 'intro'
+  return 'menu'
+}
+
+function getInitialMenuTheme() {
+  const themeParam = new URLSearchParams(window.location.search).get('tema')
+
+  if (themeParam === 'escuro') return true
+  if (themeParam === 'claro') return false
+
+  return window.localStorage?.getItem('food99like-menu-theme') === 'dark'
+}
+
+function saveMenuTheme(enabled) {
+  window.localStorage?.setItem('food99like-menu-theme', enabled ? 'dark' : 'light')
 }
 
 function getProductFromHash() {
@@ -1099,6 +1366,21 @@ function buildNfcUrl(tableNumber) {
   url.searchParams.set('mesa', tableNumber)
   url.hash = 'menu'
   return url.toString()
+}
+
+function buildProductAriaLabel(product) {
+  return `${product.name}. ${formatCurrency(product.price)}. Ingredientes principais: ${product.tags.join(', ')}. Abrir detalhes.`
+}
+
+function buildProductSpeech(product) {
+  return `${product.name}. Ingredientes principais: ${product.tags.join(', ')}. ${product.description}`
+}
+
+function prepareSpeechText(text) {
+  return text
+    .replace(/\bbacon\b/gi, 'beicon')
+    .replace(/(\d+)\s*g\b/gi, '$1 gramas')
+    .replace(/(\d+)\s*ml\b/gi, '$1 mililitros')
 }
 
 function formatCurrency(value) {
