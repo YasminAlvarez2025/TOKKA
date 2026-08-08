@@ -1,25 +1,31 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   BadgePlus,
+  BarChart3,
+  CarFront,
   CircleCheck,
   Clipboard,
   CupSoda,
+  CreditCard,
+  ExternalLink,
   Flame,
   Hamburger,
   Leaf,
+  Mic,
+  MicOff,
   Minus,
-  Moon,
   Nfc,
+  Pencil,
   Pizza,
   Plus,
   QrCode,
   ReceiptText,
   Save,
+  Search,
   Sandwich,
   Settings,
   ShoppingCart,
-  Sun,
   Table2,
   Volume2,
   VolumeX,
@@ -32,6 +38,7 @@ import veggieFresh from './assets/burger-veggie-fresh.png'
 import sandwichFrango from './assets/sandwich-frango.png'
 import pizzaCalabresa from './assets/pizza-calabresa.png'
 import bebidaCola from './assets/bebida-cola.png'
+import vezzLogo from './assets/vezz-logo.svg'
 
 const categories = [
   { id: 'hamburgueres', label: 'Hambúrgueres', shortLabel: 'Hambúrguer', icon: Hamburger },
@@ -48,6 +55,17 @@ const fallbackImages = {
 }
 
 const tableOptions = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+
+const restaurantId = 'food99like-demo'
+const restaurantName = 'FOOD99LIKE'
+const analyticsStorageKey = 'food99like-events'
+const sessionStorageKey = 'food99like-session'
+const cardBaseUrl = 'https://menu.food99like.app/c/8Ks29'
+const partnerLinks = {
+  vezz: 'https://vezzapp.com.br/',
+  instagram: 'https://www.instagram.com/',
+  whatsapp: 'https://wa.me/5581999999999',
+}
 
 const baseProducts = [
   {
@@ -192,30 +210,83 @@ const baseProducts = [
 
 function App() {
   const initialTable = getTableFromUrl()
+  const [analyticsSession] = useState(() => getAnalyticsSession(initialTable))
   const [screen, setScreen] = useState(() => getInitialScreen())
   const [activeCategory, setActiveCategory] = useState('hamburgueres')
   const [selectedProductId, setSelectedProductId] = useState(() => getProductFromHash())
+  const [products, setProducts] = useState(baseProducts)
   const [cart, setCart] = useState([])
   const [tableNumber, setTableNumber] = useState(initialTable || '')
   const [nfcTable, setNfcTable] = useState(initialTable || '01')
   const [copied, setCopied] = useState(false)
   const [orderSent, setOrderSent] = useState(false)
-  const [adminItems, setAdminItems] = useState([])
   const [voiceReaderEnabled, setVoiceReaderEnabled] = useState(false)
+  const [voiceCommandListening, setVoiceCommandListening] = useState(false)
   const [readerStatus, setReaderStatus] = useState('')
-  const [darkMenuEnabled, setDarkMenuEnabled] = useState(() => getInitialMenuTheme())
+  const [searchQuery, setSearchQuery] = useState('')
+  const speechStopTimerRef = useRef(null)
+  const [analyticsEvents, setAnalyticsEvents] = useState(() => {
+    const nextEvents = [
+      ...readAnalyticsEvents(),
+      buildAnalyticsEvent('menu_open', analyticsSession, {
+        tableNumber: initialTable || '',
+        language: 'pt-BR',
+      }),
+    ].slice(-500)
 
-  const products = useMemo(() => [...baseProducts, ...adminItems], [adminItems])
-  const selectedProduct = products.find((product) => product.id === selectedProductId) ?? products[0]
+    saveAnalyticsEvents(nextEvents)
+    return nextEvents
+  })
+
+  const menuProducts = useMemo(
+    () => products.filter((product) => product.active !== false),
+    [products],
+  )
+  const selectedProduct =
+    menuProducts.find((product) => product.id === selectedProductId) ?? menuProducts[0] ?? products[0]
   const cartItems = cart
     .map((item) => ({
       ...item,
-      product: products.find((product) => product.id === item.productId),
+      product: menuProducts.find((product) => product.id === item.productId),
     }))
     .filter((item) => item.product)
   const cartTotal = cartItems.reduce((total, item) => total + item.product.price * item.quantity, 0)
   const cartQuantity = cartItems.reduce((total, item) => total + item.quantity, 0)
   const generatedNfcLink = buildNfcUrl(nfcTable || tableNumber || '01')
+  const analyticsSummary = useMemo(
+    () => buildAnalyticsSummary(analyticsEvents, products, analyticsSession),
+    [analyticsEvents, products, analyticsSession],
+  )
+
+  const trackEvent = useCallback(
+    (eventName, payload = {}) => {
+      const event = buildAnalyticsEvent(eventName, analyticsSession, payload)
+
+      setAnalyticsEvents((events) => {
+        const nextEvents = [...events, event].slice(-500)
+        saveAnalyticsEvents(nextEvents)
+        return nextEvents
+      })
+    },
+    [analyticsSession],
+  )
+
+  const stopSpeech = useCallback((status = '') => {
+    if (speechStopTimerRef.current) {
+      window.clearTimeout(speechStopTimerRef.current)
+      speechStopTimerRef.current = null
+    }
+
+    cancelSpeechQueue()
+    speechStopTimerRef.current = window.setTimeout(() => {
+      cancelSpeechQueue()
+      speechStopTimerRef.current = null
+    }, 80)
+
+    if (status) {
+      setReaderStatus(status)
+    }
+  }, [])
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
@@ -226,10 +297,17 @@ function App() {
   }, [screen, selectedProductId])
 
   useEffect(() => {
-    return () => window.speechSynthesis?.cancel()
+    return () => {
+      if (speechStopTimerRef.current) {
+        window.clearTimeout(speechStopTimerRef.current)
+      }
+
+      cancelSpeechQueue()
+    }
   }, [])
 
   function showScreen(nextScreen, hashValue = nextScreen) {
+    stopSpeech()
     setScreen(nextScreen)
     window.location.hash = hashValue
   }
@@ -237,6 +315,11 @@ function App() {
   function openProduct(product) {
     setSelectedProductId(product.id)
     showScreen('produto', `produto=${product.id}`)
+    trackEvent('product_view', {
+      productId: product.id,
+      productName: product.name,
+      category: product.category,
+    })
 
     if (voiceReaderEnabled) {
       readProductIngredients(product)
@@ -261,6 +344,12 @@ function App() {
     })
 
     setReaderStatus(`${product?.name ?? 'Item'} adicionado ao pedido.`)
+    trackEvent('product_add', {
+      productId,
+      productName: product?.name ?? '',
+      quantity,
+      hasNote: Boolean(note),
+    })
   }
 
   function updateCartItem(productId, quantity) {
@@ -272,9 +361,36 @@ function App() {
   }
 
   function addAdminItem(item) {
-    setAdminItems((items) => [...items, item])
+    setProducts((items) => [...items, { ...item, active: true }])
     setActiveCategory(item.category)
+    trackEvent('admin_item_created', {
+      productId: item.id,
+      productName: item.name,
+      category: item.category,
+    })
     showScreen('menu')
+  }
+
+  function updateProduct(updatedProduct) {
+    setProducts((items) =>
+      items.map((item) =>
+        item.id === updatedProduct.id ? { ...item, ...updatedProduct } : item,
+      ),
+    )
+    trackEvent('admin_item_updated', {
+      productId: updatedProduct.id,
+      productName: updatedProduct.name,
+      category: updatedProduct.category,
+    })
+  }
+
+  function toggleProductActive(productId) {
+    setProducts((items) =>
+      items.map((item) =>
+        item.id === productId ? { ...item, active: item.active === false } : item,
+      ),
+    )
+    trackEvent('admin_item_status_changed', { productId })
   }
 
   async function copyNfcLink() {
@@ -290,7 +406,123 @@ function App() {
   function openNfcPreview() {
     window.history.replaceState(null, '', `?mesa=${nfcTable || '01'}#menu`)
     setTableNumber(nfcTable || '01')
+    trackEvent('card_preview', { tableNumber: nfcTable || '01' })
     showScreen('menu')
+  }
+
+  function changeCategory(categoryId) {
+    setActiveCategory(categoryId)
+    setSearchQuery('')
+    trackEvent('category_view', { category: categoryId })
+  }
+
+  function changeSearchQuery(value, source = 'typing') {
+    setSearchQuery(value)
+
+    if (value.trim().length >= 3) {
+      trackEvent(source === 'voice' ? 'voice_search' : 'search', {
+        query: value.trim(),
+      })
+    }
+  }
+
+  function openPartnerLink(partner, url) {
+    trackEvent(`${partner}_click`, { url })
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  function openVezz() {
+    speakText('Abrindo a Vezz Mobilidade.')
+    openPartnerLink('vezz', partnerLinks.vezz)
+  }
+
+  function startVoiceCommand() {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition
+
+    if (!Recognition) {
+      speakText('Este navegador ainda não permite comandos de voz.')
+      return
+    }
+
+    const recognition = new Recognition()
+    recognition.lang = 'pt-BR'
+    recognition.continuous = false
+    recognition.interimResults = false
+
+    recognition.onstart = () => {
+      setVoiceCommandListening(true)
+      setReaderStatus('Ouvindo comando de voz.')
+    }
+
+    recognition.onresult = (event) => {
+      const transcript = event.results?.[0]?.[0]?.transcript ?? ''
+      handleVoiceCommand(transcript)
+    }
+
+    recognition.onerror = () => {
+      setReaderStatus('Não consegui ouvir o comando. Tente novamente.')
+    }
+
+    recognition.onend = () => {
+      setVoiceCommandListening(false)
+    }
+
+    recognition.start()
+  }
+
+  function handleVoiceCommand(transcript) {
+    const command = transcript.trim()
+    const normalizedCommand = normalizeText(command)
+
+    if (!command) return
+
+    trackEvent('voice_command', { command })
+
+    if (normalizedCommand.includes('voltar')) {
+      showScreen('menu')
+      speakText('Voltando para o cardápio.')
+      return
+    }
+
+    if (normalizedCommand.includes('vezz') || normalizedCommand.includes('corrida')) {
+      openVezz()
+      return
+    }
+
+    const category = categories.find((item) =>
+      normalizeText(`${item.label} ${item.shortLabel}`).includes(normalizedCommand) ||
+      normalizedCommand.includes(normalizeText(item.shortLabel)),
+    )
+
+    if (category) {
+      changeCategory(category.id)
+      speakText(`Mostrando ${category.label}.`)
+      return
+    }
+
+    const matchedProduct = findProductByCommand(menuProducts, normalizedCommand)
+
+    if (normalizedCommand.includes('quanto custa') && matchedProduct) {
+      speakText(`${matchedProduct.name} custa ${formatCurrency(matchedProduct.price)}.`)
+      return
+    }
+
+    if (
+      normalizedCommand.includes('abrir') &&
+      matchedProduct
+    ) {
+      openProduct(matchedProduct)
+      return
+    }
+
+    if (normalizedCommand.includes('vegetariana') || normalizedCommand.includes('vegetariano')) {
+      changeSearchQuery('vegetariano', 'voice')
+      speakText('Mostrando opções vegetarianas.')
+      return
+    }
+
+    changeSearchQuery(command, 'voice')
+    speakText(`Pesquisando por ${command}.`)
   }
 
   function toggleVoiceReader() {
@@ -303,8 +535,7 @@ function App() {
       return
     }
 
-    window.speechSynthesis?.cancel()
-    setReaderStatus('Leitor automático desativado.')
+    stopSpeech('Leitor automático desativado.')
   }
 
   function readProductIngredients(product) {
@@ -323,7 +554,12 @@ function App() {
       return
     }
 
-    window.speechSynthesis.cancel()
+    if (speechStopTimerRef.current) {
+      window.clearTimeout(speechStopTimerRef.current)
+      speechStopTimerRef.current = null
+    }
+
+    cancelSpeechQueue()
 
     const utterance = new window.SpeechSynthesisUtterance(prepareSpeechText(message))
     utterance.lang = 'pt-BR'
@@ -334,16 +570,16 @@ function App() {
     window.speechSynthesis.speak(utterance)
   }
 
-  function sendOrder() {
+  function sendOrder(orderData = {}) {
     setOrderSent(true)
     setReaderStatus(`Pedido enviado para a mesa ${tableNumber || 'selecionada'}.`)
-  }
-
-  function toggleDarkMenu() {
-    setDarkMenuEnabled((enabled) => {
-      const nextValue = !enabled
-      saveMenuTheme(nextValue)
-      return nextValue
+    trackEvent('order_sent', {
+      tableNumber: tableNumber || '',
+      serviceType: orderData.serviceType ?? 'mesa',
+      paymentType: orderData.paymentType ?? 'caixa',
+      hasCustomerName: Boolean(orderData.customerName?.trim()),
+      cartQuantity,
+      cartTotal,
     })
   }
 
@@ -352,23 +588,30 @@ function App() {
       aria-label="Cardápio digital FOOD99LIKE"
       className="min-h-screen overflow-x-hidden bg-slate-100 text-slate-950 md:grid md:place-items-center md:px-6 md:py-8"
     >
-      <div className="fixed inset-0 h-[100dvh] w-[100dvw] max-w-none overflow-hidden bg-white md:static md:mx-auto md:h-[932px] md:w-full md:max-w-[430px] md:rounded-[28px] md:shadow-2xl md:shadow-slate-300/80">
+      <div
+        className={`fixed inset-0 h-[100dvh] w-[100dvw] max-w-none overflow-hidden md:static md:mx-auto md:h-[932px] md:w-full md:max-w-[430px] md:rounded-[28px] md:shadow-2xl md:shadow-slate-300/80 ${
+          screen === 'menu' || screen === 'produto' ? 'bg-[#030407]' : 'bg-white'
+        }`}
+      >
         {screen === 'menu' && (
           <MenuScreen
-            products={products}
+            products={menuProducts}
             activeCategory={activeCategory}
             cartQuantity={cartQuantity}
             cartTotal={cartTotal}
+            searchQuery={searchQuery}
             tableNumber={tableNumber}
-            onCategoryChange={setActiveCategory}
+            onCategoryChange={changeCategory}
+            onSearchChange={changeSearchQuery}
             onOpenSettings={() => showScreen('configuracoes')}
             onOpenProduct={openProduct}
             onAddToCart={addToCart}
             onOpenOrder={() => showScreen('pedido')}
+            onOpenVezz={openVezz}
+            onStartVoiceCommand={startVoiceCommand}
             onToggleVoiceReader={toggleVoiceReader}
+            voiceCommandListening={voiceCommandListening}
             voiceReaderEnabled={voiceReaderEnabled}
-            darkMode={darkMenuEnabled}
-            onToggleDarkMode={toggleDarkMenu}
           />
         )}
 
@@ -388,12 +631,16 @@ function App() {
             nfcTable={nfcTable}
             categories={categories}
             products={products}
+            analyticsSummary={analyticsSummary}
             generatedNfcLink={generatedNfcLink}
             onBack={() => showScreen('menu')}
             onAddAdminItem={addAdminItem}
             onCopyNfcLink={copyNfcLink}
             onNfcTableChange={setNfcTable}
             onOpenNfcPreview={openNfcPreview}
+            onOpenPartnerLink={openPartnerLink}
+            onToggleProductActive={toggleProductActive}
+            onUpdateProduct={updateProduct}
           />
         )}
 
@@ -423,79 +670,42 @@ function MenuScreen({
   activeCategory,
   cartQuantity,
   cartTotal,
+  searchQuery,
   tableNumber,
   onCategoryChange,
+  onSearchChange,
   onOpenSettings,
   onOpenProduct,
   onAddToCart,
   onOpenOrder,
+  onOpenVezz,
+  onStartVoiceCommand,
   onToggleVoiceReader,
+  voiceCommandListening,
   voiceReaderEnabled,
-  darkMode,
-  onToggleDarkMode,
 }) {
-  const categoryProducts = products.filter((product) => product.category === activeCategory)
+  const categoryProducts = filterProducts(
+    products.filter((product) => product.category === activeCategory),
+    searchQuery,
+  )
+  const featuredProduct = products.find((product) => product.badge === 'Mais pedido') ?? products[0]
   const activeCategoryLabel =
     categories.find((category) => category.id === activeCategory)?.label ?? 'Cardápio'
 
   return (
     <section
-      className={`relative h-full overflow-y-auto pb-28 transition-colors ${
-        darkMode ? 'bg-slate-950' : 'bg-white'
-      }`}
+      className="relative h-full overflow-y-auto bg-[#030407] pb-28 text-white"
       aria-labelledby="menu-title"
     >
-      <div className="relative ml-2 mt-2 h-[168px] w-[414px] max-w-[calc(100vw-16px)] overflow-hidden rounded-[18px] bg-slate-900">
-        <img
-          src={heroBurger}
-          alt="Hambúrguer artesanal com bacon e batata frita"
-          className="h-full w-full object-cover"
-          draggable="false"
-        />
-
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/5" />
-
-        <button
-          type="button"
-          onClick={onToggleVoiceReader}
-          aria-label={
-            voiceReaderEnabled
-              ? 'Desativar leitor automático de ingredientes'
-              : 'Ativar leitor automático de ingredientes'
-          }
-          aria-pressed={voiceReaderEnabled}
-          title={
-            voiceReaderEnabled
-              ? 'Desativar leitor automático'
-              : 'Ativar leitor automático'
-          }
-          className={`absolute left-3 top-3 grid size-[38px] place-items-center rounded-full shadow-lg shadow-black/20 transition active:scale-95 ${
-            voiceReaderEnabled ? 'bg-[#ffda16] text-slate-950' : 'bg-white text-slate-900'
-          }`}
-        >
-          {voiceReaderEnabled ? (
-            <Volume2 size={19} strokeWidth={2.7} />
-          ) : (
-            <VolumeX size={19} strokeWidth={2.7} />
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          aria-label="Configurações"
-          className="absolute right-3 top-3 grid size-[38px] place-items-center rounded-full bg-white text-slate-900 shadow-lg shadow-black/20 transition active:scale-95"
-        >
-          <Settings size={19} strokeWidth={2.6} />
-        </button>
-
-        {tableNumber && (
-          <span className="absolute bottom-3 left-3 inline-flex h-8 items-center gap-2 rounded-full bg-white/95 px-3 text-xs font-black text-slate-900 shadow-lg shadow-black/20">
-            <Table2 size={15} />
-            Mesa {tableNumber}
-          </span>
-        )}
-      </div>
+      <HeroCarousel
+        featuredProduct={featuredProduct}
+        tableNumber={tableNumber}
+        onOpenProduct={onOpenProduct}
+        voiceReaderEnabled={voiceReaderEnabled}
+        onOpenSettings={onOpenSettings}
+        onOpenVezz={onOpenVezz}
+        onToggleVoiceReader={onToggleVoiceReader}
+      />
 
       <div className="mt-[13px] flex items-center gap-2 overflow-hidden px-[18px] pb-1">
         {categories.map((category) => (
@@ -508,9 +718,7 @@ function MenuScreen({
             className={`flex h-[36px] w-[88px] shrink-0 items-center justify-center gap-1.5 rounded-full px-2 text-[9px] font-bold shadow-sm transition active:scale-[0.98] ${
               category.id === activeCategory
                 ? 'bg-[#ffd51a] text-slate-950'
-                : darkMode
-                  ? 'bg-slate-900 text-slate-200 ring-1 ring-white/10'
-                  : 'bg-white text-slate-700 ring-1 ring-slate-100'
+                : 'bg-[#191c25] text-slate-200 ring-1 ring-white/10'
             }`}
           >
             <category.icon size={15} strokeWidth={2.4} />
@@ -523,98 +731,248 @@ function MenuScreen({
         id="menu-title"
         data-screen-title="true"
         tabIndex={-1}
-        className={`mt-[17px] px-[18px] text-[19px] font-black leading-none outline-none ${
-          darkMode ? 'text-white' : 'text-slate-800'
-        }`}
+        className="mt-[17px] px-[18px] text-[19px] font-black leading-none text-white outline-none"
       >
         {activeCategoryLabel} ({categoryProducts.length})
       </h1>
 
-      <div className="ml-4 mt-4 grid w-[398px] max-w-[calc(100vw-32px)] grid-cols-2 gap-[10px]">
-        {categoryProducts.map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            darkMode={darkMode}
-            onAdd={() => onAddToCart(product.id)}
-            onOpen={() => onOpenProduct(product)}
+      <div
+        className="mx-[18px] mt-4 grid grid-cols-[1fr_auto] gap-2 rounded-xl bg-[#11141c] p-2 ring-1 ring-white/10"
+      >
+        <label className="grid grid-cols-[auto_1fr] items-center gap-2">
+          <Search size={17} className="text-slate-400" />
+          <input
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Buscar item ou ingrediente"
+            className="h-10 w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-slate-400"
           />
-        ))}
+        </label>
+        <button
+          type="button"
+          onClick={onStartVoiceCommand}
+          aria-label="Falar comando de voz"
+          aria-pressed={voiceCommandListening}
+          className={`grid size-10 place-items-center rounded-lg transition active:scale-95 ${
+            voiceCommandListening
+              ? 'bg-[#ffda16] text-slate-950'
+              : 'bg-white/10 text-white ring-1 ring-white/10'
+          }`}
+        >
+          {voiceCommandListening ? <MicOff size={18} /> : <Mic size={18} />}
+        </button>
+      </div>
+
+      <div className="mx-3 mt-4 w-[406px] max-w-[calc(100vw-24px)] rounded-sm bg-[#090a0f] px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-white/10">
+        {categoryProducts.length ? (
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+            {categoryProducts.map((product, index) => (
+              <ProductCard
+                key={product.id}
+                index={index}
+                product={product}
+                onAdd={() => onAddToCart(product.id)}
+                onOpen={() => onOpenProduct(product)}
+              />
+            ))}
+          </div>
+        ) : (
+          <p
+            className="p-4 text-center text-sm font-bold text-slate-300"
+          >
+            Nenhum item encontrado.
+          </p>
+        )}
       </div>
 
       {cartQuantity > 0 && (
         <CartBar quantity={cartQuantity} total={cartTotal} onOpenOrder={onOpenOrder} />
       )}
 
-      <MenuThemeToggle
-        darkMode={darkMode}
-        hasCart={cartQuantity > 0}
-        onToggle={onToggleDarkMode}
-      />
     </section>
   )
 }
 
-function ProductCard({ product, darkMode, onAdd, onOpen }) {
-  const BadgeIcon = product.badgeIcon
+function HeroCarousel({
+  featuredProduct,
+  tableNumber,
+  onOpenProduct,
+  voiceReaderEnabled,
+  onOpenSettings,
+  onOpenVezz,
+  onToggleVoiceReader,
+}) {
+  const [activeSlide, setActiveSlide] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
+
+  useEffect(() => {
+    if (isPaused) return undefined
+
+    const timerId = window.setInterval(() => {
+      setActiveSlide((slide) => (slide + 1) % 2)
+    }, 14000)
+
+    return () => window.clearInterval(timerId)
+  }, [isPaused])
+
+  function selectSlide(slide) {
+    setActiveSlide(slide)
+    setIsPaused(true)
+  }
 
   return (
-    <article
-      className={`relative min-h-[248px] overflow-hidden rounded-[14px] shadow-[0_3px_20px_rgba(15,23,42,0.09)] ring-1 transition-colors ${
-        darkMode ? 'bg-slate-900 ring-white/10' : 'bg-white ring-slate-100'
-      }`}
+    <div
+      className="relative ml-2 mt-2 h-[168px] w-[414px] max-w-[calc(100vw-16px)] overflow-hidden rounded-[18px] bg-slate-900"
+      onBlurCapture={() => setIsPaused(false)}
+      onFocusCapture={() => setIsPaused(true)}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={() => setIsPaused(true)}
     >
+      <div
+        className={`absolute inset-0 transition-opacity duration-700 ${
+          activeSlide === 0 ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        aria-hidden={activeSlide !== 0}
+      >
+        <img
+          src={heroBurger}
+          alt="Hamburguer artesanal com bacon e batata frita"
+          className="h-full w-full object-cover"
+          draggable="false"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/5" />
+        {featuredProduct && (
+          <button
+            type="button"
+            onClick={() => onOpenProduct(featuredProduct)}
+            tabIndex={activeSlide === 0 ? 0 : -1}
+            className="absolute bottom-3 left-3 max-w-[258px] rounded-lg bg-black/70 px-3 py-2 text-left shadow-lg shadow-black/25 ring-1 ring-white/10 backdrop-blur-sm transition active:scale-[0.98]"
+          >
+            <span className="block text-[9px] font-black uppercase tracking-[0.08em] text-[#ffd51a]">
+              Destaque da casa{tableNumber ? ` - Mesa ${tableNumber}` : ''}
+            </span>
+            <span className="mt-1 block truncate text-[15px] font-black leading-none text-white">
+              {featuredProduct.name}
+            </span>
+            <span className="mt-1 block text-[11px] font-black text-white/75">
+              {formatCurrency(featuredProduct.price)}
+            </span>
+          </button>
+        )}
+      </div>
+
+      <div
+        className={`absolute inset-0 bg-[#2bb8cb] transition-opacity duration-700 ${
+          activeSlide === 1 ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        aria-hidden={activeSlide !== 1}
+      >
+        <div className="absolute inset-y-0 right-0 w-40 bg-white/12" />
+        <div className="relative z-10 flex h-full flex-col justify-center px-7 pt-5">
+          <img
+            src={vezzLogo}
+            alt="Vezz"
+            className="h-14 w-[250px] object-contain object-left"
+            draggable="false"
+          />
+          <p className="mt-2 max-w-[230px] text-[20px] font-black leading-[1.05] text-slate-950">
+            Vai embora? Vá com a Vezz.
+          </p>
+          <button
+            type="button"
+            onClick={onOpenVezz}
+            tabIndex={activeSlide === 1 ? 0 : -1}
+            className="mt-3 inline-flex h-9 w-fit items-center gap-2 rounded-lg bg-slate-950 px-4 text-[11px] font-black text-white shadow-lg shadow-cyan-900/25 transition active:scale-[0.98]"
+          >
+            <CarFront size={15} />
+            CHAMAR VEZZ
+          </button>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={onToggleVoiceReader}
+        aria-label={
+          voiceReaderEnabled
+            ? 'Desativar leitor automatico de ingredientes'
+            : 'Ativar leitor automatico de ingredientes'
+        }
+        aria-pressed={voiceReaderEnabled}
+        title={voiceReaderEnabled ? 'Desativar leitor automatico' : 'Ativar leitor automatico'}
+        className={`absolute left-3 top-3 z-20 grid size-[38px] place-items-center rounded-full shadow-lg shadow-black/20 transition active:scale-95 ${
+          voiceReaderEnabled ? 'bg-[#ffda16] text-slate-950' : 'bg-white text-slate-900'
+        }`}
+      >
+        {voiceReaderEnabled ? (
+          <Volume2 size={19} strokeWidth={2.7} />
+        ) : (
+          <VolumeX size={19} strokeWidth={2.7} />
+        )}
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpenSettings}
+        aria-label="Configuracoes"
+        className="absolute right-3 top-3 z-20 grid size-[38px] place-items-center rounded-full bg-white text-slate-900 shadow-lg shadow-black/20 transition active:scale-95"
+      >
+        <Settings size={19} strokeWidth={2.6} />
+      </button>
+
+      <div className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5">
+        {[0, 1].map((slide) => (
+          <button
+            type="button"
+            key={slide}
+            onClick={() => selectSlide(slide)}
+            aria-label={slide === 0 ? 'Mostrar foto do hamburguer' : 'Mostrar chamada da Vezz'}
+            aria-pressed={activeSlide === slide}
+            className={`h-2.5 rounded-full transition-all ${
+              activeSlide === slide ? 'w-6 bg-white' : 'w-2.5 bg-white/45'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ProductCard({ product, index, onAdd, onOpen }) {
+  const productNumber = getMenuProductNumber(product, index)
+
+  return (
+    <article className="relative min-h-[218px] text-white">
       <button
         type="button"
         onClick={onOpen}
         aria-label={buildProductAriaLabel(product)}
-        className="block min-h-[248px] w-full p-2 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-orange-500"
+        className="block h-full w-full pb-8 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[#ffd51a]"
       >
-        <span
-          className={`absolute left-2 top-2 z-10 inline-flex h-[20px] items-center gap-1 rounded-full border px-2 text-[8px] font-black ${product.badgeTone}`}
-        >
-          <BadgeIcon size={10} strokeWidth={2.5} className={product.badgeIconTone} />
-          {product.badge}
-        </span>
-
-        <div className="flex h-[126px] items-end justify-center overflow-hidden pt-3">
+        <div className="relative flex h-[92px] items-center justify-center overflow-hidden bg-[#171a22]">
           <img
             src={product.image}
             alt=""
             aria-hidden="true"
-            className="h-[116px] w-full scale-[1.2] object-contain"
+            className="h-[96px] w-full scale-[1.08] object-contain"
             draggable="false"
           />
         </div>
 
-        <div className="mt-2 pr-5">
-          <h3
-            className={`text-[15px] font-black leading-[1.1] ${
-              darkMode ? 'text-white' : 'text-slate-800'
-            }`}
-          >
+        <div className="mt-2">
+          <p className="text-[9px] font-black uppercase tracking-[0.04em] text-[#ffd51a]">
+            {productNumber}. {product.badge}
+          </p>
+          <h3 className="mt-1 text-[13px] font-black leading-[1.08] text-white">
             {product.name}
           </h3>
-          <p
-            className={`mt-1 text-[14px] font-black leading-none ${
-              darkMode ? 'text-slate-100' : 'text-slate-800'
-            }`}
-          >
+          <p className="mt-1 line-clamp-4 text-[9.5px] font-semibold leading-[1.28] text-white/60">
+            {product.description}
+          </p>
+          <p className="mt-2 text-[13px] font-black text-white">
             {formatCurrency(product.price)}
           </p>
-        </div>
-
-        <div className="mt-3 flex max-w-[142px] flex-wrap gap-1" aria-hidden="true">
-          {product.tags.slice(0, 5).map((tag) => (
-            <span
-              key={tag}
-              className={`rounded-md px-[7px] py-[5px] text-[7px] font-bold leading-none ${
-                darkMode ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-500'
-              }`}
-            >
-              {tag}
-            </span>
-          ))}
         </div>
       </button>
 
@@ -625,32 +983,11 @@ function ProductCard({ product, darkMode, onAdd, onOpen }) {
           event.stopPropagation()
           onAdd()
         }}
-        className="absolute bottom-3 right-3 z-20 grid size-[24px] place-items-center rounded-full bg-[#ffc10e] text-white shadow-md shadow-yellow-300/50 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-orange-500"
+        className="absolute bottom-0 right-0 z-20 grid size-7 place-items-center rounded-sm bg-[#ffd51a] text-slate-950 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-white"
       >
-        <Plus size={18} strokeWidth={3} />
+        <Plus size={16} strokeWidth={3} />
       </button>
     </article>
-  )
-}
-
-function MenuThemeToggle({ darkMode, hasCart, onToggle }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label={darkMode ? 'Ativar modo claro do cardápio' : 'Ativar modo noturno do cardápio'}
-      aria-pressed={darkMode}
-      title={darkMode ? 'Modo claro' : 'Modo noturno'}
-      className={`fixed right-4 z-30 grid size-11 place-items-center rounded-lg shadow-lg transition active:scale-95 focus-visible:ring-2 focus-visible:ring-orange-500 ${
-        hasCart ? 'bottom-[92px]' : 'bottom-4'
-      } ${
-        darkMode
-          ? 'bg-white text-slate-950 shadow-black/30'
-          : 'bg-slate-950 text-white shadow-slate-400/50'
-      }`}
-    >
-      {darkMode ? <Sun size={19} strokeWidth={2.5} /> : <Moon size={18} strokeWidth={2.5} />}
-    </button>
   )
 }
 
@@ -664,13 +1001,13 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
   }
 
   return (
-    <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8" aria-labelledby="product-title">
-      <div className="relative min-h-[308px] bg-slate-50 px-5 pb-5 pt-4">
+    <section className="h-full overflow-y-auto overflow-x-hidden bg-[#030407] pb-8 text-white" aria-labelledby="product-title">
+      <div className="relative min-h-[314px] bg-[#090a0f] px-5 pb-5 pt-4 ring-1 ring-white/10">
         <button
           type="button"
           onClick={onBack}
           aria-label="Voltar"
-          className="absolute left-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-white text-slate-900 shadow-lg shadow-slate-200 transition active:scale-95"
+          className="absolute left-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-white shadow-lg shadow-black/25 ring-1 ring-white/10 transition active:scale-95"
         >
           <ArrowLeft size={21} strokeWidth={2.7} />
         </button>
@@ -680,17 +1017,19 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
           onClick={() => onReadProduct(product)}
           aria-label={`Ouvir ingredientes de ${product.name}`}
           title="Ouvir ingredientes"
-          className="absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-white text-slate-900 shadow-lg shadow-slate-200 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-orange-500"
+          className="absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-[#ffd51a] text-slate-950 shadow-lg shadow-black/25 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-white"
         >
           <Volume2 size={19} strokeWidth={2.7} />
         </button>
 
-        <img
-          src={product.image}
-          alt={product.name}
-          className="mx-auto h-[250px] w-full max-w-[340px] object-contain pt-8"
-          draggable="false"
-        />
+        <div className="mx-auto flex h-[278px] w-full max-w-[350px] items-end justify-center overflow-hidden pt-8">
+          <img
+            src={product.image}
+            alt={product.name}
+            className="h-[230px] w-full max-w-[270px] object-contain"
+            draggable="false"
+          />
+        </div>
       </div>
 
       <div className="ml-5 w-[390px] max-w-[calc(100vw-40px)] overflow-x-hidden pt-5">
@@ -706,14 +1045,14 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
             id="product-title"
             data-screen-title="true"
             tabIndex={-1}
-            className="text-[26px] font-black leading-tight text-slate-900 outline-none"
+            className="text-[26px] font-black leading-tight text-white outline-none"
           >
             {product.name}
           </h1>
-          <p className="mt-1 text-[20px] font-black text-slate-900">
+          <p className="mt-1 text-[20px] font-black text-white">
             {formatCurrency(product.price)}
           </p>
-          <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">
+          <p className="mt-3 text-sm font-semibold leading-6 text-white/60">
             {product.description}
           </p>
         </div>
@@ -722,23 +1061,23 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
           {product.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-lg bg-slate-100 px-3 py-2 text-[10px] font-bold text-slate-600"
+              className="rounded-lg bg-white/10 px-3 py-2 text-[10px] font-bold text-white/70 ring-1 ring-white/10"
             >
               {tag}
             </span>
           ))}
         </div>
 
-        <div className="mt-6 rounded-[18px] bg-slate-50 p-4">
+        <div className="mt-6 rounded-lg bg-[#11141c] p-4 ring-1 ring-white/10">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-black text-slate-900">Quantidade</p>
+            <p className="text-sm font-black text-white">Quantidade</p>
             <div className="flex items-center gap-3">
               <StepperButton
                 icon={Minus}
                 label={`Diminuir quantidade de ${product.name}`}
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
               />
-              <span className="w-7 text-center text-lg font-black">{quantity}</span>
+              <span className="w-7 text-center text-lg font-black text-white">{quantity}</span>
               <StepperButton
                 icon={Plus}
                 label={`Aumentar quantidade de ${product.name}`}
@@ -747,13 +1086,13 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
             </div>
           </div>
 
-          <label className="mt-4 block text-sm font-black text-slate-900">
+          <label className="mt-4 block text-sm font-black text-white">
             Observação
             <textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}
               placeholder="Ex.: sem cebola, molho separado..."
-              className="mt-2 h-20 w-full resize-none rounded-[14px] bg-white px-3 py-3 text-sm font-semibold text-slate-700 outline-none ring-1 ring-slate-100 placeholder:text-slate-400"
+              className="mt-2 h-20 w-full resize-none rounded-lg bg-[#090a0f] px-3 py-3 text-sm font-semibold text-white outline-none ring-1 ring-white/10 placeholder:text-slate-500"
             />
           </label>
         </div>
@@ -762,7 +1101,7 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
           <button
             type="button"
             onClick={addCurrentItem}
-            className="h-14 rounded-[14px] bg-slate-950 text-sm font-black text-white transition active:scale-[0.99]"
+            className="h-14 rounded-lg bg-white/10 text-sm font-black text-white ring-1 ring-white/10 transition active:scale-[0.99]"
           >
             ADICIONAR
           </button>
@@ -772,7 +1111,7 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
               addCurrentItem()
               onOrderNow()
             }}
-            className="h-14 rounded-[14px] bg-[#ffda16] text-sm font-black text-black transition active:scale-[0.99]"
+            className="h-14 rounded-lg bg-[#ffda16] text-sm font-black text-black transition active:scale-[0.99]"
           >
             FAZER PEDIDO
           </button>
@@ -783,6 +1122,7 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
 }
 
 function SettingsScreen({
+  analyticsSummary,
   categories,
   copied,
   generatedNfcLink,
@@ -793,8 +1133,12 @@ function SettingsScreen({
   onCopyNfcLink,
   onNfcTableChange,
   onOpenNfcPreview,
+  onOpenPartnerLink,
+  onToggleProductActive,
+  onUpdateProduct,
 }) {
-  const [activeTab, setActiveTab] = useState('cardapio')
+  const [activeTab, setActiveTab] = useState(() => getInitialAdminTab())
+  const [editingProductId, setEditingProductId] = useState('')
   const [form, setForm] = useState({
     name: '',
     category: 'hamburgueres',
@@ -816,20 +1160,30 @@ function SettingsScreen({
       return
     }
 
-    onAddAdminItem({
-      id: `admin-${Date.now()}`,
+    const currentProduct = products.find((product) => product.id === editingProductId)
+    const productPayload = {
+      ...(currentProduct ?? {}),
+      id: currentProduct?.id ?? `admin-${Date.now()}`,
       category: form.category,
       name: form.name.trim(),
       price,
-      image: fallbackImages[form.category],
-      badge: 'Admin',
-      badgeTone: 'border-slate-200 bg-white text-slate-600',
-      badgeIcon: Save,
-      badgeIconTone: 'text-slate-600',
+      image: currentProduct?.image ?? fallbackImages[form.category],
+      badge: currentProduct?.badge ?? 'Admin',
+      badgeTone: currentProduct?.badgeTone ?? 'border-slate-200 bg-white text-slate-600',
+      badgeIcon: currentProduct?.badgeIcon ?? Save,
+      badgeIconTone: currentProduct?.badgeIconTone ?? 'text-slate-600',
       description: form.description.trim() || 'Item cadastrado pelo administrador do cardápio.',
       tags: ingredients.length ? ingredients : ['Cadastro admin', 'Disponível', 'Novo item'],
-    })
+      active: currentProduct?.active !== false,
+    }
 
+    if (currentProduct) {
+      onUpdateProduct(productPayload)
+    } else {
+      onAddAdminItem(productPayload)
+    }
+
+    setEditingProductId('')
     setForm({
       name: '',
       category: 'hamburgueres',
@@ -842,8 +1196,32 @@ function SettingsScreen({
   const settingsTabs = [
     { id: 'cardapio', label: 'Cardápio', icon: BadgePlus },
     { id: 'mesas', label: 'Mesas', icon: Nfc },
-    { id: 'resumo', label: 'Resumo', icon: Settings },
+    { id: 'vezz', label: 'Vezz', icon: BarChart3 },
+    { id: 'cartao', label: 'Cartão', icon: CreditCard },
   ]
+
+  function editProduct(product) {
+    setEditingProductId(product.id)
+    setActiveTab('cardapio')
+    setForm({
+      name: product.name,
+      category: product.category,
+      price: String(product.price).replace('.', ','),
+      description: product.description,
+      ingredients: product.tags.join(', '),
+    })
+  }
+
+  function cancelEdit() {
+    setEditingProductId('')
+    setForm({
+      name: '',
+      category: 'hamburgueres',
+      price: '',
+      description: '',
+      ingredients: '',
+    })
+  }
 
   return (
     <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8">
@@ -860,7 +1238,7 @@ function SettingsScreen({
         <div
           role="tablist"
           aria-label="Áreas de administração"
-          className="mt-4 grid grid-cols-3 gap-1 border-b border-slate-200"
+          className="mt-4 grid grid-cols-4 gap-1 border-b border-slate-200"
         >
           {settingsTabs.map(({ id, label, icon: Icon }) => (
             <button
@@ -886,9 +1264,11 @@ function SettingsScreen({
             <section className="rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-base font-black text-slate-950">Novo item</h2>
+                  <h2 className="text-base font-black text-slate-950">
+                    {editingProductId ? 'Editar item' : 'Novo item'}
+                  </h2>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Cadastro rápido para o menu.
+                    {editingProductId ? 'Atualize preço, ingredientes e descrição.' : 'Cadastro rápido para o menu.'}
                   </p>
                 </div>
                 <Save size={19} className="text-slate-400" />
@@ -952,8 +1332,77 @@ function SettingsScreen({
                 className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 text-sm font-black text-white transition active:scale-[0.99]"
               >
                 <Save size={17} />
-                SALVAR ITEM
+                {editingProductId ? 'ATUALIZAR ITEM' : 'SALVAR ITEM'}
               </button>
+
+              {editingProductId && (
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="mt-2 h-10 w-full rounded-lg bg-white text-sm font-black text-slate-700 ring-1 ring-slate-200 transition active:scale-[0.99]"
+                >
+                  CANCELAR EDIÇÃO
+                </button>
+              )}
+            </section>
+
+            <section className="rounded-lg border border-slate-200 bg-white">
+              <div className="flex items-center justify-between border-b border-slate-100 p-4">
+                <div>
+                  <h2 className="text-base font-black text-slate-950">Produtos</h2>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Edite sem perder histórico.
+                  </p>
+                </div>
+                <span className="text-sm font-black text-slate-400">{products.length}</span>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {products.map((product) => (
+                  <div key={product.id} className="grid grid-cols-[1fr_auto] gap-3 p-4">
+                    <button
+                      type="button"
+                      onClick={() => editProduct(product)}
+                      className="min-w-0 text-left"
+                    >
+                      <span className="block truncate text-sm font-black text-slate-950">
+                        {product.name}
+                      </span>
+                      <span className="mt-1 block text-xs font-bold text-slate-500">
+                        {formatCurrency(product.price)} ·{' '}
+                        {categories.find((category) => category.id === product.category)?.label}
+                      </span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => editProduct(product)}
+                        aria-label={`Editar ${product.name}`}
+                        className="grid size-9 place-items-center rounded-lg bg-slate-50 text-slate-700 ring-1 ring-slate-200"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onToggleProductActive(product.id)}
+                        aria-label={
+                          product.active === false
+                            ? `Ativar ${product.name}`
+                            : `Desativar ${product.name}`
+                        }
+                        className={`h-9 rounded-lg px-3 text-xs font-black ring-1 ${
+                          product.active === false
+                            ? 'bg-slate-50 text-slate-500 ring-slate-200'
+                            : 'bg-emerald-50 text-emerald-600 ring-emerald-100'
+                        }`}
+                      >
+                        {product.active === false ? 'INATIVO' : 'ATIVO'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </section>
           </form>
         )}
@@ -1025,21 +1474,95 @@ function SettingsScreen({
           </section>
         )}
 
-        {activeTab === 'resumo' && (
+        {activeTab === 'vezz' && (
           <section className="mt-5 space-y-4">
-            <div className="grid grid-cols-3 gap-2">
-              <SettingsMetric label="Itens" value={products.length} />
-              <SettingsMetric label="Categorias" value={categories.length} />
-              <SettingsMetric label="Mesas" value={tableOptions.length} />
+            <div className="rounded-lg border border-slate-200 bg-slate-950 p-4 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase text-white/45">Parceria Vezz</p>
+                  <h2 className="mt-1 text-xl font-black">Impacto no restaurante</h2>
+                </div>
+                <CarFront size={22} className="text-[#ffda16]" />
+              </div>
+
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                <PartnerMetric label="Acessos" value={analyticsSummary.menuOpens} />
+                <PartnerMetric label="Cliques" value={analyticsSummary.vezzClicks} />
+                <PartnerMetric label="CTR" value={`${analyticsSummary.vezzCtr}%`} />
+              </div>
+
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <PartnerMetric label="Pedidos" value={analyticsSummary.ordersSent} />
+                <PartnerMetric label="Ticket medio" value={formatCurrency(analyticsSummary.averageTicket)} />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onOpenPartnerLink('vezz', partnerLinks.vezz)}
+                className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#ffda16] text-sm font-black text-slate-950"
+              >
+                <ExternalLink size={16} />
+                ABRIR VEZZ
+              </button>
             </div>
 
             <div className="rounded-lg border border-slate-200 bg-white p-4">
-              <h2 className="text-base font-black text-slate-950">Operação</h2>
-              <div className="mt-4 divide-y divide-slate-100">
-                <SettingsRow label="Cardápio" value="Ativo" />
-                <SettingsRow label="Pedidos" value="Mesa e balcão" />
-                <SettingsRow label="NFC/QR" value={`Mesa ${nfcTable || '01'}`} />
+              <h2 className="text-base font-black text-slate-950">Interesse por horário</h2>
+              <div className="mt-4 space-y-3">
+                {analyticsSummary.hourlyDemand.map(({ hour, count, width }) => (
+                  <div key={hour} className="grid grid-cols-[34px_1fr_28px] items-center gap-2">
+                    <span className="text-xs font-black text-slate-500">{hour}h</span>
+                    <span className="h-2 overflow-hidden rounded-full bg-slate-100">
+                      <span
+                        className="block h-full rounded-full bg-slate-950"
+                        style={{ width: `${width}%` }}
+                      />
+                    </span>
+                    <span className="text-right text-xs font-black text-slate-500">{count}</span>
+                  </div>
+                ))}
               </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'cartao' && (
+          <section className="mt-5 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-black text-slate-950">Cartão físico</h2>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    Hub NFC, QR, WhatsApp e acessibilidade.
+                  </p>
+                </div>
+                <CreditCard size={19} className="text-slate-400" />
+              </div>
+
+              <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-center">
+                <p className="text-[11px] font-black uppercase text-slate-400">
+                  {restaurantName}
+                </p>
+                <h3 className="mt-2 text-lg font-black text-slate-950">APROXIME SEU CELULAR</h3>
+                <div className="mx-auto mt-4 grid size-20 place-items-center rounded-lg bg-white text-slate-950 ring-1 ring-slate-200">
+                  <Nfc size={34} />
+                </div>
+                <p className="mt-4 text-xs font-bold text-slate-500">ou escaneie o QR</p>
+                <div className="mx-auto mt-3 grid size-24 place-items-center rounded-lg bg-white ring-1 ring-slate-200">
+                  <QrCode size={54} />
+                </div>
+                <div className="mt-4 space-y-1 text-xs font-black text-slate-700">
+                  <p>@nomedorestaurante</p>
+                  <p>WhatsApp: (81) 99999-9999</p>
+                  <p className="pt-2 text-sm tracking-[0.18em] text-slate-950">⠉⠁⠗⠙⠁⠏⠊⠕</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <SettingsRow label="Destino curto" value={cardBaseUrl.replace('https://', '')} />
+              <SettingsRow label="Origem" value={`Mesa ${nfcTable || '01'}`} />
+              <SettingsRow label="Wi-Fi" value="Adicionar no verso" />
             </div>
           </section>
         )}
@@ -1048,11 +1571,11 @@ function SettingsScreen({
   )
 }
 
-function SettingsMetric({ label, value }) {
+function PartnerMetric({ label, value }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3">
-      <p className="text-lg font-black text-slate-950">{value}</p>
-      <p className="mt-1 text-[10px] font-bold text-slate-500">{label}</p>
+    <div className="rounded-lg bg-white/10 p-3">
+      <p className="text-lg font-black">{value}</p>
+      <p className="mt-1 text-[10px] font-bold text-white/55">{label}</p>
     </div>
   )
 }
@@ -1217,7 +1740,7 @@ function OrderScreen({
               </div>
               <button
                 type="button"
-                onClick={onSendOrder}
+                onClick={() => onSendOrder({ customerName, serviceType, paymentType })}
                 disabled={!cartItems.length || !tableNumber}
                 className="mt-4 h-14 w-full rounded-[14px] bg-[#ffda16] text-sm font-black text-black transition active:scale-[0.99] disabled:bg-white/15 disabled:text-white/35"
               >
@@ -1327,6 +1850,171 @@ function AdminInput({ label, value, placeholder, onChange }) {
   )
 }
 
+function cancelSpeechQueue() {
+  if (
+    typeof window === 'undefined' ||
+    !window.speechSynthesis
+  ) {
+    return
+  }
+
+  if (window.speechSynthesis.paused) {
+    window.speechSynthesis.resume()
+  }
+
+  window.speechSynthesis.cancel()
+}
+
+function getAnalyticsSession(tableNumber) {
+  const storedSession = window.sessionStorage?.getItem(sessionStorageKey)
+
+  if (storedSession) {
+    try {
+      return JSON.parse(storedSession)
+    } catch {
+      window.sessionStorage?.removeItem(sessionStorageKey)
+    }
+  }
+
+  const source = getSourceFromUrl()
+  const session = {
+    id: crypto.randomUUID(),
+    restaurantId,
+    cardId: tableNumber ? `mesa_${tableNumber}` : source,
+    source,
+    startedAt: new Date().toISOString(),
+    language: 'pt-BR',
+  }
+
+  window.sessionStorage?.setItem(sessionStorageKey, JSON.stringify(session))
+  return session
+}
+
+function getSourceFromUrl() {
+  const params = new URLSearchParams(window.location.search)
+
+  if (params.has('mesa')) return 'nfc'
+  if (params.get('source')) return params.get('source')
+
+  return 'direct'
+}
+
+function readAnalyticsEvents() {
+  try {
+    return JSON.parse(window.localStorage?.getItem(analyticsStorageKey) ?? '[]')
+  } catch {
+    return []
+  }
+}
+
+function saveAnalyticsEvents(events) {
+  window.localStorage?.setItem(analyticsStorageKey, JSON.stringify(events))
+}
+
+function buildAnalyticsEvent(eventName, session, payload = {}) {
+  return {
+    id: crypto.randomUUID(),
+    event: eventName,
+    restaurantId,
+    sessionId: session.id,
+    cardId: session.cardId,
+    source: session.source,
+    createdAt: new Date().toISOString(),
+    ...payload,
+  }
+}
+
+function buildAnalyticsSummary(events, products, session) {
+  const eventCount = (eventName) => events.filter((event) => event.event === eventName).length
+  const menuOpens = Math.max(eventCount('menu_open'), 1)
+  const vezzClicks = eventCount('vezz_click')
+  const orderEvents = events.filter((event) => event.event === 'order_sent')
+  const hourlyCounts = Array.from({ length: 6 }, (_, index) => {
+    const hour = 18 + index
+    const count = events.filter((event) => {
+      const eventHour = new Date(event.createdAt).getHours()
+      return eventHour === hour
+    }).length
+
+    return { hour, count }
+  })
+  const maxHourlyCount = Math.max(...hourlyCounts.map((item) => item.count), 1)
+
+  return {
+    menuOpens,
+    vezzClicks,
+    uniqueSessions: new Set(events.map((event) => event.sessionId)).size || 1,
+    productViews: eventCount('product_view'),
+    productAdds: eventCount('product_add'),
+    activeProducts: products.filter((product) => product.active !== false).length,
+    totalProducts: products.length,
+    ordersSent: orderEvents.length,
+    averageTicket: orderEvents.length
+      ? orderEvents.reduce((total, event) => total + Number(event.cartTotal ?? 0), 0) / orderEvents.length
+      : 0,
+    cardId: session.cardId,
+    source: session.source,
+    vezzCtr: ((vezzClicks / menuOpens) * 100).toFixed(1).replace('.', ','),
+    hourlyDemand: hourlyCounts.map((item) => ({
+      ...item,
+      width: Math.max(8, Math.round((item.count / maxHourlyCount) * 100)),
+    })),
+  }
+}
+
+function filterProducts(products, query) {
+  const normalizedQuery = normalizeText(query)
+
+  if (!normalizedQuery) return products
+
+  const withoutMatch = normalizedQuery.match(/\bsem\s+(.+)/)
+
+  if (withoutMatch) {
+    const blockedTerms = withoutMatch[1].split(/\s+/).filter(Boolean)
+
+    return products.filter((product) => {
+      const searchable = normalizeText(`${product.name} ${product.description} ${product.tags.join(' ')}`)
+      return blockedTerms.every((term) => !searchable.includes(term))
+    })
+  }
+
+  const terms = normalizedQuery
+    .split(/\s+/)
+    .filter((term) => term.length > 1 && !['com', 'para', 'quero', 'mostrar'].includes(term))
+
+  return products.filter((product) => {
+    const searchable = normalizeText(`${product.name} ${product.description} ${product.tags.join(' ')}`)
+    return terms.every((term) => searchable.includes(term))
+  })
+}
+
+function findProductByCommand(products, command) {
+  return products.find((product) => {
+    const productName = normalizeText(product.name)
+    const productTerms = productName.split(/\s+/).filter((term) => term.length > 2)
+
+    return command.includes(productName) || productTerms.every((term) => command.includes(term))
+  })
+}
+
+function getMenuProductNumber(product, index) {
+  const categoryBase = {
+    hamburgueres: 100,
+    sanduiches: 200,
+    pizzas: 300,
+    bebidas: 400,
+  }
+
+  return (categoryBase[product.category] ?? 900) + index + 1
+}
+
+function normalizeText(value) {
+  return String(value)
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+}
+
 function getTableFromUrl() {
   return new URLSearchParams(window.location.search).get('mesa') ?? ''
 }
@@ -1336,22 +2024,16 @@ function getInitialScreen() {
 
   if (hash.startsWith('#produto=')) return 'produto'
   if (hash === '#pedido') return 'pedido'
-  if (hash === '#configuracoes') return 'configuracoes'
+  if (hash.startsWith('#configuracoes')) return 'configuracoes'
 
   return 'menu'
 }
 
-function getInitialMenuTheme() {
-  const themeParam = new URLSearchParams(window.location.search).get('tema')
+function getInitialAdminTab() {
+  const tab = new URLSearchParams(window.location.search).get('adminTab')
+  const validTabs = ['cardapio', 'mesas', 'vezz', 'cartao']
 
-  if (themeParam === 'escuro') return true
-  if (themeParam === 'claro') return false
-
-  return window.localStorage?.getItem('food99like-menu-theme') === 'dark'
-}
-
-function saveMenuTheme(enabled) {
-  window.localStorage?.setItem('food99like-menu-theme', enabled ? 'dark' : 'light')
+  return validTabs.includes(tab) ? tab : 'cardapio'
 }
 
 function getProductFromHash() {

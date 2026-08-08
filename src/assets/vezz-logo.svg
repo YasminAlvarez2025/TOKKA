@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 160" role="img" aria-labelledby="title desc">
+  <title id="title">Vezz</title>
+  <desc id="desc">Logo da Vezz com simbolo Vz e nome Vezz em preto.</desc>
+  <path d="M42 16h118l-16 116H12L34 32a21 21 0 0 1 8-16Z" fill="#fff"/>
+  <text x="44" y="101" fill="#050608" font-family="Arial Black, Arial, sans-serif" font-size="64" font-style="italic" font-weight="900">Vz</text>
+  <path d="M100 34h22l-7 19H90l10-19Z" fill="#2bb8cb"/>
+  <text x="178" y="103" fill="#050608" font-family="Arial Black, Arial, sans-serif" font-size="88" font-style="italic" font-weight="900" letter-spacing="-5">Vezz</text>
+</svg>
