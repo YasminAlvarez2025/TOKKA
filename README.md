@@ -42,8 +42,8 @@ Para produção, o próximo passo é trocar essa camada por banco de dados, aute
 ## Acessibilidade
 
 - A primeira tela agora é o cardápio, reduzindo um passo para quem usa leitor de tela.
-- O botão discreto no topo esquerdo ativa a leitura automática de ingredientes ao abrir um item.
-- Na tela do produto, o botão de alto-falante lê os ingredientes do item sob demanda.
+- O botão discreto no topo esquerdo ativa a descrição automática da comida ao abrir um item.
+- Na tela do produto, o botão de alto-falante narra uma descrição acessível com montagem, textura, aroma e principais sabores.
 - Ao voltar do produto ou desativar o leitor, a leitura em andamento é cancelada.
 - A leitura por voz expande abreviações como `150g` para `150 gramas` e ajusta termos como bacon para uma pronúncia mais natural.
 - O botão de microfone no cardápio aceita comandos como `abrir cheddar bacon`, `mostrar bebidas`, `quanto custa pizza` e `chamar Vezz`.

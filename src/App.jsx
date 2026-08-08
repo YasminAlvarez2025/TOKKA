@@ -80,6 +80,8 @@ const baseProducts = [
     badgeIconTone: 'fill-orange-500 text-orange-500',
     description:
       'Pão brioche selado, hambúrguer 150g, cheddar cremoso, bacon crocante, alface, tomate e molho da casa.',
+    voiceDescription:
+      'Imagine um pão brioche alto, dourado e macio, levemente tostado por dentro. Na base vem alface fresca e tomate, depois uma carne selada e suculenta de 150g coberta por cheddar cremoso. Por cima, bacon crocante aparece em tiras, trazendo cheiro defumado e textura quebradiça. O molho da casa fecha o sanduíche com um toque mais úmido e saboroso.',
     tags: ['Pão brioche', 'Carne 150g', 'Cheddar', 'Bacon', 'Alface', 'Tomate'],
   },
   {
@@ -94,6 +96,8 @@ const baseProducts = [
     badgeIconTone: 'fill-lime-600 text-lime-600',
     description:
       'Hambúrguer clássico com pão brioche, carne 150g, cheddar, salada fresca e molho suave.',
+    voiceDescription:
+      'Este é um hambúrguer de perfil clássico e equilibrado. Começa com pão brioche macio, levemente adocicado e tostado. No centro há uma carne selada de 150g, com queijo cheddar derretido por cima. A salada fresca entra com alface, tomate e cebola, deixando a mordida mais leve. O molho suave une tudo sem ardência.',
     tags: ['Pão brioche', 'Carne 150g', 'Cheddar', 'Alface', 'Tomate', 'Cebola'],
   },
   {
@@ -108,6 +112,8 @@ const baseProducts = [
     badgeIconTone: 'fill-orange-500 text-orange-500',
     description:
       'Filé de frango empanado, queijo, alface, tomate e maionese cremosa no pão brioche.',
+    voiceDescription:
+      'A primeira sensação deste sanduíche é a crocância. O pão brioche envolve um filé de frango empanado, dourado por fora e macio por dentro. O queijo fica sobre o frango quente, enquanto alface e tomate trazem frescor. A maionese cremosa deixa a mordida mais úmida, com contraste entre casquinha crocante e pão macio.',
     tags: ['Pão brioche', 'Frango crocante', 'Alface', 'Tomate', 'Maionese'],
   },
   {
@@ -122,6 +128,8 @@ const baseProducts = [
     badgeIconTone: 'fill-lime-600 text-lime-600',
     description:
       'Pão integral com hambúrguer vegetal, folhas frescas, tomate, cebola roxa e molho verde.',
+    voiceDescription:
+      'Este hambúrguer tem uma proposta mais fresca e leve. A montagem começa com pão integral, de sabor mais presente. No meio fica o hambúrguer vegetal, com textura firme e aparência rústica. As folhas, o tomate e a cebola roxa trazem frescor e leve crocância. O molho verde finaliza com aroma de ervas e uma sensação mais suave.',
     tags: ['Pão integral', 'Hambúrguer vegetal', 'Alface', 'Tomate', 'Cebola roxa'],
   },
   {
@@ -136,6 +144,8 @@ const baseProducts = [
     badgeIconTone: 'text-sky-600',
     description:
       'Pão tostado, frango grelhado, queijo, bacon, alface, tomate e molho especial.',
+    voiceDescription:
+      'Este sanduíche tem pão tostado, mais firme nas bordas e macio no centro. O recheio começa com frango grelhado, de sabor leve e textura suculenta. O queijo entra derretido, o bacon adiciona perfume defumado e crocância, e a alface com tomate deixam a mordida mais fresca. O molho especial completa com cremosidade.',
     tags: ['Frango', 'Queijo', 'Alface', 'Tomate', 'Molho especial'],
   },
   {
@@ -150,6 +160,8 @@ const baseProducts = [
     badgeIconTone: 'fill-orange-500 text-orange-500',
     description:
       'Sanduíche generoso com frango, bacon, queijo, salada crocante e maionese da casa.',
+    voiceDescription:
+      'O Sanduíche da Casa é mais generoso e encorpado. O pão tostado segura camadas de frango, queijo e bacon. A salada crocante entra para quebrar a gordura do recheio e trazer frescor. A maionese da casa espalha cremosidade, deixando o conjunto mais macio e cheio, com contraste entre salgado, defumado e fresco.',
     tags: ['Pão tostado', 'Frango', 'Bacon', 'Queijo', 'Salada'],
   },
   {
@@ -164,6 +176,8 @@ const baseProducts = [
     badgeIconTone: 'fill-orange-500 text-orange-500',
     description:
       'Massa artesanal, molho de tomate, muçarela derretida, calabresa e cebola.',
+    voiceDescription:
+      'Esta pizza tem base de massa artesanal, com borda levemente dourada. Sobre a massa vem molho de tomate, depois uma camada de muçarela derretida. A calabresa aparece em fatias salgadas e aromáticas, com cebola por cima para trazer perfume e leve doçura. É uma pizza de sabor marcante, quente e bem tradicional.',
     tags: ['Massa artesanal', 'Muçarela', 'Calabresa', 'Cebola'],
   },
   {
@@ -178,6 +192,8 @@ const baseProducts = [
     badgeIconTone: 'fill-lime-600 text-lime-600',
     description:
       'Massa artesanal com muçarela, molho de tomate, tomate fresco e manjericão.',
+    voiceDescription:
+      'A Pizza Marguerita é mais delicada e aromática. A massa artesanal recebe molho de tomate, muçarela derretida e pedaços de tomate fresco. O manjericão entra no final, trazendo cheiro de ervas e frescor. A experiência é macia, levemente ácida pelo tomate e cremosa pelo queijo, sem pimenta.',
     tags: ['Massa artesanal', 'Muçarela', 'Tomate', 'Manjericão'],
   },
   {
@@ -191,6 +207,8 @@ const baseProducts = [
     badgeIcon: CupSoda,
     badgeIconTone: 'text-sky-600',
     description: 'Copo de refrigerante cola com gelo, limão e canudo.',
+    voiceDescription:
+      'É uma bebida escura, gaseificada e bem gelada, servida em copo com gelo. O limão aparece como detalhe cítrico, trazendo aroma fresco antes do primeiro gole. A sensação principal é de borbulhas, doçura e refrescância, ideal para acompanhar itens mais salgados ou gordurosos.',
     tags: ['500 ml', 'Com gelo', 'Limão'],
   },
   {
@@ -204,6 +222,8 @@ const baseProducts = [
     badgeIcon: CupSoda,
     badgeIconTone: 'text-sky-600',
     description: 'Bebida gelada de limão servida com bastante gelo.',
+    voiceDescription:
+      'Este chá gelado tem perfil leve e refrescante. Ele chega frio, com bastante gelo e aroma de limão. A experiência é menos doce e mais suave que um refrigerante, com sensação cítrica no final. É uma boa escolha para quem quer uma bebida fria, mas sem tanta intensidade.',
     tags: ['500 ml', 'Refrescante', 'Limão'],
   },
 ]
@@ -531,7 +551,7 @@ function App() {
     setVoiceReaderEnabled(nextValue)
 
     if (nextValue) {
-      speakText('Leitor automático ativado. Ao abrir um item, vou falar os ingredientes.')
+      speakText('Leitor automático ativado. Ao abrir um item, vou descrever a comida com mais detalhes.')
       return
     }
 
@@ -896,11 +916,11 @@ function HeroCarousel({
         onClick={onToggleVoiceReader}
         aria-label={
           voiceReaderEnabled
-            ? 'Desativar leitor automatico de ingredientes'
-            : 'Ativar leitor automatico de ingredientes'
+            ? 'Desativar descritor automatico de comidas'
+            : 'Ativar descritor automatico de comidas'
         }
         aria-pressed={voiceReaderEnabled}
-        title={voiceReaderEnabled ? 'Desativar leitor automatico' : 'Ativar leitor automatico'}
+        title={voiceReaderEnabled ? 'Desativar descritor' : 'Ativar descritor'}
         className={`absolute left-3 top-3 z-20 grid size-[38px] place-items-center rounded-full shadow-lg shadow-black/20 transition active:scale-95 ${
           voiceReaderEnabled ? 'bg-[#ffda16] text-slate-950' : 'bg-white text-slate-900'
         }`}
@@ -1015,8 +1035,8 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
         <button
           type="button"
           onClick={() => onReadProduct(product)}
-          aria-label={`Ouvir ingredientes de ${product.name}`}
-          title="Ouvir ingredientes"
+          aria-label={`Ouvir descrição acessível de ${product.name}`}
+          title="Ouvir descrição acessível"
           className="absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-[#ffd51a] text-slate-950 shadow-lg shadow-black/25 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-white"
         >
           <Volume2 size={19} strokeWidth={2.7} />
@@ -2055,7 +2075,21 @@ function buildProductAriaLabel(product) {
 }
 
 function buildProductSpeech(product) {
-  return `${product.name}. Ingredientes principais: ${product.tags.join(', ')}. ${product.description}`
+  const intro = `Descrição acessível de ${product.name}. Preço: ${formatCurrency(product.price)}.`
+  const description = product.voiceDescription ?? buildFallbackProductSpeech(product)
+
+  return `${intro} ${description}`
+}
+
+function buildFallbackProductSpeech(product) {
+  const ingredients = product.tags.join(', ')
+  const category = categories.find((item) => item.id === product.category)?.label ?? 'item'
+
+  return [
+    `Este item da categoria ${category.toLowerCase()} foi cadastrado pelo restaurante com os ingredientes: ${ingredients}.`,
+    `A descrição do cardápio informa: ${product.description}.`,
+    'Ao imaginar o prato, pense primeiro na base, depois no recheio principal, nos acompanhamentos e por fim no molho ou acabamento que dá aroma e umidade.',
+  ].join(' ')
 }
 
 function prepareSpeechText(text) {
