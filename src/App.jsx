@@ -11,7 +11,9 @@ import {
   ExternalLink,
   Flame,
   Heart,
+  LayoutGrid,
   Leaf,
+  List,
   MapPin,
   Mic,
   MicOff,
@@ -23,6 +25,7 @@ import {
   ReceiptText,
   Save,
   Search,
+  Settings,
   ShoppingCart,
   Table2,
   Volume2,
@@ -31,29 +34,27 @@ import {
 import cocoBackground from './assets/images/cocobambu_fundo.png'
 import promoShrimp from './assets/images/slide_0.png'
 import promoScampi from './assets/images/slide_2.png'
-import categoriaBebidas from './assets/images/crops/categoria-bebidas.png'
-import categoriaCarnes from './assets/images/crops/categoria-carnes.png'
-import categoriaEntradas from './assets/images/crops/categoria-entradas.png'
-import categoriaFrangos from './assets/images/crops/categoria-frangos.png'
-import categoriaFrutosDoMar from './assets/images/crops/categoria-frutos-do-mar.png'
-import categoriaSaladas from './assets/images/crops/categoria-saladas.png'
-import categoriaSobremesas from './assets/images/crops/categoria-sobremesas.png'
-import categoriaVeganos from './assets/images/crops/categoria-veganos.png'
+import categoriaBebidas from './assets/cards/hd/img bebidas@3x.jpg'
+import categoriaCarnes from './assets/cards/hd/img carne@3x.jpg'
+import categoriaEntradas from './assets/cards/hd/img entradas@3x.jpg'
+import categoriaFrangos from './assets/cards/hd/img frango@3x.jpg'
+import categoriaFrutosDoMar from './assets/cards/hd/img frutos do mar@3x.jpg'
+import categoriaSaladas from './assets/cards/hd/img saladas@3x.jpg'
+import categoriaSobremesas from './assets/cards/hd/img sobremesas@3x.jpg'
+import categoriaVeganos from './assets/cards/hd/img vegano@3x.jpg'
 import pratoCaldinhoDePeixe from './assets/images/crops/prato-caldinho-de-peixe.png'
 import pratoCamaraoCocoBrasil from './assets/images/crops/prato-camarao-coco-brasil.png'
 import pratoIscaDePeixe from './assets/images/crops/prato-isca-de-peixe.png'
-import slideVezzBanner from './assets/images/crops/slide-vezz-banner.png'
-import cocoLogo from './assets/icons/logo coco bambu.png'
+import slideVezzBanner from './assets/images/crops/slide-vezz-banner-transparent.png'
+import cocoLogo from './assets/images/hd/logo-coco-bambu@4x.png'
 import iconBebidas from './assets/icons/icon bebidas.png'
 import iconCarnes from './assets/icons/icon carne.png'
-import iconConfig from './assets/icons/icon config.png'
 import iconEntradas from './assets/icons/icon entrada.png'
 import iconFrangos from './assets/icons/icon frango.png'
 import iconFrutosDoMar from './assets/icons/icon frutos do mar.png'
 import iconSaladas from './assets/icons/icon salada.png'
 import iconSobremesas from './assets/icons/icon sobremesa.png'
 import iconVeganos from './assets/icons/icon vegano.png'
-import iconVolta from './assets/icons/icon volta.png'
 
 const categories = [
   { id: 'entradas', label: 'Entradas', shortLabel: 'Entradas', iconImage: iconEntradas, image: categoriaEntradas },
@@ -851,7 +852,14 @@ function EntryScreen({ onStart }) {
       <div className="absolute -right-20 top-0 size-60 rounded-full border border-[#8e6035]/20" />
       <div className="absolute -bottom-20 -left-24 size-72 rounded-full border border-[#8e6035]/20" />
       <div className="flex h-full flex-col items-center justify-center gap-10">
-        <img src={cocoLogo} alt="Coco Bambu" className="w-[250px]" draggable="false" />
+        <img
+          src={cocoLogo}
+          alt="Coco Bambu"
+          loading="eager"
+          decoding="sync"
+          className="w-[250px]"
+          draggable="false"
+        />
         <div className="grid w-full gap-9">
           {[
             ['padrao', 'CARDÁPIO PADRÃO'],
@@ -878,10 +886,12 @@ function CategoriesScreen({ categories, onBack, onOpenSettings, onSelectCategory
   return (
     <section className="h-full overflow-y-auto bg-white pb-8 text-[#43160f]">
       <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} compact />
-      <div className="relative z-10 -mt-9 rounded-t-[22px] bg-white px-5 pt-6">
+      <div className="relative z-10 -mt-9 rounded-t-[36px] bg-white px-5 pt-6 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <img
           src={cocoLogo}
           alt="Coco Bambu"
+          loading="eager"
+          decoding="sync"
           className="relative z-20 mx-auto -mt-20 size-[112px] rounded-full border-4 border-[#d8ad61] bg-[#4a160f]"
         />
         <h1 data-screen-title="true" tabIndex={-1} className="mt-2 text-center text-xl font-medium outline-none">
@@ -896,8 +906,14 @@ function CategoriesScreen({ categories, onBack, onOpenSettings, onSelectCategory
               className="min-h-[206px] text-center transition-transform duration-300 ease-out active:-translate-y-1"
             >
               <span className="relative block pb-8">
-                <span className="block h-[138px] overflow-hidden rounded-lg border-[3px] border-[#4b160e]">
-                  <img src={category.image} alt="" className="h-full w-full object-cover" />
+                <span className="block aspect-[154/107] overflow-hidden rounded-lg border-[3px] border-[#4b160e] bg-white">
+                  <img
+                    src={category.image}
+                    alt=""
+                    loading="eager"
+                    decoding="sync"
+                    className="block size-full object-cover"
+                  />
                 </span>
                 <span className="absolute bottom-0 left-1/2 grid size-16 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.3)]">
                   <img src={category.iconImage} alt="" className="w-9" />
@@ -923,21 +939,21 @@ function TopPhotoBar({ onBack, onOpenSettings, trailingIcon = 'settings', compac
         type="button"
         onClick={onBack}
         aria-label="Voltar"
-        className={`absolute left-8 grid size-9 place-items-center rounded-full bg-white/70 text-[#4b160e] ${
+        className={`absolute left-7 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95 ${
           compact ? 'top-6' : 'top-8'
         }`}
       >
-        <img src={iconVolta} alt="" className="w-5" />
+        <ArrowLeft size={25} strokeWidth={2.8} />
       </button>
       <button
         type="button"
         onClick={onOpenSettings}
         aria-label={trailingIcon === 'heart' ? 'Favoritar' : 'Configurações'}
-        className={`absolute right-8 grid size-9 place-items-center rounded-full bg-white/70 text-[#4b160e] ${
+        className={`absolute right-7 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95 ${
           compact ? 'top-6' : 'top-8'
         }`}
       >
-        {trailingIcon === 'heart' ? <Heart size={22} /> : <img src={iconConfig} alt="" className="w-6" />}
+        {trailingIcon === 'heart' ? <Heart size={25} strokeWidth={2.6} /> : <Settings size={25} strokeWidth={2.6} />}
       </button>
     </div>
   )
@@ -962,6 +978,8 @@ function MenuScreen({
   voiceCommandListening,
 }) {
   const [promoIndex, setPromoIndex] = useState(0)
+  const [productLayout, setProductLayout] = useState('lista')
+  const [menuSheetRaised, setMenuSheetRaised] = useState(false)
   const visibleProducts = filterProducts(products, searchQuery)
   const categoryProducts = searchQuery.trim()
     ? visibleProducts
@@ -980,18 +998,34 @@ function MenuScreen({
     return () => window.clearInterval(intervalId)
   }, [])
 
-  return (
-    <section className="relative h-full overflow-y-auto bg-white pb-28 text-[#43160f]" aria-labelledby="menu-title">
-      <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} />
+  function handleMenuScroll(event) {
+    const nextValue = event.currentTarget.scrollTop > 24
+    setMenuSheetRaised((currentValue) => (currentValue === nextValue ? currentValue : nextValue))
+  }
 
-      <div className="-mt-9 rounded-t-[22px] bg-white px-8 pb-4 pt-14">
+  return (
+    <section
+      className="relative h-full overflow-y-auto bg-white pb-28 text-[#43160f]"
+      aria-labelledby="menu-title"
+      onScroll={handleMenuScroll}
+    >
+      <div className="sticky top-0 z-0">
+        <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} />
+      </div>
+
+      <img
+        src={cocoLogo}
+        alt="Coco Bambu"
+        loading="eager"
+        decoding="sync"
+        className={`pointer-events-none absolute left-1/2 top-[88px] size-[112px] -translate-x-1/2 rounded-full border-4 border-[#d8ad61] bg-[#4a160f] transition-all duration-500 ease-out ${
+          menuSheetRaised ? 'z-0 -translate-y-5 opacity-0 scale-95' : 'z-30 translate-y-0 opacity-100 scale-100'
+        }`}
+        draggable="false"
+      />
+
+      <div className="relative z-20 -mt-10 rounded-t-[38px] bg-white px-8 pb-4 pt-14 shadow-[0_-18px_42px_rgba(67,22,15,0.12)]">
         <div className="text-center">
-          <img
-            src={cocoLogo}
-            alt="Coco Bambu"
-            className="absolute left-1/2 top-[88px] size-[112px] -translate-x-1/2 rounded-full border-4 border-[#d8ad61] bg-[#4a160f]"
-            draggable="false"
-          />
           <h1 id="menu-title" data-screen-title="true" tabIndex={-1} className="text-[27px] font-black outline-none">
             COCO BAMBU
           </h1>
@@ -1004,6 +1038,7 @@ function MenuScreen({
         <div className="mt-5">
           <PromoCarousel
             activeIndex={promoIndex}
+            onSelect={setPromoIndex}
             onOpenVezz={onOpenVezz}
           />
         </div>
@@ -1060,10 +1095,18 @@ function MenuScreen({
           ))}
         </div>
 
-        <h2 className="mt-5 text-base font-medium">DESTAQUES</h2>
-        <div className="mt-2 space-y-3">
+        <div className="mt-5 flex items-center justify-between">
+          <h2 className="text-base font-medium">DESTAQUES</h2>
+          <ViewModeToggle value={productLayout} onChange={setProductLayout} />
+        </div>
+
+        <div className={productLayout === 'grade' ? 'mt-2 grid grid-cols-2 gap-3' : 'mt-2 space-y-3'}>
           {featuredProducts.map((product) => (
-            <MenuProductCard key={product.id} product={product} onOpen={() => onOpenProduct(product)} />
+            productLayout === 'grade' ? (
+              <MenuProductGridCard key={product.id} product={product} onOpen={() => onOpenProduct(product)} />
+            ) : (
+              <MenuProductCard key={product.id} product={product} onOpen={() => onOpenProduct(product)} />
+            )
           ))}
         </div>
       </div>
@@ -1075,28 +1118,48 @@ function MenuScreen({
   )
 }
 
-function PromoCarousel({ activeIndex, onOpenVezz }) {
-  function handleSlideClick(slide) {
+function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
+  function getSlideOffset(index) {
+    let offset = index - activeIndex
+
+    if (offset > promoSlides.length / 2) offset -= promoSlides.length
+    if (offset < -promoSlides.length / 2) offset += promoSlides.length
+
+    return offset
+  }
+
+  function handleSlideClick(slide, index) {
+    if (index !== activeIndex) {
+      onSelect(index)
+      return
+    }
+
     if (slide.action === 'vezz') {
       onOpenVezz()
     }
   }
 
   return (
-    <div className="relative mx-auto h-[118px] w-full max-w-[316px] overflow-hidden rounded-lg bg-[#4b160e]">
-      <div
-        className="flex h-full transition-transform duration-700 ease-out"
-        style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-      >
-        {promoSlides.map((slide) => (
+    <div className="relative h-[128px] w-full overflow-hidden py-[5px]">
+      {promoSlides.map((slide, index) => {
+        const offset = getSlideOffset(index)
+        const isActive = offset === 0
+
+        return (
           <button
             type="button"
             key={slide.id}
-            onClick={() => handleSlideClick(slide)}
+            onClick={() => handleSlideClick(slide, index)}
             aria-label={slide.action === 'vezz' ? 'Abrir Vezz' : slide.alt}
-            className={`relative grid h-full min-w-full place-items-center ${
-              slide.id === 'vezz-accessibility' ? 'bg-white' : 'bg-[#4b160e]'
+            aria-current={isActive}
+            className={`absolute left-1/2 top-[5px] grid h-[118px] w-[316px] place-items-center overflow-hidden rounded-lg shadow-sm transition-all duration-700 ease-out ${
+              slide.id === 'vezz-accessibility' ? 'bg-[#15c8d0]' : 'bg-[#4b160e]'
             }`}
+            style={{
+              transform: `translateX(calc(-50% + ${offset * 272}px)) scale(${isActive ? 1 : 0.92})`,
+              opacity: Math.abs(offset) > 1 ? 0 : 1,
+              zIndex: isActive ? 20 : 10,
+            }}
           >
             <img
               src={slide.image}
@@ -1105,8 +1168,8 @@ function PromoCarousel({ activeIndex, onOpenVezz }) {
               draggable="false"
             />
           </button>
-        ))}
-      </div>
+        )
+      })}
     </div>
   )
 }
@@ -1120,11 +1183,17 @@ function CategoryPreviewCard({ category, active, onClick }) {
         }`}
       >
         <span
-          className={`block h-[108px] overflow-hidden rounded-md transition-shadow duration-300 ${
+          className={`block h-[88px] overflow-hidden rounded-md bg-white transition-shadow duration-300 ${
             active ? 'shadow-lg shadow-[#4b160e]/15 ring-2 ring-[#4b160e]' : ''
           }`}
         >
-          <img src={category.image} alt="" className="h-full w-full object-cover" />
+          <img
+            src={category.image}
+            alt=""
+            loading="eager"
+            decoding="sync"
+            className="block size-full object-cover"
+          />
         </span>
         <span
           className={`absolute bottom-0 left-1/2 grid size-14 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.25)] transition-transform duration-300 ease-out ${
@@ -1138,6 +1207,37 @@ function CategoryPreviewCard({ category, active, onClick }) {
         {category.label.toUpperCase()}
       </span>
     </button>
+  )
+}
+
+function ViewModeToggle({ value, onChange }) {
+  const options = [
+    { id: 'lista', label: 'Visualizar em lista', icon: List },
+    { id: 'grade', label: 'Visualizar em grade', icon: LayoutGrid },
+  ]
+
+  return (
+    <div className="grid h-9 grid-cols-2 rounded-full bg-[#f3ede7] p-1 ring-1 ring-[#e5d8cf]" aria-label="Modo de visualização">
+      {options.map(({ id, label, icon: Icon }) => {
+        const active = value === id
+
+        return (
+          <button
+            type="button"
+            key={id}
+            onClick={() => onChange(id)}
+            aria-label={label}
+            aria-pressed={active}
+            title={label}
+            className={`grid size-7 place-items-center rounded-full transition ${
+              active ? 'bg-[#4b160e] text-[#d8ad61] shadow-sm' : 'text-[#9d857c]'
+            }`}
+          >
+            <Icon size={16} strokeWidth={2.6} />
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -1165,6 +1265,30 @@ function MenuProductCard({ product, onOpen }) {
     </button>
   )
 }
+
+function MenuProductGridCard({ product, onOpen }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={buildProductAriaLabel(product)}
+      className="min-h-[204px] rounded-lg bg-[#f0f0f0] p-2.5 text-left transition active:scale-[0.99]"
+    >
+      <span className="relative block overflow-hidden rounded-lg bg-white">
+        <img src={product.image} alt="" className="h-[104px] w-full object-cover" />
+        <span className="absolute bottom-2 right-2 rounded-full bg-white/90 px-2 py-1 text-[7px] font-black">
+          VER &gt;
+        </span>
+      </span>
+      <span className="mt-3 block text-[13px] font-black leading-tight">{product.name.toUpperCase()}</span>
+      <span className="mt-1 line-clamp-2 block text-[11px] font-medium leading-4 text-[#5e332a]">
+        {product.description}
+      </span>
+      <span className="mt-2 block text-sm font-black">{formatCurrency(product.price)}</span>
+    </button>
+  )
+}
+
 function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct }) {
   const productOptions = useMemo(
     () =>
@@ -1189,7 +1313,7 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
     <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]" aria-labelledby="product-title">
       <TopPhotoBar onBack={onBack} onOpenSettings={() => {}} trailingIcon="heart" compact />
 
-      <div className="-mt-9 rounded-t-[22px] bg-white px-7 pb-8 pt-10">
+      <div className="-mt-9 rounded-t-[36px] bg-white px-7 pb-8 pt-10 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <div className="relative overflow-hidden rounded-lg bg-[#4b160e] p-2">
           <img
             src={product.image}
@@ -1765,7 +1889,7 @@ function OrderScreen({
     <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]">
       <TopPhotoBar onBack={onBack} onOpenSettings={() => {}} compact />
 
-      <div className="-mt-9 rounded-t-[22px] bg-white px-5 pb-8 pt-9">
+      <div className="-mt-9 rounded-t-[36px] bg-white px-5 pb-8 pt-9 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         {orderSent ? (
           <section className="rounded-lg border border-[#eadfd9] bg-white p-6 text-center">
             <div className="mx-auto grid size-14 place-items-center rounded-full bg-[#4b160e] text-white">
