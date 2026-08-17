@@ -1035,7 +1035,7 @@ function MenuScreen({
           </p>
         </div>
 
-        <div className="mt-5">
+        <div className="-mx-8 mt-5">
           <PromoCarousel
             activeIndex={promoIndex}
             onSelect={setPromoIndex}
@@ -1156,7 +1156,7 @@ function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
               slide.id === 'vezz-accessibility' ? 'bg-[#15c8d0]' : 'bg-[#4b160e]'
             }`}
             style={{
-              transform: `translateX(calc(-50% + ${offset * 272}px)) scale(${isActive ? 1 : 0.92})`,
+              transform: `translateX(calc(-50% + ${offset * 252}px)) scale(${isActive ? 1 : 0.92})`,
               opacity: Math.abs(offset) > 1 ? 0 : 1,
               zIndex: isActive ? 20 : 10,
             }}
