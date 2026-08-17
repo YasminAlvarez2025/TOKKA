@@ -889,7 +889,12 @@ function CategoriesScreen({ categories, onBack, onOpenSettings, onSelectCategory
         </h1>
         <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
           {categories.map((category) => (
-            <button type="button" key={category.id} onClick={() => onSelectCategory(category.id)} className="text-center">
+            <button
+              type="button"
+              key={category.id}
+              onClick={() => onSelectCategory(category.id)}
+              className="min-h-[206px] text-center transition-transform duration-300 ease-out active:-translate-y-1"
+            >
               <span className="relative block pb-8">
                 <span className="block h-[138px] overflow-hidden rounded-lg border-[3px] border-[#4b160e]">
                   <img src={category.image} alt="" className="h-full w-full object-cover" />
@@ -898,7 +903,9 @@ function CategoriesScreen({ categories, onBack, onOpenSettings, onSelectCategory
                   <img src={category.iconImage} alt="" className="w-9" />
                 </span>
               </span>
-              <span className="mt-1 block text-base font-black">{category.label.toUpperCase()}</span>
+              <span className="mt-1 flex h-10 items-start justify-center text-center text-base font-black leading-[1.1]">
+                {category.label.toUpperCase()}
+              </span>
             </button>
           ))}
         </div>
@@ -1042,7 +1049,7 @@ function MenuScreen({
           </button>
         </div>
 
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        <div className="mt-3 grid grid-cols-3 gap-2 pt-2">
           {previewCategories.map((category) => (
             <CategoryPreviewCard
               key={category.id}
@@ -1106,16 +1113,30 @@ function PromoCarousel({ activeIndex, onOpenVezz }) {
 
 function CategoryPreviewCard({ category, active, onClick }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={active} className="text-center">
-      <span className="relative block pb-7">
-        <span className={`block h-[108px] overflow-hidden rounded-md ${active ? 'ring-2 ring-[#4b160e]' : ''}`}>
+    <button type="button" onClick={onClick} aria-pressed={active} className="min-h-[170px] text-center">
+      <span
+        className={`relative block pb-7 transition-transform duration-300 ease-out ${
+          active ? '-translate-y-2' : 'translate-y-0'
+        }`}
+      >
+        <span
+          className={`block h-[108px] overflow-hidden rounded-md transition-shadow duration-300 ${
+            active ? 'shadow-lg shadow-[#4b160e]/15 ring-2 ring-[#4b160e]' : ''
+          }`}
+        >
           <img src={category.image} alt="" className="h-full w-full object-cover" />
         </span>
-        <span className="absolute bottom-0 left-1/2 grid size-14 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.25)]">
+        <span
+          className={`absolute bottom-0 left-1/2 grid size-14 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.25)] transition-transform duration-300 ease-out ${
+            active ? 'scale-105' : 'scale-100'
+          }`}
+        >
           <img src={category.iconImage} alt="" className="w-8" />
         </span>
       </span>
-      <span className="mt-1 block text-sm font-black">{category.label.toUpperCase()}</span>
+      <span className="mt-1 flex h-10 items-start justify-center text-center text-sm font-black leading-[1.1]">
+        {category.label.toUpperCase()}
+      </span>
     </button>
   )
 }
