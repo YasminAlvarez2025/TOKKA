@@ -10,54 +10,77 @@ import {
   CreditCard,
   ExternalLink,
   Flame,
-  Hamburger,
+  Heart,
   Leaf,
+  MapPin,
   Mic,
   MicOff,
   Minus,
   Nfc,
   Pencil,
-  Pizza,
   Plus,
   QrCode,
   ReceiptText,
   Save,
   Search,
-  Sandwich,
-  Settings,
   ShoppingCart,
   Table2,
   Volume2,
   VolumeX,
 } from 'lucide-react'
-import heroBurger from './assets/hero-burger-fries.png'
-import cheddarBacon from './assets/burger-cheddar-bacon.png'
-import classicCheddar from './assets/burger-classic-cheddar.png'
-import frangoCrocante from './assets/burger-frango-crocante.png'
-import veggieFresh from './assets/burger-veggie-fresh.png'
-import sandwichFrango from './assets/sandwich-frango.png'
-import pizzaCalabresa from './assets/pizza-calabresa.png'
-import bebidaCola from './assets/bebida-cola.png'
-import vezzLogo from './assets/vezz-logo.svg'
+import cocoBackground from './assets/images/cocobambu_fundo.png'
+import promoShrimp from './assets/images/slide_0.png'
+import promoScampi from './assets/images/slide_2.png'
+import categoriaBebidas from './assets/images/crops/categoria-bebidas.png'
+import categoriaCarnes from './assets/images/crops/categoria-carnes.png'
+import categoriaEntradas from './assets/images/crops/categoria-entradas.png'
+import categoriaFrangos from './assets/images/crops/categoria-frangos.png'
+import categoriaFrutosDoMar from './assets/images/crops/categoria-frutos-do-mar.png'
+import categoriaSaladas from './assets/images/crops/categoria-saladas.png'
+import categoriaSobremesas from './assets/images/crops/categoria-sobremesas.png'
+import categoriaVeganos from './assets/images/crops/categoria-veganos.png'
+import pratoCaldinhoDePeixe from './assets/images/crops/prato-caldinho-de-peixe.png'
+import pratoCamaraoCocoBrasil from './assets/images/crops/prato-camarao-coco-brasil.png'
+import pratoIscaDePeixe from './assets/images/crops/prato-isca-de-peixe.png'
+import slideVezzBanner from './assets/images/crops/slide-vezz-banner.png'
+import cocoLogo from './assets/icons/logo coco bambu.png'
+import iconBebidas from './assets/icons/icon bebidas.png'
+import iconCarnes from './assets/icons/icon carne.png'
+import iconConfig from './assets/icons/icon config.png'
+import iconEntradas from './assets/icons/icon entrada.png'
+import iconFrangos from './assets/icons/icon frango.png'
+import iconFrutosDoMar from './assets/icons/icon frutos do mar.png'
+import iconSaladas from './assets/icons/icon salada.png'
+import iconSobremesas from './assets/icons/icon sobremesa.png'
+import iconVeganos from './assets/icons/icon vegano.png'
+import iconVolta from './assets/icons/icon volta.png'
 
 const categories = [
-  { id: 'hamburgueres', label: 'Hambúrgueres', shortLabel: 'Hambúrguer', icon: Hamburger },
-  { id: 'sanduiches', label: 'Sanduíches', shortLabel: 'Sanduíches', icon: Sandwich },
-  { id: 'pizzas', label: 'Pizzas', shortLabel: 'Pizzas', icon: Pizza },
-  { id: 'bebidas', label: 'Bebidas', shortLabel: 'Bebidas', icon: CupSoda },
+  { id: 'entradas', label: 'Entradas', shortLabel: 'Entradas', iconImage: iconEntradas, image: categoriaEntradas },
+  { id: 'saladas', label: 'Saladas', shortLabel: 'Saladas', iconImage: iconSaladas, image: categoriaSaladas },
+  { id: 'frutos-do-mar', label: 'Frutos do Mar', shortLabel: 'Frutos do Mar', iconImage: iconFrutosDoMar, image: categoriaFrutosDoMar },
+  { id: 'carnes', label: 'Carnes', shortLabel: 'Carnes', iconImage: iconCarnes, image: categoriaCarnes },
+  { id: 'frangos', label: 'Frangos', shortLabel: 'Frangos', iconImage: iconFrangos, image: categoriaFrangos },
+  { id: 'veganos', label: 'Veganos', shortLabel: 'Veganos', iconImage: iconVeganos, image: categoriaVeganos },
+  { id: 'sobremesas', label: 'Sobremesas', shortLabel: 'Sobremesas', iconImage: iconSobremesas, image: categoriaSobremesas },
+  { id: 'bebidas', label: 'Bebidas', shortLabel: 'Bebidas', iconImage: iconBebidas, image: categoriaBebidas },
 ]
 
 const fallbackImages = {
-  hamburgueres: classicCheddar,
-  sanduiches: sandwichFrango,
-  pizzas: pizzaCalabresa,
-  bebidas: bebidaCola,
+  entradas: categoriaEntradas,
+  saladas: categoriaSaladas,
+  'frutos-do-mar': categoriaFrutosDoMar,
+  carnes: categoriaCarnes,
+  frangos: categoriaFrangos,
+  veganos: categoriaVeganos,
+  sobremesas: categoriaSobremesas,
+  bebidas: categoriaBebidas,
 }
 
 const tableOptions = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
 const restaurantId = 'food99like-demo'
-const restaurantName = 'FOOD99LIKE'
+const restaurantName = 'COCO BAMBU'
 const analyticsStorageKey = 'food99like-events'
 const sessionStorageKey = 'food99like-session'
 const cardBaseUrl = 'https://menu.food99like.app/c/8Ks29'
@@ -67,164 +90,247 @@ const partnerLinks = {
   whatsapp: 'https://wa.me/5581999999999',
 }
 
+const promoSlides = [
+  {
+    id: 'coco-brasil-promo',
+    image: promoShrimp,
+    alt: 'Promoção Camarão Coco Bambu por R$ 99,90',
+    fit: 'contain',
+  },
+  {
+    id: 'vezz-accessibility',
+    image: slideVezzBanner,
+    alt: 'Vezz, mobilidade para você ir mais longe',
+    action: 'vezz',
+    fit: 'contain',
+  },
+  {
+    id: 'camarao-scampi',
+    image: promoScampi,
+    alt: 'Lançamento Camarão Scampi Coco Bambu',
+    fit: 'contain',
+  },
+]
+
 const baseProducts = [
   {
-    id: 'cheddar-bacon',
-    category: 'hamburgueres',
-    name: 'Cheddar com Bacon',
-    price: 42,
-    image: cheddarBacon,
-    badge: 'Mais pedido',
-    badgeTone: 'border-orange-200 bg-white text-orange-500',
+    id: 'camarao-coco-brasil',
+    category: 'frutos-do-mar',
+    name: 'Camarão Coco Brasil',
+    price: 199,
+    image: pratoCamaraoCocoBrasil,
+    badge: 'Destaque',
+    badgeTone: 'border-amber-200 bg-white text-[#4b160e]',
     badgeIcon: Flame,
-    badgeIconTone: 'fill-orange-500 text-orange-500',
+    badgeIconTone: 'fill-amber-500 text-amber-500',
     description:
-      'Pão brioche selado, hambúrguer 150g, cheddar cremoso, bacon crocante, alface, tomate e molho da casa.',
+      'Camarões empanados e recheados com catupiry, sobre um cremoso arroz de moqueca com camarões e coentro.',
     voiceDescription:
-      'Imagine um pão brioche alto, dourado e macio, levemente tostado por dentro. Na base vem alface fresca e tomate, depois uma carne selada e suculenta de 150g coberta por cheddar cremoso. Por cima, bacon crocante aparece em tiras, trazendo cheiro defumado e textura quebradiça. O molho da casa fecha o sanduíche com um toque mais úmido e saboroso.',
-    tags: ['Pão brioche', 'Carne 150g', 'Cheddar', 'Bacon', 'Alface', 'Tomate'],
+      'Imagine uma travessa larga chegando à mesa. Na borda, camarões empanados formam uma coroa dourada, com casquinha crocante e recheio cremoso de catupiry. No centro, há arroz de moqueca bem úmido, perfumado com coentro e camarões menores. A batata palha aparece por cima como uma camada fina e crocante, criando contraste entre o molho quente, o queijo macio e o empanado.',
+    tags: ['Ovo', 'Glúten', 'Peixe', 'Crustáceos', 'Lactose'],
+    options: [
+      { id: '2p', label: '2 pessoas', detail: '276g de Camarão', price: 199, people: 2 },
+      { id: '3p', label: '3 pessoas', detail: '409g de Camarão', price: 240, people: 3 },
+      { id: '4p', label: '4 pessoas', detail: '758g de Camarão', price: 405, people: 4 },
+    ],
   },
   {
-    id: 'classico-cheddar',
-    category: 'hamburgueres',
-    name: 'Clássico Cheddar',
-    price: 38,
-    image: classicCheddar,
-    badge: 'Sem pimenta',
-    badgeTone: 'border-lime-200 bg-white text-lime-600',
-    badgeIcon: Leaf,
-    badgeIconTone: 'fill-lime-600 text-lime-600',
-    description:
-      'Hambúrguer clássico com pão brioche, carne 150g, cheddar, salada fresca e molho suave.',
-    voiceDescription:
-      'Este é um hambúrguer de perfil clássico e equilibrado. Começa com pão brioche macio, levemente adocicado e tostado. No centro há uma carne selada de 150g, com queijo cheddar derretido por cima. A salada fresca entra com alface, tomate e cebola, deixando a mordida mais leve. O molho suave une tudo sem ardência.',
-    tags: ['Pão brioche', 'Carne 150g', 'Cheddar', 'Alface', 'Tomate', 'Cebola'],
-  },
-  {
-    id: 'frango-crocante',
-    category: 'hamburgueres',
-    name: 'Frango Crocante',
-    price: 36,
-    image: frangoCrocante,
-    badge: 'Mais pedido',
-    badgeTone: 'border-orange-200 bg-white text-orange-500',
-    badgeIcon: Flame,
-    badgeIconTone: 'fill-orange-500 text-orange-500',
-    description:
-      'Filé de frango empanado, queijo, alface, tomate e maionese cremosa no pão brioche.',
-    voiceDescription:
-      'A primeira sensação deste sanduíche é a crocância. O pão brioche envolve um filé de frango empanado, dourado por fora e macio por dentro. O queijo fica sobre o frango quente, enquanto alface e tomate trazem frescor. A maionese cremosa deixa a mordida mais úmida, com contraste entre casquinha crocante e pão macio.',
-    tags: ['Pão brioche', 'Frango crocante', 'Alface', 'Tomate', 'Maionese'],
-  },
-  {
-    id: 'vegetariano-fresco',
-    category: 'hamburgueres',
-    name: 'Vegetariano Fresco',
-    price: 34,
-    image: veggieFresh,
-    badge: 'Vegetariano',
-    badgeTone: 'border-lime-200 bg-white text-lime-600',
-    badgeIcon: Leaf,
-    badgeIconTone: 'fill-lime-600 text-lime-600',
-    description:
-      'Pão integral com hambúrguer vegetal, folhas frescas, tomate, cebola roxa e molho verde.',
-    voiceDescription:
-      'Este hambúrguer tem uma proposta mais fresca e leve. A montagem começa com pão integral, de sabor mais presente. No meio fica o hambúrguer vegetal, com textura firme e aparência rústica. As folhas, o tomate e a cebola roxa trazem frescor e leve crocância. O molho verde finaliza com aroma de ervas e uma sensação mais suave.',
-    tags: ['Pão integral', 'Hambúrguer vegetal', 'Alface', 'Tomate', 'Cebola roxa'],
-  },
-  {
-    id: 'sanduiche-frango',
-    category: 'sanduiches',
-    name: 'Sanduíche de Frango',
-    price: 29,
-    image: sandwichFrango,
-    badge: 'Novo',
-    badgeTone: 'border-sky-200 bg-white text-sky-600',
-    badgeIcon: BadgePlus,
-    badgeIconTone: 'text-sky-600',
-    description:
-      'Pão tostado, frango grelhado, queijo, bacon, alface, tomate e molho especial.',
-    voiceDescription:
-      'Este sanduíche tem pão tostado, mais firme nas bordas e macio no centro. O recheio começa com frango grelhado, de sabor leve e textura suculenta. O queijo entra derretido, o bacon adiciona perfume defumado e crocância, e a alface com tomate deixam a mordida mais fresca. O molho especial completa com cremosidade.',
-    tags: ['Frango', 'Queijo', 'Alface', 'Tomate', 'Molho especial'],
-  },
-  {
-    id: 'sanduiche-club',
-    category: 'sanduiches',
-    name: 'Sanduíche da Casa',
-    price: 32,
-    image: sandwichFrango,
-    badge: 'Recomendado',
-    badgeTone: 'border-orange-200 bg-white text-orange-500',
-    badgeIcon: Flame,
-    badgeIconTone: 'fill-orange-500 text-orange-500',
-    description:
-      'Sanduíche generoso com frango, bacon, queijo, salada crocante e maionese da casa.',
-    voiceDescription:
-      'O Sanduíche da Casa é mais generoso e encorpado. O pão tostado segura camadas de frango, queijo e bacon. A salada crocante entra para quebrar a gordura do recheio e trazer frescor. A maionese da casa espalha cremosidade, deixando o conjunto mais macio e cheio, com contraste entre salgado, defumado e fresco.',
-    tags: ['Pão tostado', 'Frango', 'Bacon', 'Queijo', 'Salada'],
-  },
-  {
-    id: 'pizza-calabresa',
-    category: 'pizzas',
-    name: 'Pizza de Calabresa',
-    price: 49,
-    image: pizzaCalabresa,
+    id: 'camarao-ao-forno',
+    category: 'frutos-do-mar',
+    name: 'Camarão ao Forno',
+    price: 147,
+    image: categoriaFrutosDoMar,
     badge: 'Forno',
-    badgeTone: 'border-orange-200 bg-white text-orange-500',
+    badgeTone: 'border-amber-200 bg-white text-[#4b160e]',
     badgeIcon: Flame,
-    badgeIconTone: 'fill-orange-500 text-orange-500',
+    badgeIconTone: 'fill-amber-500 text-amber-500',
     description:
-      'Massa artesanal, molho de tomate, muçarela derretida, calabresa e cebola.',
+      'Camarões inteiros levados ligeiramente ao forno, regados com suave molho provençal.',
     voiceDescription:
-      'Esta pizza tem base de massa artesanal, com borda levemente dourada. Sobre a massa vem molho de tomate, depois uma camada de muçarela derretida. A calabresa aparece em fatias salgadas e aromáticas, com cebola por cima para trazer perfume e leve doçura. É uma pizza de sabor marcante, quente e bem tradicional.',
-    tags: ['Massa artesanal', 'Muçarela', 'Calabresa', 'Cebola'],
+      'O prato destaca camarões inteiros, alinhados em uma travessa quente. A superfície vem brilhante pelo molho provençal, com aroma de alho, ervas e azeite. A textura tende a ser firme e suculenta, sem peso de fritura. É uma opção com sabor marinho limpo, final aromático e toque tostado do forno.',
+    tags: ['Crustáceos', 'Alho', 'Ervas'],
+    options: [{ id: '2p', label: '2 pessoas', detail: 'Porção ao forno', price: 147, people: 2 }],
   },
   {
-    id: 'pizza-marguerita',
-    category: 'pizzas',
-    name: 'Pizza Marguerita',
-    price: 46,
-    image: pizzaCalabresa,
-    badge: 'Sem pimenta',
-    badgeTone: 'border-lime-200 bg-white text-lime-600',
+    id: 'camarao-jurere',
+    category: 'frutos-do-mar',
+    name: 'Camarão Jurerê',
+    price: 185,
+    image: categoriaFrutosDoMar,
+    badge: 'Especial',
+    badgeTone: 'border-amber-200 bg-white text-[#4b160e]',
+    badgeIcon: Flame,
+    badgeIconTone: 'fill-amber-500 text-amber-500',
+    description:
+      'Camarões puxados no azeite extra virgem, alho e cebola, flambados com vinho branco.',
+    voiceDescription:
+      'O Camarão Jurerê tem um perfil mais aromático. Primeiro vem o perfume do azeite quente com alho e cebola. Depois aparecem os camarões salteados, levemente adocicados, cobertos por um molho curto de vinho branco. A experiência é mais delicada, com brilho no molho, sabor marinho e final amanteigado.',
+    tags: ['Crustáceos', 'Alho', 'Vinho branco'],
+    options: [{ id: '2p', label: '2 pessoas', detail: 'Camarões salteados', price: 185, people: 2 }],
+  },
+  {
+    id: 'lagosta-grelhada',
+    category: 'frutos-do-mar',
+    name: 'Lagosta Grelhada',
+    price: 276,
+    image: categoriaFrutosDoMar,
+    badge: 'Premium',
+    badgeTone: 'border-amber-200 bg-white text-[#4b160e]',
+    badgeIcon: Flame,
+    badgeIconTone: 'fill-amber-500 text-amber-500',
+    description:
+      'Lagosta grelhada com alcaparras e salsinha. Acompanha arroz de alho-poró e batatas ao vapor.',
+    voiceDescription:
+      'A lagosta grelhada chega com carne firme e delicada, levemente adocicada. A grelha adiciona aroma tostado, enquanto as alcaparras trazem salinidade e a salsinha entrega frescor. O arroz de alho-poró cria uma base cremosa e perfumada, e as batatas ao vapor equilibram o prato com textura macia.',
+    tags: ['Crustáceos', 'Alcaparras', 'Alho-poró'],
+    options: [{ id: '2p', label: '2 pessoas', detail: 'Lagosta grelhada', price: 276, people: 2 }],
+  },
+  {
+    id: 'lagosta-com-arroz-dos-mares',
+    category: 'frutos-do-mar',
+    name: 'Lagosta com Arroz dos Mares',
+    price: 270,
+    image: categoriaFrutosDoMar,
+    badge: 'Destaque',
+    badgeTone: 'border-amber-200 bg-white text-[#4b160e]',
+    badgeIcon: Flame,
+    badgeIconTone: 'fill-amber-500 text-amber-500',
+    description:
+      'Lagostas grelhadas, salpicadas com alho frito na manteiga, servidas sobre arroz cremoso dos mares.',
+    voiceDescription:
+      'Neste prato, a lagosta aparece sobre um arroz cremoso e generoso. O alho frito na manteiga adiciona perfume tostado e uma crocância discreta. Cada garfada mistura o dulçor da lagosta, a cremosidade do arroz e o sabor intenso da manteiga aromatizada.',
+    tags: ['Crustáceos', 'Manteiga', 'Alho'],
+    options: [{ id: '2p', label: '2 pessoas', detail: 'Arroz cremoso dos mares', price: 270, people: 2 }],
+  },
+  {
+    id: 'isca-de-peixe',
+    category: 'entradas',
+    name: 'Isca de Peixe',
+    price: 120,
+    image: pratoIscaDePeixe,
+    badge: 'Entrada',
+    badgeTone: 'border-amber-200 bg-white text-[#4b160e]',
+    badgeIcon: BadgePlus,
+    badgeIconTone: 'text-amber-600',
+    description:
+      'Iscas crocantes de peixe, servidas para compartilhar antes do prato principal.',
+    voiceDescription:
+      'As iscas de peixe são pedaços pequenos, empanados e dourados. A primeira sensação é a crocância da casquinha. Por dentro, o peixe fica macio, suave e úmido. É um prato fácil de dividir, bom para começar a refeição, especialmente com gotas de limão ou molho cremoso.',
+    tags: ['Peixe', 'Glúten', 'Compartilhar'],
+    options: [{ id: '2p', label: '2 pessoas', detail: 'Porção para entrada', price: 120, people: 2 }],
+  },
+  {
+    id: 'caldinho-de-peixe',
+    category: 'entradas',
+    name: 'Caldinho de Peixe',
+    price: 21,
+    image: pratoCaldinhoDePeixe,
+    badge: 'Quente',
+    badgeTone: 'border-amber-200 bg-white text-[#4b160e]',
+    badgeIcon: CupSoda,
+    badgeIconTone: 'text-amber-600',
+    description:
+      'Caldinho cremoso e quente, servido como entrada leve e aromática.',
+    voiceDescription:
+      'O caldinho de peixe é servido quente, em textura cremosa. O aroma lembra caldo bem temperado, com sabor suave de peixe e final confortável. É uma entrada de colher, pensada para abrir o apetite sem pesar antes dos pratos principais.',
+    tags: ['Peixe', 'Quente', 'Caldo'],
+    options: [{ id: '1p', label: '1 pessoa', detail: 'Copo individual', price: 21, people: 1 }],
+  },
+  {
+    id: 'salada-tropical',
+    category: 'saladas',
+    name: 'Salada Tropical',
+    price: 64,
+    image: categoriaSaladas,
+    badge: 'Leve',
+    badgeTone: 'border-emerald-100 bg-white text-emerald-700',
     badgeIcon: Leaf,
-    badgeIconTone: 'fill-lime-600 text-lime-600',
+    badgeIconTone: 'fill-emerald-600 text-emerald-600',
     description:
-      'Massa artesanal com muçarela, molho de tomate, tomate fresco e manjericão.',
+      'Folhas frescas com legumes, tomate, toque cítrico e final crocante.',
     voiceDescription:
-      'A Pizza Marguerita é mais delicada e aromática. A massa artesanal recebe molho de tomate, muçarela derretida e pedaços de tomate fresco. O manjericão entra no final, trazendo cheiro de ervas e frescor. A experiência é macia, levemente ácida pelo tomate e cremosa pelo queijo, sem pimenta.',
-    tags: ['Massa artesanal', 'Muçarela', 'Tomate', 'Manjericão'],
+      'A salada tropical é fresca e colorida. As folhas trazem leveza, os legumes adicionam textura e o tomate deixa a mordida mais suculenta. O toque cítrico aparece no final, limpando o paladar e equilibrando pratos mais cremosos.',
+    tags: ['Folhas', 'Tomate', 'Leve'],
   },
   {
-    id: 'refrigerante-cola',
+    id: 'file-paulista',
+    category: 'carnes',
+    name: 'Filé à Paulista',
+    price: 199,
+    image: categoriaCarnes,
+    badge: 'Destaque',
+    badgeTone: 'border-amber-200 bg-white text-[#4b160e]',
+    badgeIcon: Flame,
+    badgeIconTone: 'fill-amber-500 text-amber-500',
+    description:
+      'Filé mignon coberto com alhos fritos. Acompanha batatas recheadas e delicioso arroz.',
+    voiceDescription:
+      'O Filé à Paulista tem carne macia e suculenta, coberta por alhos fritos crocantes. As batatas recheadas trazem cremosidade, enquanto o arroz completa o prato com uma base confortável e bem servida.',
+    tags: ['Carne', 'Alho', 'Batata'],
+  },
+  {
+    id: 'frango-grelhado',
+    category: 'frangos',
+    name: 'Frango Grelhado',
+    price: 89,
+    image: categoriaFrangos,
+    badge: 'Grelhado',
+    badgeTone: 'border-amber-200 bg-white text-[#4b160e]',
+    badgeIcon: Flame,
+    badgeIconTone: 'fill-amber-500 text-amber-500',
+    description:
+      'Peito de frango grelhado, legumes e acompanhamento leve da casa.',
+    voiceDescription:
+      'O frango grelhado é uma opção mais direta e leve. A carne vem marcada pela grelha, com aroma tostado e interior macio. Os legumes dão cor, frescor e textura ao prato.',
+    tags: ['Frango', 'Legumes', 'Leve'],
+  },
+  {
+    id: 'massa-vegana',
+    category: 'veganos',
+    name: 'Massa Vegana',
+    price: 78,
+    image: categoriaVeganos,
+    badge: 'Vegano',
+    badgeTone: 'border-emerald-100 bg-white text-emerald-700',
+    badgeIcon: Leaf,
+    badgeIconTone: 'fill-emerald-600 text-emerald-600',
+    description:
+      'Massa com legumes salteados, ervas frescas e azeite aromático.',
+    voiceDescription:
+      'A massa vegana combina fios de massa com legumes salteados e ervas frescas. A textura é macia, com pontos crocantes dos vegetais, e o azeite traz brilho e aroma ao prato.',
+    tags: ['Vegano', 'Legumes', 'Ervas'],
+  },
+  {
+    id: 'pudim-da-casa',
+    category: 'sobremesas',
+    name: 'Pudim da Casa',
+    price: 28,
+    image: categoriaSobremesas,
+    badge: 'Doce',
+    badgeTone: 'border-amber-200 bg-white text-[#4b160e]',
+    badgeIcon: BadgePlus,
+    badgeIconTone: 'text-amber-600',
+    description:
+      'Pudim cremoso com calda brilhante e final delicado.',
+    voiceDescription:
+      'O pudim da casa é liso, cremoso e servido frio. A calda brilhante escorre por cima, trazendo doçura de caramelo e textura macia em cada colherada.',
+    tags: ['Lactose', 'Ovo', 'Caramelo'],
+  },
+  {
+    id: 'drink-tropical',
     category: 'bebidas',
-    name: 'Refrigerante Cola',
-    price: 9,
-    image: bebidaCola,
+    name: 'Drink Tropical',
+    price: 32,
+    image: categoriaBebidas,
     badge: 'Gelado',
     badgeTone: 'border-sky-200 bg-white text-sky-600',
     badgeIcon: CupSoda,
     badgeIconTone: 'text-sky-600',
-    description: 'Copo de refrigerante cola com gelo, limão e canudo.',
+    description:
+      'Bebida gelada, cítrica e refrescante para acompanhar frutos do mar.',
     voiceDescription:
-      'É uma bebida escura, gaseificada e bem gelada, servida em copo com gelo. O limão aparece como detalhe cítrico, trazendo aroma fresco antes do primeiro gole. A sensação principal é de borbulhas, doçura e refrescância, ideal para acompanhar itens mais salgados ou gordurosos.',
-    tags: ['500 ml', 'Com gelo', 'Limão'],
-  },
-  {
-    id: 'cha-gelado-limao',
-    category: 'bebidas',
-    name: 'Chá Gelado de Limão',
-    price: 11,
-    image: bebidaCola,
-    badge: 'Gelado',
-    badgeTone: 'border-sky-200 bg-white text-sky-600',
-    badgeIcon: CupSoda,
-    badgeIconTone: 'text-sky-600',
-    description: 'Bebida gelada de limão servida com bastante gelo.',
-    voiceDescription:
-      'Este chá gelado tem perfil leve e refrescante. Ele chega frio, com bastante gelo e aroma de limão. A experiência é menos doce e mais suave que um refrigerante, com sensação cítrica no final. É uma boa escolha para quem quer uma bebida fria, mas sem tanta intensidade.',
-    tags: ['500 ml', 'Refrescante', 'Limão'],
+      'O drink tropical é frio, aromático e cítrico. Ele refresca o paladar e combina bem com pratos cremosos ou frutos do mar, trazendo leveza entre as garfadas.',
+    tags: ['Gelado', 'Cítrico', 'Refrescante'],
   },
 ]
 
@@ -232,7 +338,8 @@ function App() {
   const initialTable = getTableFromUrl()
   const [analyticsSession] = useState(() => getAnalyticsSession(initialTable))
   const [screen, setScreen] = useState(() => getInitialScreen())
-  const [activeCategory, setActiveCategory] = useState('hamburgueres')
+  const [menuMode, setMenuMode] = useState('padrao')
+  const [activeCategory, setActiveCategory] = useState('frutos-do-mar')
   const [selectedProductId, setSelectedProductId] = useState(() => getProductFromHash())
   const [products, setProducts] = useState(baseProducts)
   const [cart, setCart] = useState([])
@@ -270,7 +377,10 @@ function App() {
       product: menuProducts.find((product) => product.id === item.productId),
     }))
     .filter((item) => item.product)
-  const cartTotal = cartItems.reduce((total, item) => total + item.product.price * item.quantity, 0)
+  const cartTotal = cartItems.reduce(
+    (total, item) => total + (item.unitPrice ?? item.product.price) * item.quantity,
+    0,
+  )
   const cartQuantity = cartItems.reduce((total, item) => total + item.quantity, 0)
   const generatedNfcLink = buildNfcUrl(nfcTable || tableNumber || '01')
   const analyticsSummary = useMemo(
@@ -332,6 +442,16 @@ function App() {
     window.location.hash = hashValue
   }
 
+  function startMenuMode(mode) {
+    setMenuMode(mode)
+    showScreen('menu')
+
+    if (mode === 'voz') {
+      setVoiceReaderEnabled(true)
+      speakText('Cardápio por voz ativado. Abra um prato para ouvir uma descrição detalhada.')
+    }
+  }
+
   function openProduct(product) {
     setSelectedProductId(product.id)
     showScreen('produto', `produto=${product.id}`)
@@ -346,21 +466,36 @@ function App() {
     }
   }
 
-  function addToCart(productId, quantity = 1, note = '') {
+  function addToCart(productId, quantity = 1, note = '', option = null) {
     const product = products.find((item) => item.id === productId)
+    const optionId = option?.id ?? ''
 
     setCart((items) => {
-      const existing = items.find((item) => item.productId === productId && item.note === note)
+      const existing = items.find(
+        (item) => item.productId === productId && item.note === note && item.optionId === optionId,
+      )
 
       if (existing) {
         return items.map((item) =>
-          item.productId === productId && item.note === note
+          item.productId === productId && item.note === note && item.optionId === optionId
             ? { ...item, quantity: item.quantity + quantity }
             : item,
         )
       }
 
-      return [...items, { productId, quantity, note }]
+      return [
+        ...items,
+        {
+          productId,
+          quantity,
+          note,
+          optionId,
+          optionLabel: option?.label ?? '',
+          optionDetail: option?.detail ?? '',
+          people: option?.people ?? null,
+          unitPrice: option?.price ?? product?.price ?? 0,
+        },
+      ]
     })
 
     setReaderStatus(`${product?.name ?? 'Item'} adicionado ao pedido.`)
@@ -369,13 +504,18 @@ function App() {
       productName: product?.name ?? '',
       quantity,
       hasNote: Boolean(note),
+      optionId,
     })
   }
 
-  function updateCartItem(productId, quantity) {
+  function updateCartItem(productId, quantity, optionId = '', note = '') {
     setCart((items) =>
       items
-        .map((item) => (item.productId === productId ? { ...item, quantity } : item))
+        .map((item) =>
+          item.productId === productId && item.optionId === optionId && item.note === note
+            ? { ...item, quantity }
+            : item,
+        )
         .filter((item) => item.quantity > 0),
     )
   }
@@ -605,24 +745,31 @@ function App() {
 
   return (
     <main
-      aria-label="Cardápio digital FOOD99LIKE"
+      aria-label="Cardápio digital Coco Bambu"
       className="min-h-screen overflow-x-hidden bg-slate-100 text-slate-950 md:grid md:place-items-center md:px-6 md:py-8"
     >
       <div
         className={`fixed inset-0 h-[100dvh] w-[100dvw] max-w-none overflow-hidden md:static md:mx-auto md:h-[932px] md:w-full md:max-w-[430px] md:rounded-[28px] md:shadow-2xl md:shadow-slate-300/80 ${
-          screen === 'menu' || screen === 'produto' ? 'bg-[#030407]' : 'bg-white'
+          screen === 'entrada' ? 'bg-[#45150d]' : 'bg-white'
         }`}
       >
+        {screen === 'entrada' && (
+          <EntryScreen onStart={startMenuMode} />
+        )}
+
         {screen === 'menu' && (
           <MenuScreen
             products={menuProducts}
             activeCategory={activeCategory}
             cartQuantity={cartQuantity}
             cartTotal={cartTotal}
+            menuMode={menuMode}
             searchQuery={searchQuery}
             tableNumber={tableNumber}
+            onBack={() => showScreen('entrada')}
             onCategoryChange={changeCategory}
             onSearchChange={changeSearchQuery}
+            onOpenCategories={() => showScreen('categorias')}
             onOpenSettings={() => showScreen('configuracoes')}
             onOpenProduct={openProduct}
             onAddToCart={addToCart}
@@ -635,8 +782,21 @@ function App() {
           />
         )}
 
+        {screen === 'categorias' && (
+          <CategoriesScreen
+            categories={categories}
+            onBack={() => showScreen('menu')}
+            onOpenSettings={() => showScreen('configuracoes')}
+            onSelectCategory={(categoryId) => {
+              changeCategory(categoryId)
+              showScreen('menu')
+            }}
+          />
+        )}
+
         {screen === 'produto' && (
           <ProductScreen
+            key={selectedProduct.id}
             product={selectedProduct}
             onBack={() => showScreen('menu')}
             onAddToCart={addToCart}
@@ -685,457 +845,414 @@ function App() {
   )
 }
 
+function EntryScreen({ onStart }) {
+  return (
+    <section className="relative h-full overflow-hidden bg-[#46160f] px-14 text-[#d7ac5f]">
+      <div className="absolute -right-20 top-0 size-60 rounded-full border border-[#8e6035]/20" />
+      <div className="absolute -bottom-20 -left-24 size-72 rounded-full border border-[#8e6035]/20" />
+      <div className="flex h-full flex-col items-center justify-center gap-10">
+        <img src={cocoLogo} alt="Coco Bambu" className="w-[250px]" draggable="false" />
+        <div className="grid w-full gap-9">
+          {[
+            ['padrao', 'CARDÁPIO PADRÃO'],
+            ['voz', 'CARDÁPIO POR VOZ'],
+            ['simplificado', 'CARDÁPIO SIMPLIFICADO'],
+          ].map(([mode, label]) => (
+            <button
+              type="button"
+              key={mode}
+              onClick={() => onStart(mode)}
+              className="h-[72px] rounded-[30px] bg-[#d8ad61] text-base font-medium text-black shadow-[0_6px_0_rgba(93,47,18,0.65)] transition active:translate-y-1 active:shadow-none"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="text-base font-medium">@cocobambuoficial</p>
+      </div>
+    </section>
+  )
+}
+
+function CategoriesScreen({ categories, onBack, onOpenSettings, onSelectCategory }) {
+  return (
+    <section className="h-full overflow-y-auto bg-white pb-8 text-[#43160f]">
+      <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} compact />
+      <div className="relative z-10 -mt-9 rounded-t-[22px] bg-white px-5 pt-6">
+        <img
+          src={cocoLogo}
+          alt="Coco Bambu"
+          className="relative z-20 mx-auto -mt-20 size-[112px] rounded-full border-4 border-[#d8ad61] bg-[#4a160f]"
+        />
+        <h1 data-screen-title="true" tabIndex={-1} className="mt-2 text-center text-xl font-medium outline-none">
+          CATEGORIAS
+        </h1>
+        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
+          {categories.map((category) => (
+            <button type="button" key={category.id} onClick={() => onSelectCategory(category.id)} className="text-center">
+              <span className="relative block pb-8">
+                <span className="block h-[138px] overflow-hidden rounded-lg border-[3px] border-[#4b160e]">
+                  <img src={category.image} alt="" className="h-full w-full object-cover" />
+                </span>
+                <span className="absolute bottom-0 left-1/2 grid size-16 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.3)]">
+                  <img src={category.iconImage} alt="" className="w-9" />
+                </span>
+              </span>
+              <span className="mt-1 block text-base font-black">{category.label.toUpperCase()}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function TopPhotoBar({ onBack, onOpenSettings, trailingIcon = 'settings', compact = false }) {
+  return (
+    <div className={`relative overflow-hidden ${compact ? 'h-[144px]' : 'h-[176px]'}`}>
+      <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
+      <div className="absolute inset-0 bg-black/10" />
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label="Voltar"
+        className={`absolute left-8 grid size-9 place-items-center rounded-full bg-white/70 text-[#4b160e] ${
+          compact ? 'top-6' : 'top-8'
+        }`}
+      >
+        <img src={iconVolta} alt="" className="w-5" />
+      </button>
+      <button
+        type="button"
+        onClick={onOpenSettings}
+        aria-label={trailingIcon === 'heart' ? 'Favoritar' : 'Configurações'}
+        className={`absolute right-8 grid size-9 place-items-center rounded-full bg-white/70 text-[#4b160e] ${
+          compact ? 'top-6' : 'top-8'
+        }`}
+      >
+        {trailingIcon === 'heart' ? <Heart size={22} /> : <img src={iconConfig} alt="" className="w-6" />}
+      </button>
+    </div>
+  )
+}
+
 function MenuScreen({
   products,
   activeCategory,
   cartQuantity,
   cartTotal,
+  menuMode,
   searchQuery,
-  tableNumber,
+  onBack,
   onCategoryChange,
   onSearchChange,
+  onOpenCategories,
   onOpenSettings,
   onOpenProduct,
-  onAddToCart,
   onOpenOrder,
   onOpenVezz,
   onStartVoiceCommand,
-  onToggleVoiceReader,
   voiceCommandListening,
-  voiceReaderEnabled,
 }) {
-  const categoryProducts = filterProducts(
-    products.filter((product) => product.category === activeCategory),
-    searchQuery,
+  const [promoIndex, setPromoIndex] = useState(0)
+  const visibleProducts = filterProducts(products, searchQuery)
+  const categoryProducts = searchQuery.trim()
+    ? visibleProducts
+    : visibleProducts.filter((product) => product.category === activeCategory)
+  const featuredProducts = (categoryProducts.length ? categoryProducts : visibleProducts).slice(
+    0,
+    menuMode === 'simplificado' ? 4 : 6,
   )
-  const featuredProduct = products.find((product) => product.badge === 'Mais pedido') ?? products[0]
-  const activeCategoryLabel =
-    categories.find((category) => category.id === activeCategory)?.label ?? 'Cardápio'
+  const previewCategories = categories.slice(0, 3)
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setPromoIndex((currentIndex) => (currentIndex + 1) % promoSlides.length)
+    }, 5200)
+
+    return () => window.clearInterval(intervalId)
+  }, [])
 
   return (
-    <section
-      className="relative h-full overflow-y-auto bg-[#030407] pb-28 text-white"
-      aria-labelledby="menu-title"
-    >
-      <HeroCarousel
-        featuredProduct={featuredProduct}
-        tableNumber={tableNumber}
-        onOpenProduct={onOpenProduct}
-        voiceReaderEnabled={voiceReaderEnabled}
-        onOpenSettings={onOpenSettings}
-        onOpenVezz={onOpenVezz}
-        onToggleVoiceReader={onToggleVoiceReader}
-      />
+    <section className="relative h-full overflow-y-auto bg-white pb-28 text-[#43160f]" aria-labelledby="menu-title">
+      <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} />
 
-      <div className="mt-[13px] flex items-center gap-2 overflow-hidden px-[18px] pb-1">
-        {categories.map((category) => (
-          <button
-            type="button"
-            key={category.id}
-            onClick={() => onCategoryChange(category.id)}
-            aria-pressed={category.id === activeCategory}
-            aria-label={`Mostrar categoria ${category.label}`}
-            className={`flex h-[36px] w-[88px] shrink-0 items-center justify-center gap-1.5 rounded-full px-2 text-[9px] font-bold shadow-sm transition active:scale-[0.98] ${
-              category.id === activeCategory
-                ? 'bg-[#ffd51a] text-slate-950'
-                : 'bg-[#191c25] text-slate-200 ring-1 ring-white/10'
-            }`}
-          >
-            <category.icon size={15} strokeWidth={2.4} />
-            {category.shortLabel}
-          </button>
-        ))}
-      </div>
+      <div className="-mt-9 rounded-t-[22px] bg-white px-8 pb-4 pt-14">
+        <div className="text-center">
+          <img
+            src={cocoLogo}
+            alt="Coco Bambu"
+            className="absolute left-1/2 top-[88px] size-[112px] -translate-x-1/2 rounded-full border-4 border-[#d8ad61] bg-[#4a160f]"
+            draggable="false"
+          />
+          <h1 id="menu-title" data-screen-title="true" tabIndex={-1} className="text-[27px] font-black outline-none">
+            COCO BAMBU
+          </h1>
+          <p className="mt-1 flex items-center justify-center gap-1 text-xs text-[#4b231b]">
+            <MapPin size={14} fill="#111" />
+            Derby, Recife - PE
+          </p>
+        </div>
 
-      <h1
-        id="menu-title"
-        data-screen-title="true"
-        tabIndex={-1}
-        className="mt-[17px] px-[18px] text-[19px] font-black leading-none text-white outline-none"
-      >
-        {activeCategoryLabel} ({categoryProducts.length})
-      </h1>
+        <div className="mt-5">
+          <PromoCarousel
+            activeIndex={promoIndex}
+            onOpenVezz={onOpenVezz}
+          />
+        </div>
 
-      <div
-        className="mx-[18px] mt-4 grid grid-cols-[1fr_auto] gap-2 rounded-xl bg-[#11141c] p-2 ring-1 ring-white/10"
-      >
-        <label className="grid grid-cols-[auto_1fr] items-center gap-2">
-          <Search size={17} className="text-slate-400" />
+        <div className="mt-4 flex justify-center gap-1.5" aria-label="Selecionar banner">
+          {promoSlides.map((slide, index) => (
+            <button
+              type="button"
+              key={slide.id}
+              onClick={() => setPromoIndex(index)}
+              aria-label={`Mostrar banner ${index + 1}`}
+              aria-current={promoIndex === index}
+              className={`size-2 rounded-full transition ${
+                promoIndex === index ? 'bg-[#4b160e]' : 'bg-[#d0d0d0]'
+              }`}
+            />
+          ))}
+        </div>
+
+        <div className="mt-5 grid h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-full bg-[#eeeeee] px-4">
+          <Search size={22} className="text-[#bdb8b5]" />
           <input
             value={searchQuery}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Buscar item ou ingrediente"
-            className="h-10 w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-slate-400"
+            placeholder="Buscar pratos..."
+            className="h-full bg-transparent text-sm font-medium text-[#43160f] outline-none placeholder:text-[#bdb8b5]"
           />
-        </label>
-        <button
-          type="button"
-          onClick={onStartVoiceCommand}
-          aria-label="Falar comando de voz"
-          aria-pressed={voiceCommandListening}
-          className={`grid size-10 place-items-center rounded-lg transition active:scale-95 ${
-            voiceCommandListening
-              ? 'bg-[#ffda16] text-slate-950'
-              : 'bg-white/10 text-white ring-1 ring-white/10'
-          }`}
-        >
-          {voiceCommandListening ? <MicOff size={18} /> : <Mic size={18} />}
-        </button>
-      </div>
-
-      <div className="mx-3 mt-4 w-[406px] max-w-[calc(100vw-24px)] rounded-sm bg-[#090a0f] px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-white/10">
-        {categoryProducts.length ? (
-          <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-            {categoryProducts.map((product, index) => (
-              <ProductCard
-                key={product.id}
-                index={index}
-                product={product}
-                onAdd={() => onAddToCart(product.id)}
-                onOpen={() => onOpenProduct(product)}
-              />
-            ))}
-          </div>
-        ) : (
-          <p
-            className="p-4 text-center text-sm font-bold text-slate-300"
+          <button
+            type="button"
+            onClick={onStartVoiceCommand}
+            aria-label="Buscar por voz"
+            aria-pressed={voiceCommandListening}
+            className={voiceCommandListening ? 'text-[#4b160e]' : 'text-[#bdb8b5]'}
           >
-            Nenhum item encontrado.
-          </p>
-        )}
+            {voiceCommandListening ? <MicOff size={22} /> : <Mic size={22} />}
+          </button>
+        </div>
+
+        <div className="mt-5 flex items-center justify-between">
+          <h2 className="text-base font-medium">CATEGORIAS</h2>
+          <button type="button" onClick={onOpenCategories} className="text-xs text-[#a98272]">
+            Ver todos &gt;
+          </button>
+        </div>
+
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {previewCategories.map((category) => (
+            <CategoryPreviewCard
+              key={category.id}
+              category={category}
+              active={category.id === activeCategory}
+              onClick={() => onCategoryChange(category.id)}
+            />
+          ))}
+        </div>
+
+        <h2 className="mt-5 text-base font-medium">DESTAQUES</h2>
+        <div className="mt-2 space-y-3">
+          {featuredProducts.map((product) => (
+            <MenuProductCard key={product.id} product={product} onOpen={() => onOpenProduct(product)} />
+          ))}
+        </div>
       </div>
 
       {cartQuantity > 0 && (
         <CartBar quantity={cartQuantity} total={cartTotal} onOpenOrder={onOpenOrder} />
       )}
-
     </section>
   )
 }
 
-function HeroCarousel({
-  featuredProduct,
-  tableNumber,
-  onOpenProduct,
-  voiceReaderEnabled,
-  onOpenSettings,
-  onOpenVezz,
-  onToggleVoiceReader,
-}) {
-  const [activeSlide, setActiveSlide] = useState(0)
-  const [isPaused, setIsPaused] = useState(false)
-
-  useEffect(() => {
-    if (isPaused) return undefined
-
-    const timerId = window.setInterval(() => {
-      setActiveSlide((slide) => (slide + 1) % 2)
-    }, 14000)
-
-    return () => window.clearInterval(timerId)
-  }, [isPaused])
-
-  function selectSlide(slide) {
-    setActiveSlide(slide)
-    setIsPaused(true)
+function PromoCarousel({ activeIndex, onOpenVezz }) {
+  function handleSlideClick(slide) {
+    if (slide.action === 'vezz') {
+      onOpenVezz()
+    }
   }
 
   return (
-    <div
-      className="relative ml-2 mt-2 h-[168px] w-[414px] max-w-[calc(100vw-16px)] overflow-hidden rounded-[18px] bg-slate-900"
-      onBlurCapture={() => setIsPaused(false)}
-      onFocusCapture={() => setIsPaused(true)}
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      onTouchStart={() => setIsPaused(true)}
-    >
+    <div className="relative mx-auto h-[118px] w-full max-w-[316px] overflow-hidden rounded-lg bg-[#4b160e]">
       <div
-        className={`absolute inset-0 transition-opacity duration-700 ${
-          activeSlide === 0 ? 'opacity-100' : 'pointer-events-none opacity-0'
-        }`}
-        aria-hidden={activeSlide !== 0}
+        className="flex h-full transition-transform duration-700 ease-out"
+        style={{ transform: `translateX(-${activeIndex * 100}%)` }}
       >
-        <img
-          src={heroBurger}
-          alt="Hamburguer artesanal com bacon e batata frita"
-          className="h-full w-full object-cover"
-          draggable="false"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/5" />
-        {featuredProduct && (
+        {promoSlides.map((slide) => (
           <button
             type="button"
-            onClick={() => onOpenProduct(featuredProduct)}
-            tabIndex={activeSlide === 0 ? 0 : -1}
-            className="absolute bottom-3 left-3 max-w-[258px] rounded-lg bg-black/70 px-3 py-2 text-left shadow-lg shadow-black/25 ring-1 ring-white/10 backdrop-blur-sm transition active:scale-[0.98]"
-          >
-            <span className="block text-[9px] font-black uppercase tracking-[0.08em] text-[#ffd51a]">
-              Destaque da casa{tableNumber ? ` - Mesa ${tableNumber}` : ''}
-            </span>
-            <span className="mt-1 block truncate text-[15px] font-black leading-none text-white">
-              {featuredProduct.name}
-            </span>
-            <span className="mt-1 block text-[11px] font-black text-white/75">
-              {formatCurrency(featuredProduct.price)}
-            </span>
-          </button>
-        )}
-      </div>
-
-      <div
-        className={`absolute inset-0 bg-[#2bb8cb] transition-opacity duration-700 ${
-          activeSlide === 1 ? 'opacity-100' : 'pointer-events-none opacity-0'
-        }`}
-        aria-hidden={activeSlide !== 1}
-      >
-        <div className="absolute inset-y-0 right-0 w-40 bg-white/12" />
-        <div className="relative z-10 flex h-full flex-col justify-center px-7 pt-5">
-          <img
-            src={vezzLogo}
-            alt="Vezz"
-            className="h-14 w-[250px] object-contain object-left"
-            draggable="false"
-          />
-          <p className="mt-2 max-w-[230px] text-[20px] font-black leading-[1.05] text-slate-950">
-            Vai embora? Vá com a Vezz.
-          </p>
-          <button
-            type="button"
-            onClick={onOpenVezz}
-            tabIndex={activeSlide === 1 ? 0 : -1}
-            className="mt-3 inline-flex h-9 w-fit items-center gap-2 rounded-lg bg-slate-950 px-4 text-[11px] font-black text-white shadow-lg shadow-cyan-900/25 transition active:scale-[0.98]"
-          >
-            <CarFront size={15} />
-            CHAMAR VEZZ
-          </button>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={onToggleVoiceReader}
-        aria-label={
-          voiceReaderEnabled
-            ? 'Desativar descritor automatico de comidas'
-            : 'Ativar descritor automatico de comidas'
-        }
-        aria-pressed={voiceReaderEnabled}
-        title={voiceReaderEnabled ? 'Desativar descritor' : 'Ativar descritor'}
-        className={`absolute left-3 top-3 z-20 grid size-[38px] place-items-center rounded-full shadow-lg shadow-black/20 transition active:scale-95 ${
-          voiceReaderEnabled ? 'bg-[#ffda16] text-slate-950' : 'bg-white text-slate-900'
-        }`}
-      >
-        {voiceReaderEnabled ? (
-          <Volume2 size={19} strokeWidth={2.7} />
-        ) : (
-          <VolumeX size={19} strokeWidth={2.7} />
-        )}
-      </button>
-
-      <button
-        type="button"
-        onClick={onOpenSettings}
-        aria-label="Configuracoes"
-        className="absolute right-3 top-3 z-20 grid size-[38px] place-items-center rounded-full bg-white text-slate-900 shadow-lg shadow-black/20 transition active:scale-95"
-      >
-        <Settings size={19} strokeWidth={2.6} />
-      </button>
-
-      <div className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5">
-        {[0, 1].map((slide) => (
-          <button
-            type="button"
-            key={slide}
-            onClick={() => selectSlide(slide)}
-            aria-label={slide === 0 ? 'Mostrar foto do hamburguer' : 'Mostrar chamada da Vezz'}
-            aria-pressed={activeSlide === slide}
-            className={`h-2.5 rounded-full transition-all ${
-              activeSlide === slide ? 'w-6 bg-white' : 'w-2.5 bg-white/45'
+            key={slide.id}
+            onClick={() => handleSlideClick(slide)}
+            aria-label={slide.action === 'vezz' ? 'Abrir Vezz' : slide.alt}
+            className={`relative grid h-full min-w-full place-items-center ${
+              slide.id === 'vezz-accessibility' ? 'bg-white' : 'bg-[#4b160e]'
             }`}
-          />
+          >
+            <img
+              src={slide.image}
+              alt={slide.alt}
+              className={`h-full w-full ${slide.fit === 'cover' ? 'object-cover' : 'object-contain'}`}
+              draggable="false"
+            />
+          </button>
         ))}
       </div>
     </div>
   )
 }
 
-function ProductCard({ product, index, onAdd, onOpen }) {
-  const productNumber = getMenuProductNumber(product, index)
-
+function CategoryPreviewCard({ category, active, onClick }) {
   return (
-    <article className="relative min-h-[218px] text-white">
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={buildProductAriaLabel(product)}
-        className="block h-full w-full pb-8 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[#ffd51a]"
-      >
-        <div className="relative flex h-[92px] items-center justify-center overflow-hidden bg-[#171a22]">
-          <img
-            src={product.image}
-            alt=""
-            aria-hidden="true"
-            className="h-[96px] w-full scale-[1.08] object-contain"
-            draggable="false"
-          />
-        </div>
-
-        <div className="mt-2">
-          <p className="text-[9px] font-black uppercase tracking-[0.04em] text-[#ffd51a]">
-            {productNumber}. {product.badge}
-          </p>
-          <h3 className="mt-1 text-[13px] font-black leading-[1.08] text-white">
-            {product.name}
-          </h3>
-          <p className="mt-1 line-clamp-4 text-[9.5px] font-semibold leading-[1.28] text-white/60">
-            {product.description}
-          </p>
-          <p className="mt-2 text-[13px] font-black text-white">
-            {formatCurrency(product.price)}
-          </p>
-        </div>
-      </button>
-
-      <button
-        type="button"
-        aria-label={`Adicionar ${product.name}`}
-        onClick={(event) => {
-          event.stopPropagation()
-          onAdd()
-        }}
-        className="absolute bottom-0 right-0 z-20 grid size-7 place-items-center rounded-sm bg-[#ffd51a] text-slate-950 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-white"
-      >
-        <Plus size={16} strokeWidth={3} />
-      </button>
-    </article>
+    <button type="button" onClick={onClick} aria-pressed={active} className="text-center">
+      <span className="relative block pb-7">
+        <span className={`block h-[108px] overflow-hidden rounded-md ${active ? 'ring-2 ring-[#4b160e]' : ''}`}>
+          <img src={category.image} alt="" className="h-full w-full object-cover" />
+        </span>
+        <span className="absolute bottom-0 left-1/2 grid size-14 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.25)]">
+          <img src={category.iconImage} alt="" className="w-8" />
+        </span>
+      </span>
+      <span className="mt-1 block text-sm font-black">{category.label.toUpperCase()}</span>
+    </button>
   )
 }
 
+function MenuProductCard({ product, onOpen }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={buildProductAriaLabel(product)}
+      className="grid min-h-[114px] w-full grid-cols-[1fr_130px] gap-3 rounded-lg bg-[#f0f0f0] p-3 text-left"
+    >
+      <span>
+        <span className="block text-sm font-black">{product.name.toUpperCase()}</span>
+        <span className="mt-2 line-clamp-3 block text-[13px] font-medium leading-5">
+          {product.description}
+        </span>
+        <span className="mt-1 block text-sm font-black">{formatCurrency(product.price)}</span>
+      </span>
+      <span className="relative overflow-hidden rounded-lg">
+        <img src={product.image} alt="" className="h-[90px] w-full object-cover" />
+        <span className="absolute bottom-2 right-2 rounded-full bg-white/85 px-2 py-1 text-[7px] font-black">
+          VER PRATO &gt;
+        </span>
+      </span>
+    </button>
+  )
+}
 function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct }) {
-  const [quantity, setQuantity] = useState(1)
-  const [note, setNote] = useState('')
-  const BadgeIcon = product.badgeIcon
+  const productOptions = useMemo(
+    () =>
+      product.options?.length
+        ? product.options
+        : [{ id: 'base', label: '1 pessoa', detail: 'Porção individual', price: product.price, people: 1 }],
+    [product],
+  )
+  const [selectedOptionId, setSelectedOptionId] = useState(() => productOptions.at(-1)?.id ?? 'base')
+  const selectedOption =
+    productOptions.find((option) => option.id === selectedOptionId) ?? productOptions.at(-1)
 
-  function addCurrentItem() {
-    onAddToCart(product.id, quantity, note.trim())
+  function addCurrentItem(openOrder = false) {
+    onAddToCart(product.id, 1, '', selectedOption)
+
+    if (openOrder) {
+      onOrderNow()
+    }
   }
 
   return (
-    <section className="h-full overflow-y-auto overflow-x-hidden bg-[#030407] pb-8 text-white" aria-labelledby="product-title">
-      <div className="relative min-h-[314px] bg-[#090a0f] px-5 pb-5 pt-4 ring-1 ring-white/10">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Voltar"
-          className="absolute left-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-white/10 text-white shadow-lg shadow-black/25 ring-1 ring-white/10 transition active:scale-95"
-        >
-          <ArrowLeft size={21} strokeWidth={2.7} />
-        </button>
+    <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]" aria-labelledby="product-title">
+      <TopPhotoBar onBack={onBack} onOpenSettings={() => {}} trailingIcon="heart" compact />
 
-        <button
-          type="button"
-          onClick={() => onReadProduct(product)}
-          aria-label={`Ouvir descrição acessível de ${product.name}`}
-          title="Ouvir descrição acessível"
-          className="absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full bg-[#ffd51a] text-slate-950 shadow-lg shadow-black/25 transition active:scale-95 focus-visible:ring-2 focus-visible:ring-white"
-        >
-          <Volume2 size={19} strokeWidth={2.7} />
-        </button>
-
-        <div className="mx-auto flex h-[278px] w-full max-w-[350px] items-end justify-center overflow-hidden pt-8">
+      <div className="-mt-9 rounded-t-[22px] bg-white px-7 pb-8 pt-10">
+        <div className="relative overflow-hidden rounded-lg bg-[#4b160e] p-2">
           <img
             src={product.image}
             alt={product.name}
-            className="h-[230px] w-full max-w-[270px] object-contain"
+            className="h-[226px] w-full rounded-md object-cover"
             draggable="false"
           />
-        </div>
-      </div>
-
-      <div className="ml-5 w-[390px] max-w-[calc(100vw-40px)] overflow-x-hidden pt-5">
-        <span
-          className={`inline-flex h-[24px] items-center gap-1 rounded-full border px-3 text-[10px] font-black ${product.badgeTone}`}
-        >
-          <BadgeIcon size={12} strokeWidth={2.5} className={product.badgeIconTone} />
-          {product.badge}
-        </span>
-
-        <div className="mt-3">
-          <h1
-            id="product-title"
-            data-screen-title="true"
-            tabIndex={-1}
-            className="text-[26px] font-black leading-tight text-white outline-none"
+          <button
+            type="button"
+            onClick={() => onReadProduct(product)}
+            aria-label={`Ouvir descrição acessível de ${product.name}`}
+            title="Ouvir descrição"
+            className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/90 text-[#4b160e] shadow-lg"
           >
-            {product.name}
-          </h1>
-          <p className="mt-1 text-[20px] font-black text-white">
-            {formatCurrency(product.price)}
-          </p>
-          <p className="mt-3 text-sm font-semibold leading-6 text-white/60">
-            {product.description}
-          </p>
+            <Volume2 size={18} />
+          </button>
         </div>
 
-        <div className="mt-5 flex max-w-full flex-wrap gap-2" aria-label="Ingredientes principais">
+        <div className="mt-4 flex flex-wrap justify-center gap-1.5" aria-label="Alergênicos e características">
           {product.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-lg bg-white/10 px-3 py-2 text-[10px] font-bold text-white/70 ring-1 ring-white/10"
+              className="inline-flex min-h-6 items-center gap-1 rounded-full bg-[#eef1f3] px-2.5 text-[11px] font-medium text-[#9a8e89]"
             >
+              <BadgePlus size={12} className="text-[#d5a55c]" />
               {tag}
             </span>
           ))}
         </div>
 
-        <div className="mt-6 rounded-lg bg-[#11141c] p-4 ring-1 ring-white/10">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-black text-white">Quantidade</p>
-            <div className="flex items-center gap-3">
-              <StepperButton
-                icon={Minus}
-                label={`Diminuir quantidade de ${product.name}`}
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              />
-              <span className="w-7 text-center text-lg font-black text-white">{quantity}</span>
-              <StepperButton
-                icon={Plus}
-                label={`Aumentar quantidade de ${product.name}`}
-                onClick={() => setQuantity(quantity + 1)}
-              />
-            </div>
-          </div>
-
-          <label className="mt-4 block text-sm font-black text-white">
-            Observação
-            <textarea
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="Ex.: sem cebola, molho separado..."
-              className="mt-2 h-20 w-full resize-none rounded-lg bg-[#090a0f] px-3 py-3 text-sm font-semibold text-white outline-none ring-1 ring-white/10 placeholder:text-slate-500"
-            />
-          </label>
+        <div className="mt-5 text-center">
+          <h1
+            id="product-title"
+            data-screen-title="true"
+            tabIndex={-1}
+            className="text-[27px] font-black leading-tight outline-none"
+          >
+            {product.name.toUpperCase()}
+          </h1>
+          <p className="mx-auto mt-3 max-w-[340px] text-[15px] font-medium leading-6">
+            {product.description}
+          </p>
         </div>
 
-        <div className="mt-5 grid w-full grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={addCurrentItem}
-            className="h-14 rounded-lg bg-white/10 text-sm font-black text-white ring-1 ring-white/10 transition active:scale-[0.99]"
-          >
-            ADICIONAR
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              addCurrentItem()
-              onOrderNow()
-            }}
-            className="h-14 rounded-lg bg-[#ffda16] text-sm font-black text-black transition active:scale-[0.99]"
-          >
-            FAZER PEDIDO
-          </button>
+        <div className="mt-6 space-y-3">
+          {productOptions.map((option) => {
+            const active = selectedOption?.id === option.id
+
+            return (
+              <button
+                type="button"
+                key={option.id}
+                onClick={() => setSelectedOptionId(option.id)}
+                aria-pressed={active}
+                className={`grid min-h-[64px] w-full grid-cols-[40px_1fr_auto_22px] items-center gap-3 rounded-lg border px-4 text-left transition active:scale-[0.99] ${
+                  active
+                    ? 'border-[#4b160e] bg-[#f2e3cc]'
+                    : 'border-[#bfa8a0] bg-white'
+                }`}
+              >
+                <Table2 size={28} strokeWidth={1.8} className="text-[#8b6d63]" />
+                <span>
+                  <span className="block text-sm font-black">{option.label}</span>
+                  <span className="mt-0.5 block text-xs font-semibold text-[#aa9b96]">{option.detail}</span>
+                </span>
+                <span className="text-base font-black">{formatCurrency(option.price)}</span>
+                <span
+                  className={`size-5 rounded-full border ${
+                    active ? 'border-[#4b160e] bg-[#4b160e]' : 'border-[#bfa8a0] bg-white'
+                  }`}
+                  aria-hidden="true"
+                />
+              </button>
+            )
+          })}
         </div>
+
+        <button
+          type="button"
+          onClick={() => addCurrentItem(true)}
+          className="mx-auto mt-8 flex h-14 w-[86%] items-center justify-center rounded-full bg-[#4b160e] text-base font-black text-white transition active:scale-[0.99]"
+        >
+          ADICIONAR - {formatCurrency(selectedOption?.price ?? product.price)}
+        </button>
       </div>
     </section>
   )
@@ -1161,7 +1278,7 @@ function SettingsScreen({
   const [editingProductId, setEditingProductId] = useState('')
   const [form, setForm] = useState({
     name: '',
-    category: 'hamburgueres',
+    category: 'frutos-do-mar',
     price: '',
     description: '',
     ingredients: '',
@@ -1206,7 +1323,7 @@ function SettingsScreen({
     setEditingProductId('')
     setForm({
       name: '',
-      category: 'hamburgueres',
+      category: 'frutos-do-mar',
       price: '',
       description: '',
       ingredients: '',
@@ -1236,7 +1353,7 @@ function SettingsScreen({
     setEditingProductId('')
     setForm({
       name: '',
-      category: 'hamburgueres',
+      category: 'frutos-do-mar',
       price: '',
       description: '',
       ingredients: '',
@@ -1513,7 +1630,7 @@ function SettingsScreen({
 
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <PartnerMetric label="Pedidos" value={analyticsSummary.ordersSent} />
-                <PartnerMetric label="Ticket medio" value={formatCurrency(analyticsSummary.averageTicket)} />
+                <PartnerMetric label="Ticket médio" value={formatCurrency(analyticsSummary.averageTicket)} />
               </div>
 
               <button
@@ -1574,7 +1691,7 @@ function SettingsScreen({
                 <div className="mt-4 space-y-1 text-xs font-black text-slate-700">
                   <p>@nomedorestaurante</p>
                   <p>WhatsApp: (81) 99999-9999</p>
-                  <p className="pt-2 text-sm tracking-[0.18em] text-slate-950">⠉⠁⠗⠙⠁⠏⠊⠕</p>
+                  <p className="pt-2 text-sm tracking-[0.18em] text-slate-950">????????</p>
                 </div>
               </div>
             </div>
@@ -1621,32 +1738,62 @@ function OrderScreen({
 }) {
   const [customerName, setCustomerName] = useState('')
   const [serviceType, setServiceType] = useState('mesa')
-  const [paymentType, setPaymentType] = useState('caixa')
+  const [observations, setObservations] = useState('')
 
   return (
-    <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8">
-      <HeaderBar title="Finalizar pedido" onBack={onBack} />
+    <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]">
+      <TopPhotoBar onBack={onBack} onOpenSettings={() => {}} compact />
 
-      <div className="ml-5 w-[390px] max-w-[calc(100vw-40px)] space-y-4 pt-5">
+      <div className="-mt-9 rounded-t-[22px] bg-white px-5 pb-8 pt-9">
         {orderSent ? (
-          <section className="rounded-[22px] bg-emerald-50 p-5 text-center ring-1 ring-emerald-100">
-            <div className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-500 text-white">
+          <section className="rounded-lg border border-[#eadfd9] bg-white p-6 text-center">
+            <div className="mx-auto grid size-14 place-items-center rounded-full bg-[#4b160e] text-white">
               <CircleCheck size={28} />
             </div>
-            <h1 className="mt-4 text-xl font-black text-slate-900">Pedido enviado</h1>
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-              Seu pedido foi registrado para a mesa {tableNumber || 'selecionada'}.
+            <h1 className="mt-4 text-xl font-black">Pedido pronto</h1>
+            <p className="mt-2 text-sm font-medium leading-6 text-[#7e6258]">
+              Mostre esta tela ao garçom para confirmar a mesa {tableNumber || 'selecionada'}.
             </p>
           </section>
         ) : (
           <>
-            <section className="rounded-[18px] bg-slate-50 p-4">
-              <div className="flex items-center gap-2">
-                <Table2 size={18} className="text-orange-500" />
-                <h2 className="text-base font-black text-slate-900">Mesa</h2>
+            <div className="flex items-center gap-4 px-2">
+              <span className="grid size-14 place-items-center rounded-full bg-[#4b160e] text-white">
+                <ReceiptText size={28} />
+              </span>
+              <div>
+                <h1 data-screen-title="true" tabIndex={-1} className="text-lg font-black outline-none">
+                  SEU PEDIDO
+                </h1>
+                <p className="text-sm font-medium">Confirme os itens do seu pedido</p>
+              </div>
+            </div>
+
+            <section className="mt-5 rounded-lg border border-[#d8c7bf] bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <label className="min-w-0 flex-1 text-xs font-black text-[#7e6258]">
+                  Nome
+                  <input
+                    value={customerName}
+                    onChange={(event) => setCustomerName(event.target.value)}
+                    placeholder="Opcional"
+                    className="mt-2 h-10 w-full rounded-md border border-[#eadfd9] px-3 text-sm font-bold text-[#4b160e] outline-none placeholder:text-[#b5a7a2]"
+                  />
+                </label>
+                <label className="w-28 text-xs font-black text-[#7e6258]">
+                  Consumo
+                  <select
+                    value={serviceType}
+                    onChange={(event) => setServiceType(event.target.value)}
+                    className="mt-2 h-10 w-full rounded-md border border-[#eadfd9] bg-white px-2 text-sm font-bold text-[#4b160e] outline-none"
+                  >
+                    <option value="mesa">Mesa</option>
+                    <option value="balcao">Balcão</option>
+                  </select>
+                </label>
               </div>
 
-              <div className="mt-4 grid grid-cols-4 gap-2">
+              <div className="mt-4 grid grid-cols-6 gap-2" aria-label="Selecionar mesa">
                 {tableOptions.map((table) => (
                   <button
                     type="button"
@@ -1654,117 +1801,64 @@ function OrderScreen({
                     onClick={() => onTableChange(table)}
                     aria-pressed={tableNumber === table}
                     aria-label={`Selecionar mesa ${table}`}
-                    className={`h-10 rounded-[12px] text-sm font-black transition active:scale-[0.98] ${
+                    className={`h-9 rounded-md text-xs font-black transition active:scale-[0.98] ${
                       tableNumber === table
-                        ? 'bg-[#ffda16] text-black'
-                        : 'bg-white text-slate-700 ring-1 ring-slate-100'
+                        ? 'bg-[#4b160e] text-white'
+                        : 'bg-[#f5eee4] text-[#4b160e]'
                     }`}
                   >
                     {table}
                   </button>
                 ))}
               </div>
-
-              <label className="mt-4 block text-xs font-black text-slate-600">
-                Nome
-                <input
-                  value={customerName}
-                  onChange={(event) => setCustomerName(event.target.value)}
-                  placeholder="Opcional"
-                  className="mt-2 h-11 w-full rounded-[12px] bg-white px-3 text-sm font-bold text-slate-800 outline-none ring-1 ring-slate-100 placeholder:text-slate-400"
-                />
-              </label>
             </section>
 
-            <section className="rounded-[18px] bg-slate-50 p-4">
-              <div className="flex items-center gap-2">
-                <ReceiptText size={18} className="text-orange-500" />
-                <h2 className="text-base font-black text-slate-900">Pedido</h2>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {cartItems.length === 0 ? (
-                  <p className="rounded-[14px] bg-white p-4 text-sm font-bold text-slate-500">
-                    Nenhum item adicionado.
-                  </p>
-                ) : (
-                  cartItems.map((item) => (
-                    <div
-                      key={`${item.productId}-${item.note}`}
-                      className="flex gap-3 rounded-[14px] bg-white p-3 ring-1 ring-slate-100"
-                    >
-                      <img
-                        src={item.product.image}
-                        alt=""
-                        aria-hidden="true"
-                        className="size-16 rounded-[12px] object-contain"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-black text-slate-900">{item.product.name}</p>
-                        <p className="mt-1 text-xs font-bold text-slate-500">
-                          {formatCurrency(item.product.price)}
-                        </p>
-                        {item.note && (
-                          <p className="mt-1 line-clamp-1 text-[10px] font-bold text-slate-400">
-                            {item.note}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <StepperButton
-                          icon={Minus}
-                          label={`Diminuir quantidade de ${item.product.name}`}
-                          onClick={() => onUpdateCartItem(item.productId, item.quantity - 1)}
-                        />
-                        <span className="w-5 text-center text-sm font-black">{item.quantity}</span>
-                        <StepperButton
-                          icon={Plus}
-                          label={`Aumentar quantidade de ${item.product.name}`}
-                          onClick={() => onUpdateCartItem(item.productId, item.quantity + 1)}
-                        />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+            <section className="mt-4 space-y-3">
+              {cartItems.length === 0 ? (
+                <p className="rounded-lg border border-[#eadfd9] bg-white p-4 text-sm font-bold text-[#9b837a]">
+                  Nenhum item adicionado.
+                </p>
+              ) : (
+                cartItems.map((item) => (
+                  <OrderItemCard
+                    key={`${item.productId}-${item.optionId}-${item.note}`}
+                    item={item}
+                    onUpdateCartItem={onUpdateCartItem}
+                  />
+                ))
+              )}
             </section>
 
-            <section className="rounded-[18px] bg-slate-50 p-4">
-              <OptionGroup
-                label="Entrega"
-                value={serviceType}
-                options={[
-                  ['mesa', 'Na mesa'],
-                  ['balcao', 'Retirar no balcão'],
-                ]}
-                onChange={setServiceType}
+            <section className="mt-8">
+              <div className="flex items-center gap-3">
+                <span className="grid size-11 place-items-center rounded-full bg-[#4b160e] text-white">
+                  <ReceiptText size={21} />
+                </span>
+                <h2 className="text-lg font-black">Observações</h2>
+              </div>
+              <textarea
+                value={observations}
+                onChange={(event) => setObservations(event.target.value)}
+                placeholder="Ex.: Caldinho de peixe sem azeitona"
+                className="mt-4 h-[68px] w-full resize-none rounded-lg border border-[#d8c7bf] px-4 py-4 text-sm font-semibold text-[#4b160e] outline-none placeholder:text-[#b6a4a0]"
               />
-
-              <div className="mt-4">
-                <OptionGroup
-                  label="Pagamento"
-                  value={paymentType}
-                  options={[
-                    ['caixa', 'Pagar no caixa'],
-                    ['maquininha', 'Maquininha'],
-                  ]}
-                  onChange={setPaymentType}
-                />
-              </div>
             </section>
 
-            <div className="rounded-[18px] bg-slate-950 p-4 text-white">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-white/60">Total</p>
-                <p className="text-2xl font-black">{formatCurrency(cartTotal)}</p>
+            <div className="mt-4 rounded-lg border border-[#4b160e] bg-[#f2e3cc] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-3 text-lg font-black">
+                  <ShoppingCart size={24} />
+                  TOTAL
+                </span>
+                <p className="text-xl font-black">{formatCurrency(cartTotal)}</p>
               </div>
               <button
                 type="button"
-                onClick={() => onSendOrder({ customerName, serviceType, paymentType })}
+                onClick={() => onSendOrder({ customerName, serviceType, paymentType: 'garcom', observations })}
                 disabled={!cartItems.length || !tableNumber}
-                className="mt-4 h-14 w-full rounded-[14px] bg-[#ffda16] text-sm font-black text-black transition active:scale-[0.99] disabled:bg-white/15 disabled:text-white/35"
+                className="mx-auto mt-4 flex h-12 w-[86%] items-center justify-center rounded-full bg-[#4b160e] text-sm font-black text-white transition active:scale-[0.99] disabled:bg-[#b89d94] disabled:text-white/65"
               >
-                ENVIAR PEDIDO
+                MOSTRAR AO GARÇOM
               </button>
             </div>
           </>
@@ -1774,9 +1868,49 @@ function OrderScreen({
   )
 }
 
+function OrderItemCard({ item, onUpdateCartItem }) {
+  const itemPrice = (item.unitPrice ?? item.product.price) * item.quantity
+  const detail = item.optionLabel || item.optionDetail || 'Porção'
+
+  return (
+    <article className="grid min-h-[112px] grid-cols-[124px_1fr_auto] gap-3 rounded-lg border border-[#d8c7bf] bg-white p-2.5">
+      <img
+        src={item.product.image}
+        alt=""
+        aria-hidden="true"
+        className="h-[92px] w-full rounded-md object-cover"
+      />
+      <div className="min-w-0 py-1">
+        <h2 className="line-clamp-2 text-sm font-black">{item.product.name.toUpperCase()}</h2>
+        <p className="mt-1 text-sm font-medium">{detail}</p>
+        <div className="mt-3 inline-flex h-7 items-center rounded-full border border-[#4b160e] bg-[#f7ead7] text-[#4b160e]">
+          <button
+            type="button"
+            onClick={() => onUpdateCartItem(item.productId, item.quantity - 1, item.optionId, item.note)}
+            aria-label={`Diminuir quantidade de ${item.product.name}`}
+            className="grid h-7 w-8 place-items-center"
+          >
+            <Minus size={14} strokeWidth={3} />
+          </button>
+          <span className="w-9 text-center text-sm font-black">{item.quantity}</span>
+          <button
+            type="button"
+            onClick={() => onUpdateCartItem(item.productId, item.quantity + 1, item.optionId, item.note)}
+            aria-label={`Aumentar quantidade de ${item.product.name}`}
+            className="grid h-7 w-8 place-items-center"
+          >
+            <Plus size={14} strokeWidth={3} />
+          </button>
+        </div>
+      </div>
+      <p className="self-center pr-1 text-right text-base font-black">{formatCurrency(itemPrice)}</p>
+    </article>
+  )
+}
+
 function CartBar({ quantity, total, onOpenOrder }) {
   return (
-    <div className="absolute bottom-4 left-4 right-4 rounded-[18px] bg-slate-950 p-3 text-white shadow-2xl shadow-slate-400/60">
+    <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-[#4b160e] p-3 text-white shadow-2xl shadow-black/20">
       <button
         type="button"
         onClick={onOpenOrder}
@@ -1784,22 +1918,26 @@ function CartBar({ quantity, total, onOpenOrder }) {
         className="flex h-12 w-full items-center justify-between gap-3"
       >
         <span className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-full bg-white/10">
+          <span className="relative grid size-10 place-items-center">
             <ShoppingCart size={18} />
-          </span>
-          <span className="text-left">
-            <span className="block text-sm font-black">Fazer pedido</span>
-            <span className="block text-[10px] font-bold text-white/55">
-              {quantity} {quantity === 1 ? 'item' : 'itens'}
+            <span className="absolute -right-1 top-0 grid size-4 place-items-center rounded-full bg-[#f8a91f] text-[10px] font-black text-white">
+              {quantity}
             </span>
           </span>
+          <span className="text-left">
+            <span className="block text-[13px] font-medium">
+              {quantity} {quantity === 1 ? 'item' : 'itens'}
+            </span>
+            <span className="block text-base font-black">{formatCurrency(total)}</span>
+          </span>
         </span>
-        <span className="text-base font-black">{formatCurrency(total)}</span>
+        <span className="rounded-lg bg-[#f8a91f] px-4 py-3 text-xs font-black text-white">
+          VER CARRINHO
+        </span>
       </button>
     </div>
   )
 }
-
 function HeaderBar({ title, onBack }) {
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-100 bg-white/95 px-4 backdrop-blur">
@@ -1815,44 +1953,6 @@ function HeaderBar({ title, onBack }) {
         {title}
       </h1>
     </header>
-  )
-}
-
-function StepperButton({ icon: Icon, label, onClick }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className="grid size-8 place-items-center rounded-full bg-white text-slate-900 shadow-sm ring-1 ring-slate-100 transition active:scale-95"
-    >
-      <Icon size={16} strokeWidth={3} />
-    </button>
-  )
-}
-
-function OptionGroup({ label, value, options, onChange }) {
-  return (
-    <div>
-      <p className="text-xs font-black text-slate-600">{label}</p>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        {options.map(([id, optionLabel]) => (
-          <button
-            type="button"
-            key={id}
-            onClick={() => onChange(id)}
-            aria-pressed={value === id}
-            className={`h-11 rounded-[12px] text-xs font-black transition active:scale-[0.98] ${
-              value === id
-                ? 'bg-[#ffda16] text-black'
-                : 'bg-white text-slate-700 ring-1 ring-slate-100'
-            }`}
-          >
-            {optionLabel}
-          </button>
-        ))}
-      </div>
-    </div>
   )
 }
 
@@ -2017,17 +2117,6 @@ function findProductByCommand(products, command) {
   })
 }
 
-function getMenuProductNumber(product, index) {
-  const categoryBase = {
-    hamburgueres: 100,
-    sanduiches: 200,
-    pizzas: 300,
-    bebidas: 400,
-  }
-
-  return (categoryBase[product.category] ?? 900) + index + 1
-}
-
 function normalizeText(value) {
   return String(value)
     .normalize('NFD')
@@ -2044,9 +2133,11 @@ function getInitialScreen() {
 
   if (hash.startsWith('#produto=')) return 'produto'
   if (hash === '#pedido') return 'pedido'
+  if (hash === '#menu') return 'menu'
+  if (hash === '#categorias') return 'categorias'
   if (hash.startsWith('#configuracoes')) return 'configuracoes'
 
-  return 'menu'
+  return 'entrada'
 }
 
 function getInitialAdminTab() {
