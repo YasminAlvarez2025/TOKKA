@@ -3,7 +3,9 @@ import {
   ArrowLeft,
   BadgePlus,
   BarChart3,
+  Camera,
   CarFront,
+  ChevronRight,
   CircleCheck,
   Clipboard,
   CupSoda,
@@ -31,6 +33,7 @@ import {
   Settings,
   ShoppingCart,
   Table2,
+  Trash2,
   Volume2,
   VolumeX,
 } from 'lucide-react'
@@ -483,9 +486,12 @@ function App() {
   }, [analyticsEvents, analyticsSession.id])
 
   function showScreen(nextScreen, hashValue = nextScreen) {
+    const normalizedScreen = nextScreen === 'entrada' ? 'menu' : nextScreen
+    const normalizedHash = nextScreen === 'entrada' ? 'menu' : hashValue
+
     stopSpeech()
-    setScreen(nextScreen)
-    window.location.hash = hashValue
+    setScreen(normalizedScreen)
+    window.location.hash = normalizedHash
   }
 
   async function handleAdminLogin({ email, password }) {
@@ -596,7 +602,6 @@ function App() {
       productName: item.name,
       category: item.category,
     })
-    showScreen('menu')
   }
 
   function updateProduct(updatedProduct) {
@@ -619,6 +624,18 @@ function App() {
       ),
     )
     trackEvent('admin_item_status_changed', { productId })
+  }
+
+  function removeProduct(productId) {
+    const product = products.find((item) => item.id === productId)
+
+    setProducts((items) => items.filter((item) => item.id !== productId))
+    setCart((items) => items.filter((item) => item.productId !== productId))
+    trackEvent('admin_item_removed', {
+      productId,
+      productName: product?.name ?? '',
+      category: product?.category ?? '',
+    })
   }
 
   async function copyNfcLink() {
@@ -933,6 +950,7 @@ function App() {
             onOpenNfcPreview={openNfcPreview}
             onOpenPartnerLink={openPartnerLink}
             onLogout={handleAdminLogout}
+            onRemoveProduct={removeProduct}
             onToggleProductActive={toggleProductActive}
             onUpdateProduct={updateProduct}
           />
@@ -1216,7 +1234,7 @@ function MenuScreen({
         alt="Coco Bambu"
         loading="eager"
         decoding="sync"
-        className={`pointer-events-none absolute left-1/2 top-[55px] size-[82px] -translate-x-1/2 rounded-full border-[3px] border-[#d8ad61] bg-[#4a160f] transition-all duration-500 ease-out ${
+        className={`pointer-events-none absolute left-1/2 top-[43px] size-[82px] -translate-x-1/2 rounded-full border-[3px] border-[#d8ad61] bg-[#4a160f] transition-all duration-500 ease-out ${
           menuSheetRaised ? 'z-0 -translate-y-5 opacity-0 scale-95' : 'z-30 translate-y-0 opacity-100 scale-100'
         }`}
         draggable="false"
@@ -1829,10 +1847,13 @@ function SettingsScreen({
   onOpenNfcPreview,
   onOpenPartnerLink,
   onLogout,
+  onRemoveProduct,
   onToggleProductActive,
   onUpdateProduct,
 }) {
   const [activeTab, setActiveTab] = useState(() => getInitialAdminTab())
+  const [cardapioView, setCardapioView] = useState('inicio')
+  const [productFormOpen, setProductFormOpen] = useState(false)
   const [editingProductId, setEditingProductId] = useState('')
   const [form, setForm] = useState({
     name: '',
@@ -1878,14 +1899,8 @@ function SettingsScreen({
       onAddAdminItem(productPayload)
     }
 
-    setEditingProductId('')
-    setForm({
-      name: '',
-      category: 'frutos-do-mar',
-      price: '',
-      description: '',
-      ingredients: '',
-    })
+    resetProductForm()
+    setProductFormOpen(false)
   }
 
   const settingsTabs = [
@@ -1898,6 +1913,8 @@ function SettingsScreen({
   function editProduct(product) {
     setEditingProductId(product.id)
     setActiveTab('cardapio')
+    setCardapioView('editor')
+    setProductFormOpen(true)
     setForm({
       name: product.name,
       category: product.category,
@@ -1907,7 +1924,7 @@ function SettingsScreen({
     })
   }
 
-  function cancelEdit() {
+  function resetProductForm() {
     setEditingProductId('')
     setForm({
       name: '',
@@ -1918,8 +1935,32 @@ function SettingsScreen({
     })
   }
 
+  function startNewProduct() {
+    resetProductForm()
+    setActiveTab('cardapio')
+    setCardapioView('editor')
+    setProductFormOpen(true)
+  }
+
+  function cancelEdit() {
+    resetProductForm()
+    setProductFormOpen(false)
+  }
+
+  function removeProduct(product) {
+    const shouldRemove = window.confirm(`Remover "${product.name}" do cardapio?`)
+
+    if (!shouldRemove) return
+
+    if (editingProductId === product.id) {
+      cancelEdit()
+    }
+
+    onRemoveProduct(product.id)
+  }
+
   return (
-    <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8">
+    <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-8">
       <HeaderBar title="Admin" onBack={onBack} />
 
       <div className="ml-5 w-[390px] max-w-[calc(100vw-40px)] pt-5">
@@ -1966,7 +2007,40 @@ function SettingsScreen({
           ))}
         </div>
 
-        {activeTab === 'cardapio' && (
+        {activeTab === 'cardapio' && cardapioView === 'inicio' && (
+          <AdminMenuStart
+            activeProducts={products.filter((product) => product.active !== false).length}
+            categoriesCount={categories.length}
+            productsCount={products.length}
+            onOpenEditor={() => setCardapioView('editor')}
+            onStartNewProduct={startNewProduct}
+          />
+        )}
+
+        {activeTab === 'cardapio' && cardapioView === 'editor' && (
+          <AdminMenuEditor
+            categories={categories}
+            products={products}
+            onBack={() => setCardapioView('inicio')}
+            onEditProduct={editProduct}
+            onRemoveProduct={removeProduct}
+            onStartNewProduct={startNewProduct}
+            onToggleProductActive={onToggleProductActive}
+          />
+        )}
+
+        {activeTab === 'cardapio' && productFormOpen && (
+          <AdminProductFormModal
+            categories={categories}
+            editing={Boolean(editingProductId)}
+            form={form}
+            onCancel={cancelEdit}
+            onChange={setForm}
+            onSubmit={submitItem}
+          />
+        )}
+
+        {activeTab === 'cardapio' && cardapioView === 'legado' && (
           <form onSubmit={submitItem} className="mt-5 space-y-4">
             <section className="rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between">
@@ -2275,6 +2349,365 @@ function SettingsScreen({
         )}
       </div>
     </section>
+  )
+}
+
+function AdminMenuStart({ activeProducts, categoriesCount, productsCount, onOpenEditor, onStartNewProduct }) {
+  return (
+    <section className="mt-5 space-y-4">
+      <button
+        type="button"
+        onClick={onOpenEditor}
+        className="grid w-full grid-cols-[44px_1fr_auto] items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm shadow-slate-200/70 transition active:scale-[0.99]"
+      >
+        <span className="grid size-11 place-items-center rounded-lg bg-[#4b160e] text-[#d8ad61]">
+          <BadgePlus size={21} strokeWidth={2.5} />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-base font-black text-slate-950">Editar cardapio</span>
+          <span className="mt-1 block text-xs font-semibold text-slate-500">
+            Promocoes, categorias e pratos em uma visao unica.
+          </span>
+        </span>
+        <ChevronRight size={20} className="text-slate-400" />
+      </button>
+
+      <div className="grid grid-cols-3 gap-2">
+        <AdminStat label="Itens" value={productsCount} />
+        <AdminStat label="Ativos" value={activeProducts} />
+        <AdminStat label="Categorias" value={categoriesCount} />
+      </div>
+
+      <button
+        type="button"
+        onClick={onStartNewProduct}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 text-sm font-black text-white transition active:scale-[0.99]"
+      >
+        <Plus size={17} strokeWidth={2.8} />
+        ADICIONAR ITEM
+      </button>
+    </section>
+  )
+}
+
+function AdminStat({ label, value }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <p className="text-lg font-black text-slate-950">{value}</p>
+      <p className="mt-1 text-[10px] font-bold uppercase text-slate-400">{label}</p>
+    </div>
+  )
+}
+
+function AdminMenuEditor({
+  categories,
+  products,
+  onBack,
+  onEditProduct,
+  onRemoveProduct,
+  onStartNewProduct,
+  onToggleProductActive,
+}) {
+  return (
+    <section className="mt-5 space-y-5 pb-4">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/80">
+        <div className="relative h-[106px]">
+          <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
+          <div className="absolute inset-0 bg-black/10" />
+          <button
+            type="button"
+            onClick={onBack}
+            className="absolute left-3 top-3 grid size-9 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow"
+            aria-label="Voltar para opcoes do cardapio"
+          >
+            <ArrowLeft size={19} strokeWidth={2.6} />
+          </button>
+          <button
+            type="button"
+            className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow"
+            aria-label="Imagem de capa"
+          >
+            <Camera size={18} strokeWidth={2.4} />
+          </button>
+        </div>
+
+        <div className="relative px-4 pb-5 pt-9">
+          <div className="absolute left-5 top-[-50px]">
+            <img
+              src={cocoLogo}
+              alt="Coco Bambu"
+              className="size-[96px] rounded-full border-[3px] border-[#d8ad61] bg-[#4b160e]"
+              draggable="false"
+            />
+            <button
+              type="button"
+              className="absolute -bottom-1 right-1 grid size-8 place-items-center rounded-full bg-slate-100 text-slate-700 ring-2 ring-white"
+              aria-label="Alterar logo"
+            >
+              <Camera size={15} strokeWidth={2.5} />
+            </button>
+          </div>
+
+          <div className="ml-[132px] space-y-3">
+            <div className="h-9 rounded-lg bg-slate-100 px-4 text-sm font-semibold leading-9 text-slate-600">
+              Coco Bambu
+            </div>
+            <div className="h-9 rounded-lg bg-slate-100 px-4 text-sm font-semibold leading-9 text-slate-600">
+              Derby, Recife - PE
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <AdminEditorSectionTitle
+        title="Cards promocao"
+        actionLabel="Adicionar"
+        onAction={onStartNewProduct}
+      />
+      <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
+        {promoSlides.map((slide) => (
+          <div
+            key={slide.id}
+            className="grid w-[386px] max-w-[calc(100vw-64px)] shrink-0 grid-cols-[1fr_96px] gap-3 rounded-lg bg-slate-100 p-3"
+          >
+            <img
+              src={slide.image}
+              alt={slide.alt}
+              className="h-[112px] w-full rounded-md bg-[#4b160e] object-contain"
+              draggable="false"
+            />
+            <AdminActionStack disabled />
+          </div>
+        ))}
+      </div>
+
+      <AdminEditorSectionTitle
+        title="Categorias"
+        actionLabel="Adicionar"
+        onAction={onStartNewProduct}
+      />
+      <div className="grid grid-cols-3 gap-3">
+        {categories.slice(0, 6).map((category) => (
+          <div key={category.id} className="min-w-0">
+            <div className="overflow-hidden rounded-md bg-slate-100">
+              <img src={category.image} alt="" className="h-[88px] w-full object-cover" draggable="false" />
+            </div>
+            <p className="mt-2 truncate text-center text-[12px] font-black text-[#4b160e]">
+              {category.label.toUpperCase()}
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              <AdminMiniAction icon={Pencil} label="Editar" disabled />
+              <AdminMiniAction icon={Trash2} label="Excluir" disabled />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <AdminEditorSectionTitle title="Destaques" actionLabel="Adicionar" onAction={onStartNewProduct} />
+      <div className="space-y-3">
+        {products.map((product) => (
+          <AdminProductEditorCard
+            key={product.id}
+            product={product}
+            onEdit={() => onEditProduct(product)}
+            onRemove={() => onRemoveProduct(product)}
+            onToggle={() => onToggleProductActive(product.id)}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function AdminEditorSectionTitle({ title, actionLabel, onAction }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <h2 className="text-sm font-black uppercase text-[#4b160e]">{title}</h2>
+      {onAction && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-100 px-3 text-[11px] font-black text-slate-700 transition active:scale-[0.98]"
+        >
+          <Plus size={14} strokeWidth={2.8} />
+          {actionLabel}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function AdminActionStack({ disabled = false, onEdit, onRemove }) {
+  return (
+    <div className="grid content-center gap-2">
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={disabled}
+        className="flex h-10 items-center justify-center gap-1.5 rounded-lg bg-slate-200 text-xs font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        <Trash2 size={16} />
+        Excluir
+      </button>
+      <button
+        type="button"
+        onClick={onEdit}
+        disabled={disabled}
+        className="flex h-10 items-center justify-center gap-1.5 rounded-lg bg-slate-200 text-xs font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-70"
+      >
+        <Pencil size={16} />
+        Editar
+      </button>
+    </div>
+  )
+}
+
+function AdminMiniAction({ icon: Icon, label, disabled = false }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      className="flex h-8 items-center justify-center gap-1 rounded-md bg-slate-200 text-[10px] font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-70"
+    >
+      <Icon size={13} />
+      {label}
+    </button>
+  )
+}
+
+function AdminProductEditorCard({ product, onEdit, onRemove, onToggle }) {
+  return (
+    <article className="grid min-h-[116px] grid-cols-[118px_1fr_98px] gap-3 rounded-lg bg-slate-100 p-2">
+      <img
+        src={product.image}
+        alt=""
+        className="h-full min-h-[100px] rounded-md object-cover"
+        draggable="false"
+      />
+      <div className="min-w-0 py-1">
+        <h3 className="line-clamp-2 text-sm font-black leading-tight text-[#4b160e]">
+          {product.name.toUpperCase()}
+        </h3>
+        <p className="mt-1 line-clamp-3 text-[12px] font-semibold leading-4 text-[#4b2a22]">
+          {product.description}
+        </p>
+        <p className="mt-1 text-sm font-black text-[#4b160e]">{formatCurrency(product.price)}</p>
+      </div>
+      <div className="grid content-center gap-2">
+        <button
+          type="button"
+          onClick={onRemove}
+          className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-200 text-xs font-bold text-slate-600"
+        >
+          <Trash2 size={15} />
+          Excluir
+        </button>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-200 text-xs font-bold text-slate-600"
+        >
+          <Pencil size={15} />
+          Editar
+        </button>
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`h-8 rounded-lg text-[10px] font-black ${
+            product.active === false ? 'bg-white text-slate-500' : 'bg-[#4b160e] text-white'
+          }`}
+        >
+          {product.active === false ? 'INATIVO' : 'ATIVO'}
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function AdminProductFormModal({ categories, editing, form, onCancel, onChange, onSubmit }) {
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-end bg-slate-950/45 px-4 pb-4 pt-12 md:absolute">
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-[398px] rounded-2xl bg-white p-4 shadow-2xl shadow-slate-950/20"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-black text-slate-950">
+              {editing ? 'Editar item' : 'Adicionar item'}
+            </h2>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              Atualize nome, categoria, preco e descricao do prato.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="grid size-9 place-items-center rounded-lg bg-slate-100 text-slate-600"
+            aria-label="Fechar formulario"
+          >
+            <ArrowLeft size={18} strokeWidth={2.5} />
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          <AdminInput
+            label="Nome"
+            value={form.name}
+            placeholder="Ex.: Camarao Coco Brasil"
+            onChange={(value) => onChange((current) => ({ ...current, name: value }))}
+          />
+
+          <div className="grid grid-cols-[1fr_104px] gap-3">
+            <label className="block text-xs font-black text-slate-600">
+              Categoria
+              <select
+                value={form.category}
+                onChange={(event) =>
+                  onChange((current) => ({ ...current, category: event.target.value }))
+                }
+                className="mt-2 h-11 w-full rounded-lg bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none ring-1 ring-slate-200"
+              >
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <AdminInput
+              label="Preco"
+              value={form.price}
+              placeholder="199,00"
+              onChange={(value) => onChange((current) => ({ ...current, price: value }))}
+            />
+          </div>
+
+          <AdminInput
+            label="Ingredientes"
+            value={form.ingredients}
+            placeholder="Camarao, catupiry, arroz"
+            onChange={(value) => onChange((current) => ({ ...current, ingredients: value }))}
+          />
+
+          <AdminInput
+            label="Descricao"
+            value={form.description}
+            placeholder="Resumo do item"
+            onChange={(value) => onChange((current) => ({ ...current, description: value }))}
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 text-sm font-black text-white transition active:scale-[0.99]"
+        >
+          <Save size={17} />
+          {editing ? 'SALVAR ALTERACOES' : 'SALVAR ITEM'}
+        </button>
+      </form>
+    </div>
   )
 }
 
@@ -2779,7 +3212,7 @@ function getInitialScreen() {
   if (hash === '#categorias') return 'categorias'
   if (hash.startsWith('#configuracoes')) return 'configuracoes'
 
-  return 'entrada'
+  return 'menu'
 }
 
 function getCategoryFromHash() {
