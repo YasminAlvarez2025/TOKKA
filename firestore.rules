@@ -152,7 +152,15 @@ service cloud.firestore {
 
     match /restaurants/{restaurantId}/admins/{adminId} {
       allow read: if isSignedIn() && request.auth.uid == adminId;
-      allow write: if false;
+      allow create: if isKnownRestaurant(restaurantId)
+        && isSignedIn()
+        && request.auth.uid == adminId
+        && request.auth.token.email == 'admin@tokkafoods.com.br'
+        && request.resource.data.keys().hasOnly(['email', 'role', 'createdAt'])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'owner'
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
     }
   }
 }

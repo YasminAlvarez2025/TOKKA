@@ -14,6 +14,9 @@ import {
   LayoutGrid,
   Leaf,
   List,
+  LockKeyhole,
+  LogOut,
+  Mail,
   MapPin,
   Mic,
   MicOff,
@@ -55,6 +58,7 @@ import iconFrutosDoMar from './assets/icons/icon frutos do mar.png'
 import iconSaladas from './assets/icons/icon salada.png'
 import iconSobremesas from './assets/icons/icon sobremesa.png'
 import iconVeganos from './assets/icons/icon vegano.png'
+import { loginAdmin, logoutAdmin, translateAdminAuthError, watchAdminSession } from './lib/adminAuth'
 import { persistAnalyticsEvent, persistOrder } from './lib/firebaseEvents'
 
 const categories = [
@@ -83,6 +87,7 @@ const tableOptions = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10'
 
 const restaurantId = 'tokka-foods'
 const restaurantName = 'COCO BAMBU'
+const defaultAdminEmail = 'admin@tokkafoods.com.br'
 const analyticsStorageKey = 'food99like-events'
 const sessionStorageKey = 'food99like-session'
 const cardBaseUrl = 'https://menu.food99like.app/c/8Ks29'
@@ -341,8 +346,10 @@ function App() {
   const [analyticsSession] = useState(() => getAnalyticsSession(initialTable))
   const [screen, setScreen] = useState(() => getInitialScreen())
   const [menuMode, setMenuMode] = useState('padrao')
-  const [activeCategory, setActiveCategory] = useState('frutos-do-mar')
+  const [activeCategory, setActiveCategory] = useState(() => getCategoryFromHash() || 'frutos-do-mar')
+  const [menuCategorySelected, setMenuCategorySelected] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState(() => getProductFromHash())
+  const [productReturnScreen, setProductReturnScreen] = useState('menu')
   const [products, setProducts] = useState(baseProducts)
   const [cart, setCart] = useState([])
   const [tableNumber, setTableNumber] = useState(initialTable || '')
@@ -353,6 +360,14 @@ function App() {
   const [voiceCommandListening, setVoiceCommandListening] = useState(false)
   const [readerStatus, setReaderStatus] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [adminSession, setAdminSession] = useState({
+    loading: true,
+    user: null,
+    isAdmin: false,
+    error: '',
+  })
+  const [adminLoginError, setAdminLoginError] = useState('')
+  const [adminLoginLoading, setAdminLoginLoading] = useState(false)
   const speechStopTimerRef = useRef(null)
   const initialMenuEventSyncedRef = useRef(false)
   const [analyticsEvents, setAnalyticsEvents] = useState(() => {
@@ -424,6 +439,18 @@ function App() {
   }, [])
 
   useEffect(() => {
+    return watchAdminSession(restaurantId, (session) => {
+      setAdminSession(session)
+
+      if (session.isAdmin) {
+        setAdminLoginError('')
+      } else if (session.error) {
+        setAdminLoginError(session.error)
+      }
+    })
+  }, [])
+
+  useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       document.querySelector('[data-screen-title="true"]')?.focus()
     })
@@ -461,6 +488,26 @@ function App() {
     window.location.hash = hashValue
   }
 
+  async function handleAdminLogin({ email, password }) {
+    setAdminLoginError('')
+    setAdminLoginLoading(true)
+
+    try {
+      await loginAdmin(email, password)
+      trackEvent('admin_login', { email })
+    } catch (error) {
+      setAdminLoginError(translateAdminAuthError(error))
+    } finally {
+      setAdminLoginLoading(false)
+    }
+  }
+
+  async function handleAdminLogout() {
+    await logoutAdmin()
+    setAdminLoginError('')
+    trackEvent('admin_logout')
+  }
+
   function startMenuMode(mode) {
     setMenuMode(mode)
     showScreen('menu')
@@ -472,6 +519,7 @@ function App() {
   }
 
   function openProduct(product) {
+    setProductReturnScreen(screen === 'categoria-pratos' ? 'categoria-pratos' : 'menu')
     setSelectedProductId(product.id)
     showScreen('produto', `produto=${product.id}`)
     trackEvent('product_view', {
@@ -542,6 +590,7 @@ function App() {
   function addAdminItem(item) {
     setProducts((items) => [...items, { ...item, active: true }])
     setActiveCategory(item.category)
+    setMenuCategorySelected(true)
     trackEvent('admin_item_created', {
       productId: item.id,
       productName: item.name,
@@ -591,8 +640,17 @@ function App() {
 
   function changeCategory(categoryId) {
     setActiveCategory(categoryId)
+    setMenuCategorySelected(true)
     setSearchQuery('')
     trackEvent('category_view', { category: categoryId })
+  }
+
+  function openCategoryProducts(categoryId) {
+    setActiveCategory(categoryId)
+    setMenuCategorySelected(true)
+    setSearchQuery('')
+    trackEvent('category_view', { category: categoryId, source: 'categories_screen' })
+    showScreen('categoria-pratos', `categoria=${categoryId}`)
   }
 
   function changeSearchQuery(value, source = 'typing') {
@@ -790,6 +848,7 @@ function App() {
           <MenuScreen
             products={menuProducts}
             activeCategory={activeCategory}
+            menuCategorySelected={menuCategorySelected}
             cartQuantity={cartQuantity}
             cartTotal={cartTotal}
             menuMode={menuMode}
@@ -816,10 +875,17 @@ function App() {
             categories={categories}
             onBack={() => showScreen('menu')}
             onOpenSettings={() => showScreen('configuracoes')}
-            onSelectCategory={(categoryId) => {
-              changeCategory(categoryId)
-              showScreen('menu')
-            }}
+            onSelectCategory={openCategoryProducts}
+          />
+        )}
+
+        {screen === 'categoria-pratos' && (
+          <CategoryProductsScreen
+            category={categories.find((category) => category.id === activeCategory) ?? categories[0]}
+            products={menuProducts.filter((product) => product.category === activeCategory)}
+            onBack={() => showScreen('categorias')}
+            onOpenProduct={openProduct}
+            onOpenSettings={() => showScreen('configuracoes')}
           />
         )}
 
@@ -827,15 +893,33 @@ function App() {
           <ProductScreen
             key={selectedProduct.id}
             product={selectedProduct}
-            onBack={() => showScreen('menu')}
+            onBack={() => {
+              if (productReturnScreen === 'categoria-pratos') {
+                showScreen('categoria-pratos', `categoria=${activeCategory}`)
+                return
+              }
+
+              showScreen('menu')
+            }}
             onAddToCart={addToCart}
             onOrderNow={() => showScreen('pedido')}
             onReadProduct={readProductIngredients}
           />
         )}
 
-        {screen === 'configuracoes' && (
+        {screen === 'configuracoes' && !adminSession.isAdmin && (
+          <AdminLoginScreen
+            defaultEmail={defaultAdminEmail}
+            error={adminLoginError}
+            loading={adminLoginLoading || adminSession.loading}
+            onBack={() => showScreen('menu')}
+            onLogin={handleAdminLogin}
+          />
+        )}
+
+        {screen === 'configuracoes' && adminSession.isAdmin && (
           <SettingsScreen
+            adminEmail={adminSession.user?.email ?? ''}
             copied={copied}
             nfcTable={nfcTable}
             categories={categories}
@@ -848,6 +932,7 @@ function App() {
             onNfcTableChange={setNfcTable}
             onOpenNfcPreview={openNfcPreview}
             onOpenPartnerLink={openPartnerLink}
+            onLogout={handleAdminLogout}
             onToggleProductActive={toggleProductActive}
             onUpdateProduct={updateProduct}
           />
@@ -958,6 +1043,79 @@ function CategoriesScreen({ categories, onBack, onOpenSettings, onSelectCategory
   )
 }
 
+function CategoryProductsScreen({ category, products, onBack, onOpenProduct, onOpenSettings }) {
+  const groupedProducts = groupProductsByMenuSection(products, category)
+
+  return (
+    <section className="h-full overflow-y-auto bg-white pb-8 text-[#43160f]" aria-labelledby="category-products-title">
+      <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} compact />
+
+      <div className="relative z-10 -mt-7 rounded-t-[26px] bg-white px-4 pb-8 pt-[70px] shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <div className="absolute left-1/2 top-[-70px] grid size-[126px] -translate-x-1/2 place-items-center rounded-full border-4 border-[#d8ad61] bg-[#4b160e] shadow-[0_5px_0_rgba(75,22,14,0.18)]">
+          <img src={category.iconImage} alt="" className="w-[82px]" />
+        </div>
+
+        <h1
+          id="category-products-title"
+          data-screen-title="true"
+          tabIndex={-1}
+          className="text-center text-[22px] font-black outline-none"
+        >
+          {category.label.toUpperCase()}
+        </h1>
+
+        <div className="mt-5 space-y-5">
+          {groupedProducts.length ? (
+            groupedProducts.map((group) => (
+              <section key={group.title}>
+                <h2 className="mb-2 px-1 text-[17px] font-black">{group.title}</h2>
+                <div className="space-y-2.5">
+                  {group.products.map((product) => (
+                    <CategoryDishCard
+                      key={product.id}
+                      product={product}
+                      onOpen={() => onOpenProduct(product)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))
+          ) : (
+            <p className="rounded-lg bg-[#f0f0f0] p-4 text-sm font-bold text-[#7d6259]">
+              Nenhum prato cadastrado nesta categoria.
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CategoryDishCard({ product, onOpen }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={buildProductAriaLabel(product)}
+      className="grid min-h-[116px] w-full grid-cols-[1fr_130px] gap-3 rounded-lg bg-[#f0f0f0] p-3 text-left"
+    >
+      <span className="min-w-0">
+        <span className="line-clamp-1 block text-[13px] font-black">{product.name.toUpperCase()}</span>
+        <span className="mt-1.5 line-clamp-3 block text-[13px] font-medium leading-[18px]">
+          {product.description}
+        </span>
+        <span className="mt-1 block text-sm font-black">{formatCurrency(product.price)}</span>
+      </span>
+      <span className="relative block h-[90px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
+        <img src={product.image} alt="" className="block size-full object-cover" />
+        <span className="absolute bottom-2 right-2 flex h-5 items-center justify-center whitespace-nowrap rounded-full bg-white/95 px-2 text-[7.5px] font-black leading-none text-[#4b160e] shadow-[0_2px_8px_rgba(67,22,15,0.16)]">
+          VER PRATO &gt;
+        </span>
+      </span>
+    </button>
+  )
+}
+
 function TopPhotoBar({ onBack, onOpenSettings, trailingIcon = 'settings', compact = false, showBack = true }) {
   return (
     <div className={`relative overflow-hidden ${compact ? 'h-[144px]' : 'h-[156px]'}`}>
@@ -992,6 +1150,7 @@ function TopPhotoBar({ onBack, onOpenSettings, trailingIcon = 'settings', compac
 function MenuScreen({
   products,
   activeCategory,
+  menuCategorySelected,
   cartQuantity,
   cartTotal,
   menuMode,
@@ -1011,13 +1170,22 @@ function MenuScreen({
   const [productLayout, setProductLayout] = useState('lista')
   const [menuSheetRaised, setMenuSheetRaised] = useState(false)
   const visibleProducts = filterProducts(products, searchQuery)
-  const categoryProducts = searchQuery.trim()
+  const selectedCategory = categories.find((category) => category.id === activeCategory) ?? categories[0]
+  const categoryProducts = visibleProducts.filter((product) => product.category === activeCategory)
+  const menuProductSource = searchQuery.trim()
     ? visibleProducts
-    : visibleProducts.filter((product) => product.category === activeCategory)
-  const featuredProducts = (categoryProducts.length ? categoryProducts : visibleProducts).slice(
+    : menuCategorySelected
+      ? categoryProducts
+      : visibleProducts
+  const featuredProducts = (menuProductSource.length ? menuProductSource : visibleProducts).slice(
     0,
     menuMode === 'simplificado' ? 4 : 6,
   )
+  const menuSectionTitle = searchQuery.trim()
+    ? 'RESULTADOS'
+    : menuCategorySelected
+      ? selectedCategory.label.toUpperCase()
+      : 'DESTAQUES'
   const previewCategories = categories.slice(0, 3)
 
   useEffect(() => {
@@ -1120,7 +1288,7 @@ function MenuScreen({
               <CategoryPreviewCard
                 key={category.id}
                 category={category}
-                active={category.id === activeCategory}
+                active={menuCategorySelected && category.id === activeCategory}
                 onClick={() => onCategoryChange(category.id)}
               />
             ))}
@@ -1128,7 +1296,7 @@ function MenuScreen({
         </div>
 
         <div className="mt-1.5 flex items-center justify-between">
-          <h2 className="text-base font-medium">DESTAQUES</h2>
+          <h2 className="text-base font-medium">{menuSectionTitle}</h2>
           <ViewModeToggle value={productLayout} onChange={setProductLayout} />
         </div>
 
@@ -1549,8 +1717,106 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
   )
 }
 
+function AdminLoginScreen({ error, loading, onBack, onLogin }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  function submitLogin(event) {
+    event.preventDefault()
+
+    if (!email.trim() || !password) {
+      return
+    }
+
+    onLogin({ email, password })
+  }
+
+  return (
+    <section className="h-full overflow-hidden bg-white text-[#4b160e]" aria-labelledby="admin-login-title">
+      <div className="relative h-[177px] overflow-hidden">
+        <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
+        <div className="absolute inset-0 bg-black/10" />
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Voltar ao cardapio"
+          className="absolute right-7 top-8 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
+        >
+          <Settings size={25} strokeWidth={2.6} />
+        </button>
+      </div>
+
+      <div className="relative z-10 -mt-px min-h-[calc(100%-176px)] rounded-t-[18px] bg-white px-11 pt-[185px]">
+        <img
+          src={cocoLogo}
+          alt="Coco Bambu"
+          loading="eager"
+          decoding="sync"
+          className="absolute left-1/2 top-[-94px] size-[200px] -translate-x-1/2 rounded-full border-[12px] border-white bg-[#4b160e]"
+          draggable="false"
+        />
+
+        <div className="text-center">
+          <h1
+            id="admin-login-title"
+            data-screen-title="true"
+            tabIndex={-1}
+            className="text-[39px] font-black leading-none outline-none"
+          >
+            LOGIN
+          </h1>
+          <p className="mt-4 text-base font-medium uppercase leading-none">ACESSO ADMINISTRATIVO</p>
+        </div>
+
+        <form onSubmit={submitLogin} className="mt-9 space-y-3">
+          <label className="grid h-[58px] grid-cols-[28px_1fr] items-center gap-3 rounded-[9px] bg-[#eeeeee] px-5 text-[#a9908b]">
+            <Mail size={22} strokeWidth={2} />
+            <span className="sr-only">Email</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Email"
+              autoComplete="email"
+              className="h-full bg-transparent text-base font-medium text-[#4b160e] outline-none placeholder:text-[#ad9995]"
+            />
+          </label>
+
+          <label className="grid h-[58px] grid-cols-[28px_1fr] items-center gap-3 rounded-[9px] bg-[#eeeeee] px-5 text-[#a9908b]">
+            <LockKeyhole size={22} strokeWidth={2} />
+            <span className="sr-only">Senha</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Senha"
+              autoComplete="current-password"
+              className="h-full bg-transparent text-base font-medium text-[#4b160e] outline-none placeholder:text-[#ad9995]"
+            />
+          </label>
+
+          {error && (
+            <p className="pt-1 text-center text-xs font-bold text-red-700" role="alert">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mx-auto !mt-8 flex h-12 w-[247px] max-w-full items-center justify-center rounded-[9px] bg-[#4b160e] text-base font-black text-white transition active:scale-[0.99] disabled:bg-[#8f6b62]"
+          >
+            {loading ? 'ENTRANDO...' : 'ENTRAR'}
+          </button>
+        </form>
+      </div>
+    </section>
+  )
+}
+
 function SettingsScreen({
   analyticsSummary,
+  adminEmail,
   categories,
   copied,
   generatedNfcLink,
@@ -1562,6 +1828,7 @@ function SettingsScreen({
   onNfcTableChange,
   onOpenNfcPreview,
   onOpenPartnerLink,
+  onLogout,
   onToggleProductActive,
   onUpdateProduct,
 }) {
@@ -1656,11 +1923,23 @@ function SettingsScreen({
       <HeaderBar title="Admin" onBack={onBack} />
 
       <div className="ml-5 w-[390px] max-w-[calc(100vw-40px)] pt-5">
-        <div className="border-b border-slate-200 pb-4">
-          <p className="text-[11px] font-black uppercase text-slate-400">Configurações</p>
-          <h2 className="mt-1 text-2xl font-black leading-tight text-slate-950">
-            Gerenciar cardápio
-          </h2>
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+          <div className="min-w-0">
+            <p className="text-[11px] font-black uppercase text-slate-400">Configurações</p>
+            <h2 className="mt-1 text-2xl font-black leading-tight text-slate-950">
+              Gerenciar cardápio
+            </h2>
+            <p className="mt-1 truncate text-xs font-bold text-slate-400">{adminEmail}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="mt-1 grid size-10 shrink-0 place-items-center rounded-lg bg-slate-50 text-slate-600 ring-1 ring-slate-200 transition active:scale-95"
+            aria-label="Sair do admin"
+            title="Sair"
+          >
+            <LogOut size={17} strokeWidth={2.4} />
+          </button>
         </div>
 
         <div
@@ -2441,6 +2720,44 @@ function findProductByCommand(products, command) {
   })
 }
 
+function groupProductsByMenuSection(products, category) {
+  const groups = products.reduce((currentGroups, product) => {
+    const title = getProductMenuSection(product, category)
+
+    if (!currentGroups.has(title)) {
+      currentGroups.set(title, [])
+    }
+
+    currentGroups.get(title).push(product)
+    return currentGroups
+  }, new Map())
+
+  return Array.from(groups, ([title, groupProducts]) => ({
+    title,
+    products: groupProducts,
+  }))
+}
+
+function getProductMenuSection(product, category) {
+  const productName = normalizeText(product.name)
+
+  if (category.id === 'frutos-do-mar') {
+    if (productName.includes('camarao')) return 'CAMARÃO'
+    if (productName.includes('lagosta')) return 'LAGOSTA'
+    if (productName.includes('peixe') || productName.includes('caldinho')) return 'PEIXES'
+  }
+
+  if (category.id === 'carnes') return 'CARNES'
+  if (category.id === 'entradas') return 'ENTRADAS'
+  if (category.id === 'saladas') return 'SALADAS'
+  if (category.id === 'frangos') return 'FRANGOS'
+  if (category.id === 'veganos') return 'VEGANOS'
+  if (category.id === 'sobremesas') return 'SOBREMESAS'
+  if (category.id === 'bebidas') return 'BEBIDAS'
+
+  return category.label.toUpperCase()
+}
+
 function normalizeText(value) {
   return String(value)
     .normalize('NFD')
@@ -2456,12 +2773,21 @@ function getInitialScreen() {
   const hash = window.location.hash
 
   if (hash.startsWith('#produto=')) return 'produto'
+  if (hash.startsWith('#categoria=')) return 'categoria-pratos'
   if (hash === '#pedido') return 'pedido'
   if (hash === '#menu') return 'menu'
   if (hash === '#categorias') return 'categorias'
   if (hash.startsWith('#configuracoes')) return 'configuracoes'
 
   return 'entrada'
+}
+
+function getCategoryFromHash() {
+  const categoryId = window.location.hash.replace('#categoria=', '')
+
+  return categories.some((category) => category.id === categoryId)
+    ? categoryId
+    : ''
 }
 
 function getInitialAdminTab() {
