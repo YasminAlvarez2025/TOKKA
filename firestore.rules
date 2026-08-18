@@ -1,0 +1,158 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isKnownRestaurant(restaurantId) {
+      return restaurantId == 'tokka-foods';
+    }
+
+    function isRestaurantAdmin(restaurantId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/restaurants/$(restaurantId)/admins/$(request.auth.uid));
+    }
+
+    function hasOnlyAllowedEventFields() {
+      return request.resource.data.keys().hasOnly([
+        'id',
+        'event',
+        'restaurantId',
+        'sessionId',
+        'cardId',
+        'source',
+        'createdAt',
+        'clientCreatedAt',
+        'language',
+        'tableNumber',
+        'productId',
+        'productName',
+        'category',
+        'quantity',
+        'hasNote',
+        'optionId',
+        'url',
+        'command',
+        'searchQuery',
+        'resultCount',
+        'serviceType',
+        'paymentType',
+        'hasCustomerName',
+        'cartQuantity',
+        'cartTotal',
+        'orderId'
+      ]);
+    }
+
+    function optionalString(field) {
+      return !(field in request.resource.data) || request.resource.data[field] is string;
+    }
+
+    function optionalNumber(field) {
+      return !(field in request.resource.data) || request.resource.data[field] is number;
+    }
+
+    function optionalBool(field) {
+      return !(field in request.resource.data) || request.resource.data[field] is bool;
+    }
+
+    function isAnalyticsEvent(restaurantId) {
+      return isKnownRestaurant(restaurantId)
+        && hasOnlyAllowedEventFields()
+        && request.resource.data.restaurantId == restaurantId
+        && request.resource.data.event is string
+        && request.resource.data.sessionId is string
+        && request.resource.data.cardId is string
+        && request.resource.data.source is string
+        && request.resource.data.createdAt == request.time
+        && optionalString('id')
+        && optionalString('clientCreatedAt')
+        && optionalString('language')
+        && optionalString('tableNumber')
+        && optionalString('productId')
+        && optionalString('productName')
+        && optionalString('category')
+        && optionalString('optionId')
+        && optionalString('url')
+        && optionalString('command')
+        && optionalString('searchQuery')
+        && optionalString('serviceType')
+        && optionalString('paymentType')
+        && optionalString('orderId')
+        && optionalNumber('quantity')
+        && optionalNumber('resultCount')
+        && optionalNumber('cartQuantity')
+        && optionalNumber('cartTotal')
+        && optionalBool('hasNote')
+        && optionalBool('hasCustomerName');
+    }
+
+    function hasOnlyAllowedOrderFields() {
+      return request.resource.data.keys().hasOnly([
+        'id',
+        'restaurantId',
+        'sessionId',
+        'tableNumber',
+        'serviceType',
+        'paymentType',
+        'customerName',
+        'observations',
+        'status',
+        'cartQuantity',
+        'cartTotal',
+        'items',
+        'clientCreatedAt',
+        'createdAt'
+      ]);
+    }
+
+    function isCustomerOrder(restaurantId) {
+      return isKnownRestaurant(restaurantId)
+        && hasOnlyAllowedOrderFields()
+        && request.resource.data.restaurantId == restaurantId
+        && request.resource.data.id is string
+        && request.resource.data.sessionId is string
+        && request.resource.data.tableNumber is string
+        && request.resource.data.serviceType in ['mesa', 'balcao']
+        && request.resource.data.paymentType is string
+        && request.resource.data.customerName is string
+        && request.resource.data.observations is string
+        && request.resource.data.status == 'received'
+        && request.resource.data.cartQuantity is number
+        && request.resource.data.cartTotal is number
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 50
+        && request.resource.data.clientCreatedAt is string
+        && request.resource.data.createdAt == request.time;
+    }
+
+    match /restaurants/{restaurantId}/events/{eventId} {
+      allow create: if isAnalyticsEvent(restaurantId);
+      allow read, update, delete: if isRestaurantAdmin(restaurantId);
+    }
+
+    match /restaurants/{restaurantId}/orders/{orderId} {
+      allow create: if isCustomerOrder(restaurantId);
+      allow read, update: if isRestaurantAdmin(restaurantId);
+      allow delete: if false;
+    }
+
+    match /restaurants/{restaurantId}/menu/{itemId} {
+      allow read: if isKnownRestaurant(restaurantId);
+      allow write: if isRestaurantAdmin(restaurantId);
+    }
+
+    match /restaurants/{restaurantId}/settings/{document=**} {
+      allow read: if isKnownRestaurant(restaurantId);
+      allow write: if isRestaurantAdmin(restaurantId);
+    }
+
+    match /restaurants/{restaurantId}/admins/{adminId} {
+      allow read: if isSignedIn() && request.auth.uid == adminId;
+      allow write: if false;
+    }
+  }
+}

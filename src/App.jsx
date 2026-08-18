@@ -55,6 +55,7 @@ import iconFrutosDoMar from './assets/icons/icon frutos do mar.png'
 import iconSaladas from './assets/icons/icon salada.png'
 import iconSobremesas from './assets/icons/icon sobremesa.png'
 import iconVeganos from './assets/icons/icon vegano.png'
+import { persistAnalyticsEvent, persistOrder } from './lib/firebaseEvents'
 
 const categories = [
   { id: 'entradas', label: 'Entradas', shortLabel: 'Entradas', iconImage: iconEntradas, image: categoriaEntradas },
@@ -80,7 +81,7 @@ const fallbackImages = {
 
 const tableOptions = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 
-const restaurantId = 'food99like-demo'
+const restaurantId = 'tokka-foods'
 const restaurantName = 'COCO BAMBU'
 const analyticsStorageKey = 'food99like-events'
 const sessionStorageKey = 'food99like-session'
@@ -353,6 +354,7 @@ function App() {
   const [readerStatus, setReaderStatus] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const speechStopTimerRef = useRef(null)
+  const initialMenuEventSyncedRef = useRef(false)
   const [analyticsEvents, setAnalyticsEvents] = useState(() => {
     const nextEvents = [
       ...readAnalyticsEvents(),
@@ -398,6 +400,8 @@ function App() {
         saveAnalyticsEvents(nextEvents)
         return nextEvents
       })
+
+      persistAnalyticsEvent(event)
     },
     [analyticsSession],
   )
@@ -436,6 +440,20 @@ function App() {
       cancelSpeechQueue()
     }
   }, [])
+
+  useEffect(() => {
+    if (initialMenuEventSyncedRef.current) return
+
+    initialMenuEventSyncedRef.current = true
+
+    const initialMenuEvent = [...analyticsEvents]
+      .reverse()
+      .find((event) => event.event === 'menu_open' && event.sessionId === analyticsSession.id)
+
+    if (initialMenuEvent) {
+      persistAnalyticsEvent(initialMenuEvent)
+    }
+  }, [analyticsEvents, analyticsSession.id])
 
   function showScreen(nextScreen, hashValue = nextScreen) {
     stopSpeech()
@@ -732,9 +750,19 @@ function App() {
   }
 
   function sendOrder(orderData = {}) {
+    const orderRecord = buildOrderRecord({
+      analyticsSession,
+      cartItems,
+      cartTotal,
+      orderData,
+      tableNumber,
+    })
+
     setOrderSent(true)
     setReaderStatus(`Pedido enviado para a mesa ${tableNumber || 'selecionada'}.`)
+    persistOrder(orderRecord)
     trackEvent('order_sent', {
+      orderId: orderRecord.id,
       tableNumber: tableNumber || '',
       serviceType: orderData.serviceType ?? 'mesa',
       paymentType: orderData.paymentType ?? 'caixa',
@@ -930,21 +958,23 @@ function CategoriesScreen({ categories, onBack, onOpenSettings, onSelectCategory
   )
 }
 
-function TopPhotoBar({ onBack, onOpenSettings, trailingIcon = 'settings', compact = false }) {
+function TopPhotoBar({ onBack, onOpenSettings, trailingIcon = 'settings', compact = false, showBack = true }) {
   return (
     <div className={`relative overflow-hidden ${compact ? 'h-[144px]' : 'h-[176px]'}`}>
       <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
       <div className="absolute inset-0 bg-black/10" />
-      <button
-        type="button"
-        onClick={onBack}
-        aria-label="Voltar"
-        className={`absolute left-7 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95 ${
-          compact ? 'top-6' : 'top-8'
-        }`}
-      >
-        <ArrowLeft size={25} strokeWidth={2.8} />
-      </button>
+      {showBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Voltar"
+          className={`absolute left-7 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95 ${
+            compact ? 'top-6' : 'top-8'
+          }`}
+        >
+          <ArrowLeft size={25} strokeWidth={2.8} />
+        </button>
+      )}
       <button
         type="button"
         onClick={onOpenSettings}
@@ -1010,7 +1040,7 @@ function MenuScreen({
       onScroll={handleMenuScroll}
     >
       <div className="sticky top-0 z-0">
-        <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} />
+        <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} showBack={false} />
       </div>
 
       <img
@@ -1035,7 +1065,7 @@ function MenuScreen({
           </p>
         </div>
 
-        <div className="-mx-8 mt-5">
+        <div className="-mx-8 mt-6">
           <PromoCarousel
             activeIndex={promoIndex}
             onSelect={setPromoIndex}
@@ -1043,7 +1073,7 @@ function MenuScreen({
           />
         </div>
 
-        <div className="mt-4 flex justify-center gap-1.5" aria-label="Selecionar banner">
+        <div className="mt-2.5 flex justify-center gap-1.5" aria-label="Selecionar banner">
           {promoSlides.map((slide, index) => (
             <button
               type="button"
@@ -1058,7 +1088,7 @@ function MenuScreen({
           ))}
         </div>
 
-        <div className="mt-5 grid h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-full bg-[#eeeeee] px-4">
+        <div className="mt-4 grid h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-full bg-[#eeeeee] px-4">
           <Search size={22} className="text-[#bdb8b5]" />
           <input
             value={searchQuery}
@@ -1077,30 +1107,32 @@ function MenuScreen({
           </button>
         </div>
 
-        <div className="mt-5 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between">
           <h2 className="text-base font-medium">CATEGORIAS</h2>
           <button type="button" onClick={onOpenCategories} className="text-xs text-[#a98272]">
             Ver todos &gt;
           </button>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-2 pt-2">
-          {previewCategories.map((category) => (
-            <CategoryPreviewCard
-              key={category.id}
-              category={category}
-              active={category.id === activeCategory}
-              onClick={() => onCategoryChange(category.id)}
-            />
-          ))}
+        <div className="-mx-8 mt-2 overflow-hidden">
+          <div className="relative left-1/2 flex w-max -translate-x-1/2 gap-2.5 pt-2">
+            {previewCategories.map((category) => (
+              <CategoryPreviewCard
+                key={category.id}
+                category={category}
+                active={category.id === activeCategory}
+                onClick={() => onCategoryChange(category.id)}
+              />
+            ))}
+          </div>
         </div>
 
-        <div className="mt-5 flex items-center justify-between">
+        <div className="mt-3 flex items-center justify-between">
           <h2 className="text-base font-medium">DESTAQUES</h2>
           <ViewModeToggle value={productLayout} onChange={setProductLayout} />
         </div>
 
-        <div className={productLayout === 'grade' ? 'mt-2 grid grid-cols-2 gap-3' : 'mt-2 space-y-3'}>
+        <div className={productLayout === 'grade' ? '-mx-4 mt-2 grid grid-cols-2 gap-2.5' : '-mx-4 mt-2 space-y-2.5'}>
           {featuredProducts.map((product) => (
             productLayout === 'grade' ? (
               <MenuProductGridCard key={product.id} product={product} onOpen={() => onOpenProduct(product)} />
@@ -1119,6 +1151,36 @@ function MenuScreen({
 }
 
 function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
+  const carouselRef = useRef(null)
+  const touchStartRef = useRef(null)
+  const swipeMovedRef = useRef(false)
+  const [slideWidth, setSlideWidth] = useState(316)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+
+  useEffect(() => {
+    const carousel = carouselRef.current
+    if (!carousel) return undefined
+
+    function updateSlideWidth(width) {
+      setSlideWidth(Math.min(316, Math.max(286, Math.round(width * 0.735))))
+    }
+
+    updateSlideWidth(carousel.getBoundingClientRect().width)
+
+    const observer = new ResizeObserver(([entry]) => {
+      updateSlideWidth(entry.contentRect.width)
+    })
+
+    observer.observe(carousel)
+
+    return () => observer.disconnect()
+  }, [])
+
+  function selectRelativeSlide(direction) {
+    onSelect((activeIndex + direction + promoSlides.length) % promoSlides.length)
+  }
+
   function getSlideOffset(index) {
     let offset = index - activeIndex
 
@@ -1129,6 +1191,10 @@ function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
   }
 
   function handleSlideClick(slide, index) {
+    if (swipeMovedRef.current) {
+      return
+    }
+
     if (index !== activeIndex) {
       onSelect(index)
       return
@@ -1139,11 +1205,83 @@ function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
     }
   }
 
+  function handleTouchStart(event) {
+    const touch = event.touches[0]
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY }
+    swipeMovedRef.current = false
+    setIsDragging(true)
+    setDragOffset(0)
+  }
+
+  function handleTouchMove(event) {
+    const touch = event.touches[0]
+    const start = touchStartRef.current
+
+    if (!start) return
+
+    const deltaX = touch.clientX - start.x
+    const deltaY = touch.clientY - start.y
+
+    if (Math.abs(deltaX) > 12 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      swipeMovedRef.current = true
+      setDragOffset(Math.max(slideWidth * -0.92, Math.min(slideWidth * 0.92, deltaX)))
+    }
+  }
+
+  function handleTouchEnd(event) {
+    const start = touchStartRef.current
+
+    if (!start) return
+
+    const touch = event.changedTouches[0]
+    const deltaX = touch.clientX - start.x
+    const deltaY = touch.clientY - start.y
+    const isHorizontalSwipe = Math.abs(deltaX) > 42 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15
+
+    touchStartRef.current = null
+    setIsDragging(false)
+    setDragOffset(0)
+
+    if (isHorizontalSwipe) {
+      swipeMovedRef.current = true
+      selectRelativeSlide(deltaX < 0 ? 1 : -1)
+      window.setTimeout(() => {
+        swipeMovedRef.current = false
+      }, 250)
+      return
+    }
+
+    if (swipeMovedRef.current) {
+      window.setTimeout(() => {
+        swipeMovedRef.current = false
+      }, 250)
+    }
+  }
+
+  function handleTouchCancel() {
+    touchStartRef.current = null
+    setIsDragging(false)
+    setDragOffset(0)
+    window.setTimeout(() => {
+      swipeMovedRef.current = false
+    }, 120)
+  }
+
   return (
-    <div className="relative h-[128px] w-full overflow-hidden py-[5px]">
+    <div
+      ref={carouselRef}
+      className="relative h-[132px] w-full touch-pan-y overflow-hidden py-[7px]"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
+    >
       {promoSlides.map((slide, index) => {
         const offset = getSlideOffset(index)
+        const slidePosition = offset + dragOffset / slideWidth
+        const distanceFromCenter = Math.abs(slidePosition)
         const isActive = offset === 0
+        const slideScale = 1 - Math.min(distanceFromCenter, 1) * 0.08
 
         return (
           <button
@@ -1152,13 +1290,16 @@ function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
             onClick={() => handleSlideClick(slide, index)}
             aria-label={slide.action === 'vezz' ? 'Abrir Vezz' : slide.alt}
             aria-current={isActive}
-            className={`absolute left-1/2 top-[5px] grid h-[118px] w-[316px] place-items-center overflow-hidden rounded-lg shadow-sm transition-all duration-700 ease-out ${
+            className={`absolute left-1/2 top-[7px] grid h-[118px] place-items-center overflow-hidden rounded-lg shadow-[0_10px_24px_rgba(67,22,15,0.10)] ${
+              isDragging ? 'transition-none' : 'transition-all duration-700 ease-out'
+            } ${
               slide.id === 'vezz-accessibility' ? 'bg-[#15c8d0]' : 'bg-[#4b160e]'
             }`}
             style={{
-              transform: `translateX(calc(-50% + ${offset * 252}px)) scale(${isActive ? 1 : 0.92})`,
-              opacity: Math.abs(offset) > 1 ? 0 : 1,
-              zIndex: isActive ? 20 : 10,
+              width: `${slideWidth}px`,
+              transform: `translateX(calc(-50% + ${offset * slideWidth + dragOffset}px)) scale(${slideScale})`,
+              opacity: distanceFromCenter > 1.35 ? 0 : 1,
+              zIndex: Math.round((2 - Math.min(distanceFromCenter, 2)) * 10),
             }}
           >
             <img
@@ -1176,14 +1317,19 @@ function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
 
 function CategoryPreviewCard({ category, active, onClick }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={active} className="min-h-[170px] text-center">
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className="min-h-[142px] w-[calc((min(100vw,430px)-40px)/3)] flex-none text-center"
+    >
       <span
         className={`relative block pb-7 transition-transform duration-300 ease-out ${
           active ? '-translate-y-2' : 'translate-y-0'
         }`}
       >
         <span
-          className={`block h-[88px] overflow-hidden rounded-md bg-white transition-shadow duration-300 ${
+          className={`block aspect-[152/108] overflow-hidden rounded-md bg-white transition-shadow duration-300 ${
             active ? 'shadow-lg shadow-[#4b160e]/15 ring-2 ring-[#4b160e]' : ''
           }`}
         >
@@ -1196,11 +1342,11 @@ function CategoryPreviewCard({ category, active, onClick }) {
           />
         </span>
         <span
-          className={`absolute bottom-0 left-1/2 grid size-14 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.25)] transition-transform duration-300 ease-out ${
+          className={`absolute bottom-0 left-1/2 grid size-13 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.25)] transition-transform duration-300 ease-out ${
             active ? 'scale-105' : 'scale-100'
           }`}
         >
-          <img src={category.iconImage} alt="" className="w-8" />
+          <img src={category.iconImage} alt="" className="w-7" />
         </span>
       </span>
       <span className="mt-1 flex h-10 items-start justify-center text-center text-sm font-black leading-[1.1]">
@@ -1217,7 +1363,7 @@ function ViewModeToggle({ value, onChange }) {
   ]
 
   return (
-    <div className="grid h-9 grid-cols-2 rounded-full bg-[#f3ede7] p-1 ring-1 ring-[#e5d8cf]" aria-label="Modo de visualização">
+    <div className="grid grid-cols-2 gap-1 rounded-lg bg-[#f2eee9] p-1 ring-1 ring-[#e5d8cf]" aria-label="Modo de visualização">
       {options.map(({ id, label, icon: Icon }) => {
         const active = value === id
 
@@ -1229,11 +1375,11 @@ function ViewModeToggle({ value, onChange }) {
             aria-label={label}
             aria-pressed={active}
             title={label}
-            className={`grid size-7 place-items-center rounded-full transition ${
-              active ? 'bg-[#4b160e] text-[#d8ad61] shadow-sm' : 'text-[#9d857c]'
+            className={`grid size-8 place-items-center rounded-md transition ${
+              active ? 'bg-[#4b160e] text-[#d8ad61] shadow-sm' : 'bg-white text-[#9d857c]'
             }`}
           >
-            <Icon size={16} strokeWidth={2.6} />
+            <Icon size={17} strokeWidth={2.7} />
           </button>
         )
       })}
@@ -1256,9 +1402,9 @@ function MenuProductCard({ product, onOpen }) {
         </span>
         <span className="mt-1 block text-sm font-black">{formatCurrency(product.price)}</span>
       </span>
-      <span className="relative overflow-hidden rounded-lg">
-        <img src={product.image} alt="" className="h-[90px] w-full object-cover" />
-        <span className="absolute bottom-2 right-2 rounded-full bg-white/85 px-2 py-1 text-[7px] font-black">
+      <span className="relative block h-[96px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
+        <img src={product.image} alt="" className="block size-full object-cover" />
+        <span className="absolute bottom-2 right-2 flex h-6 items-center justify-center whitespace-nowrap rounded-full bg-white/95 px-2.5 text-[8.5px] font-black leading-none text-[#4b160e] shadow-[0_2px_8px_rgba(67,22,15,0.16)]">
           VER PRATO &gt;
         </span>
       </span>
@@ -1274,10 +1420,10 @@ function MenuProductGridCard({ product, onOpen }) {
       aria-label={buildProductAriaLabel(product)}
       className="min-h-[204px] rounded-lg bg-[#f0f0f0] p-2.5 text-left transition active:scale-[0.99]"
     >
-      <span className="relative block overflow-hidden rounded-lg bg-white">
-        <img src={product.image} alt="" className="h-[104px] w-full object-cover" />
-        <span className="absolute bottom-2 right-2 rounded-full bg-white/90 px-2 py-1 text-[7px] font-black">
-          VER &gt;
+      <span className="relative block h-[108px] overflow-hidden rounded-lg bg-[#4b160e]">
+        <img src={product.image} alt="" className="block size-full object-cover" />
+        <span className="absolute bottom-2 right-2 flex h-6 items-center justify-center whitespace-nowrap rounded-full bg-white/95 px-2.5 text-[8.5px] font-black leading-none text-[#4b160e] shadow-[0_2px_8px_rgba(67,22,15,0.16)]">
+          VER PRATO &gt;
         </span>
       </span>
       <span className="mt-3 block text-[13px] font-black leading-tight">{product.name.toUpperCase()}</span>
@@ -2186,6 +2332,39 @@ function buildAnalyticsEvent(eventName, session, payload = {}) {
     source: session.source,
     createdAt: new Date().toISOString(),
     ...payload,
+  }
+}
+
+function buildOrderRecord({ analyticsSession, cartItems, cartTotal, orderData, tableNumber }) {
+  return {
+    id: crypto.randomUUID(),
+    restaurantId,
+    sessionId: analyticsSession.id,
+    tableNumber: tableNumber || '',
+    serviceType: orderData.serviceType ?? 'mesa',
+    paymentType: orderData.paymentType ?? 'caixa',
+    customerName: orderData.customerName?.trim() || '',
+    observations: orderData.observations?.trim() || '',
+    status: 'received',
+    cartQuantity: cartItems.reduce((total, item) => total + item.quantity, 0),
+    cartTotal,
+    clientCreatedAt: new Date().toISOString(),
+    items: cartItems.map((item) => {
+      const unitPrice = item.unitPrice ?? item.product.price
+
+      return {
+        productId: item.productId,
+        name: item.product.name,
+        optionId: item.optionId,
+        optionLabel: item.optionLabel,
+        optionDetail: item.optionDetail,
+        people: item.people,
+        quantity: item.quantity,
+        unitPrice,
+        totalPrice: unitPrice * item.quantity,
+        note: item.note,
+      }
+    }),
   }
 }
 

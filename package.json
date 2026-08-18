@@ -7,21 +7,33 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "firebase": "firebase",
+    "firebase:login": "firebase login",
+    "firebase:logout": "firebase logout",
+    "firebase:projects": "firebase projects:list",
+    "firebase:emulators": "firebase emulators:start --only auth,firestore,storage",
+    "firebase:deploy:firestore-rules": "firebase deploy --only firestore:rules",
+    "firebase:deploy:storage-rules": "firebase deploy --only storage",
+    "firebase:deploy:rules": "firebase deploy --only firestore:rules,storage",
+    "firebase:deploy:hosting": "npm run build && firebase deploy --only hosting",
+    "firebase:deploy": "npm run build && firebase deploy"
   },
   "dependencies": {
     "@tailwindcss/vite": "latest",
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
+    "firebase": "^12.17.1",
+    "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "lucide-react": "latest"
+    "vite": "latest"
   },
   "devDependencies": {
-    "eslint": "latest",
     "@eslint/js": "latest",
+    "eslint": "latest",
     "eslint-plugin-react-hooks": "latest",
     "eslint-plugin-react-refresh": "latest",
+    "firebase-tools": "^15.27.0",
     "globals": "latest"
   }
 }

@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isKnownRestaurant(restaurantId) {
+      return restaurantId == 'tokka-foods';
+    }
+
+    function isRestaurantAdmin(restaurantId) {
+      return isKnownRestaurant(restaurantId)
+        && isSignedIn()
+        && firestore.exists(/databases/(default)/documents/restaurants/$(restaurantId)/admins/$(request.auth.uid));
+    }
+
+    match /restaurants/{restaurantId}/{allPaths=**} {
+      allow read: if isKnownRestaurant(restaurantId);
+      allow write: if isRestaurantAdmin(restaurantId)
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

@@ -35,9 +35,47 @@ Abra no navegador:
 ## Dados e privacidade
 
 Este MVP registra eventos discretos no `localStorage` e uma sessão anônima no `sessionStorage`.
-Os dados não saem do navegador nesta versão: abertura do menu, busca, comando de voz, clique em Vezz, visualização de produto, adição ao carrinho e pedido enviado.
+Quando o Firebase estiver ativo e as regras publicadas, esses mesmos eventos também são enviados ao Firestore e ao Firebase Analytics: abertura do menu, busca, comando de voz, clique em Vezz, visualização de produto, adição ao carrinho e pedido enviado.
+Pedidos confirmados criam documentos em `restaurants/tokka-foods/orders`; eventos criam documentos em `restaurants/tokka-foods/events`.
 
-Para produção, o próximo passo é trocar essa camada por banco de dados, autenticação de admin e política de consentimento/privacidade.
+Para produção, o próximo passo é ativar autenticação de admin, cadastrar o primeiro administrador e publicar a política de consentimento/privacidade.
+
+## Firebase
+
+O projeto já está configurado para o Firebase `tokka-foods`.
+
+```bash
+npm.cmd install
+npm.cmd run firebase:login
+npm.cmd run firebase:projects
+npm.cmd run firebase:deploy:firestore-rules
+```
+
+Depois do primeiro login, a autorização fica salva no Firebase CLI local. Com isso, as próximas atualizações de rules podem ser feitas direto por comando:
+
+```bash
+npm.cmd run firebase:deploy:rules
+```
+
+Se o Storage ainda não tiver sido inicializado no Firebase Console, use primeiro:
+
+```bash
+npm.cmd run firebase:deploy:firestore-rules
+```
+
+Depois de abrir Storage > Get Started uma única vez no console, publique tudo:
+
+```bash
+npm.cmd run firebase:deploy:rules
+```
+
+Arquivos principais:
+
+- `.firebaserc`: aponta o projeto padrão para `tokka-foods`.
+- `firebase.json`: configura Firestore, Storage, Hosting e emuladores.
+- `firestore.rules`: libera criação pública e limitada de eventos/pedidos; leitura e escrita administrativa exigem admin autenticado.
+- `storage.rules`: libera leitura pública de assets do restaurante e escrita apenas para admin.
+- `.env.example`: variáveis Vite para Vercel ou ambiente local.
 
 ## Acessibilidade
 
