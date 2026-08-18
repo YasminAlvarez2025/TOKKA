@@ -960,7 +960,7 @@ function CategoriesScreen({ categories, onBack, onOpenSettings, onSelectCategory
 
 function TopPhotoBar({ onBack, onOpenSettings, trailingIcon = 'settings', compact = false, showBack = true }) {
   return (
-    <div className={`relative overflow-hidden ${compact ? 'h-[144px]' : 'h-[176px]'}`}>
+    <div className={`relative overflow-hidden ${compact ? 'h-[144px]' : 'h-[156px]'}`}>
       <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
       <div className="absolute inset-0 bg-black/10" />
       {showBack && (
@@ -1048,15 +1048,15 @@ function MenuScreen({
         alt="Coco Bambu"
         loading="eager"
         decoding="sync"
-        className={`pointer-events-none absolute left-1/2 top-[88px] size-[112px] -translate-x-1/2 rounded-full border-4 border-[#d8ad61] bg-[#4a160f] transition-all duration-500 ease-out ${
+        className={`pointer-events-none absolute left-1/2 top-[72px] size-[96px] -translate-x-1/2 rounded-full border-4 border-[#d8ad61] bg-[#4a160f] transition-all duration-500 ease-out ${
           menuSheetRaised ? 'z-0 -translate-y-5 opacity-0 scale-95' : 'z-30 translate-y-0 opacity-100 scale-100'
         }`}
         draggable="false"
       />
 
-      <div className="relative z-20 -mt-10 rounded-t-[38px] bg-white px-8 pb-4 pt-14 shadow-[0_-18px_42px_rgba(67,22,15,0.12)]">
+      <div className="relative z-20 -mt-10 rounded-t-[38px] bg-white px-8 pb-4 pt-12 shadow-[0_-18px_42px_rgba(67,22,15,0.12)]">
         <div className="text-center">
-          <h1 id="menu-title" data-screen-title="true" tabIndex={-1} className="text-[27px] font-black outline-none">
+          <h1 id="menu-title" data-screen-title="true" tabIndex={-1} className="text-[25px] font-black outline-none">
             COCO BAMBU
           </h1>
           <p className="mt-1 flex items-center justify-center gap-1 text-xs text-[#4b231b]">
@@ -1065,7 +1065,7 @@ function MenuScreen({
           </p>
         </div>
 
-        <div className="-mx-8 mt-6">
+        <div className="-mx-8 mt-[18px]">
           <PromoCarousel
             activeIndex={promoIndex}
             onSelect={setPromoIndex}
@@ -1073,7 +1073,7 @@ function MenuScreen({
           />
         </div>
 
-        <div className="mt-2.5 flex justify-center gap-1.5" aria-label="Selecionar banner">
+        <div className="mt-1.5 flex justify-center gap-1.5" aria-label="Selecionar banner">
           {promoSlides.map((slide, index) => (
             <button
               type="button"
@@ -1088,7 +1088,7 @@ function MenuScreen({
           ))}
         </div>
 
-        <div className="mt-4 grid h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-full bg-[#eeeeee] px-4">
+        <div className="mt-3 grid h-11 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-full bg-[#eeeeee] px-4">
           <Search size={22} className="text-[#bdb8b5]" />
           <input
             value={searchQuery}
@@ -1107,7 +1107,7 @@ function MenuScreen({
           </button>
         </div>
 
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-3 flex items-center justify-between">
           <h2 className="text-base font-medium">CATEGORIAS</h2>
           <button type="button" onClick={onOpenCategories} className="text-xs text-[#a98272]">
             Ver todos &gt;
@@ -1115,7 +1115,7 @@ function MenuScreen({
         </div>
 
         <div className="-mx-8 mt-2 overflow-hidden">
-          <div className="relative left-1/2 flex w-max -translate-x-1/2 gap-2.5 pt-2">
+          <div className="relative left-1/2 flex w-max -translate-x-1/2 gap-2 pt-1.5">
             {previewCategories.map((category) => (
               <CategoryPreviewCard
                 key={category.id}
@@ -1127,7 +1127,7 @@ function MenuScreen({
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-1.5 flex items-center justify-between">
           <h2 className="text-base font-medium">DESTAQUES</h2>
           <ViewModeToggle value={productLayout} onChange={setProductLayout} />
         </div>
@@ -1270,7 +1270,7 @@ function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
   return (
     <div
       ref={carouselRef}
-      className="relative h-[132px] w-full touch-pan-y overflow-hidden py-[7px]"
+      className="relative h-[116px] w-full touch-pan-y overflow-hidden py-[6px]"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -1290,7 +1290,7 @@ function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
             onClick={() => handleSlideClick(slide, index)}
             aria-label={slide.action === 'vezz' ? 'Abrir Vezz' : slide.alt}
             aria-current={isActive}
-            className={`absolute left-1/2 top-[7px] grid h-[118px] place-items-center overflow-hidden rounded-lg shadow-[0_10px_24px_rgba(67,22,15,0.10)] ${
+            className={`absolute left-1/2 top-[6px] grid h-[104px] place-items-center overflow-hidden rounded-lg shadow-[0_10px_24px_rgba(67,22,15,0.10)] ${
               isDragging ? 'transition-none' : 'transition-all duration-700 ease-out'
             } ${
               slide.id === 'vezz-accessibility' ? 'bg-[#15c8d0]' : 'bg-[#4b160e]'
@@ -1321,7 +1321,7 @@ function CategoryPreviewCard({ category, active, onClick }) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className="min-h-[142px] w-[calc((min(100vw,430px)-40px)/3)] flex-none text-center"
+      className="min-h-[124px] w-[calc((min(100vw,430px)-40px)/3)] flex-none text-center"
     >
       <span
         className={`relative block pb-7 transition-transform duration-300 ease-out ${
@@ -1342,14 +1342,14 @@ function CategoryPreviewCard({ category, active, onClick }) {
           />
         </span>
         <span
-          className={`absolute bottom-0 left-1/2 grid size-13 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.25)] transition-transform duration-300 ease-out ${
+          className={`absolute bottom-0 left-1/2 grid size-12 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.25)] transition-transform duration-300 ease-out ${
             active ? 'scale-105' : 'scale-100'
           }`}
         >
-          <img src={category.iconImage} alt="" className="w-7" />
+          <img src={category.iconImage} alt="" className="w-6.5" />
         </span>
       </span>
-      <span className="mt-1 flex h-10 items-start justify-center text-center text-sm font-black leading-[1.1]">
+      <span className="mt-1 flex h-8 items-start justify-center text-center text-[13px] font-black leading-[1.08]">
         {category.label.toUpperCase()}
       </span>
     </button>
