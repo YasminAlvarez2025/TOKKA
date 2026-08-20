@@ -122,6 +122,16 @@ const promoSlides = [
   },
 ]
 
+const allergenOptions = [
+  { id: 'Ovo', label: 'Ovo', icon: 'ovo' },
+  { id: 'Glúten', label: 'Glúten', icon: 'gluten' },
+  { id: 'Peixe', label: 'Peixe', icon: 'peixe' },
+  { id: 'Lactose', label: 'Lactose', icon: 'lactose' },
+  { id: 'Crustáceos', label: 'Crustáceos', icon: 'crustaceos' },
+  { id: 'Castanhas', label: 'Castanhas', icon: 'castanhas' },
+  { id: 'Soja', label: 'Soja', icon: 'soja' },
+]
+
 const baseProducts = [
   {
     id: 'camarao-coco-brasil',
@@ -872,7 +882,7 @@ function App() {
             searchQuery={searchQuery}
             tableNumber={tableNumber}
             onBack={() => showScreen('entrada')}
-            onCategoryChange={changeCategory}
+            onCategoryChange={(categoryId) => openCategoryProducts(categoryId)}
             onSearchChange={changeSearchQuery}
             onOpenCategories={() => showScreen('categorias')}
             onOpenSettings={() => showScreen('configuracoes')}
@@ -950,6 +960,26 @@ function App() {
             onOpenNfcPreview={openNfcPreview}
             onOpenPartnerLink={openPartnerLink}
             onLogout={handleAdminLogout}
+            onOpenMenuEditor={() => showScreen('admin-cardapio')}
+          />
+        )}
+
+        {screen === 'admin-cardapio' && !adminSession.isAdmin && (
+          <AdminLoginScreen
+            defaultEmail={defaultAdminEmail}
+            error={adminLoginError}
+            loading={adminLoginLoading || adminSession.loading}
+            onBack={() => showScreen('menu')}
+            onLogin={handleAdminLogin}
+          />
+        )}
+
+        {screen === 'admin-cardapio' && adminSession.isAdmin && (
+          <AdminMenuEditor
+            categories={categories}
+            products={products}
+            onAddAdminItem={addAdminItem}
+            onBack={() => showScreen('configuracoes')}
             onRemoveProduct={removeProduct}
             onToggleProductActive={toggleProductActive}
             onUpdateProduct={updateProduct}
@@ -1069,8 +1099,14 @@ function CategoryProductsScreen({ category, products, onBack, onOpenProduct, onO
       <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} compact />
 
       <div className="relative z-10 -mt-7 rounded-t-[26px] bg-white px-4 pb-8 pt-[70px] shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
-        <div className="absolute left-1/2 top-[-70px] grid size-[126px] -translate-x-1/2 place-items-center rounded-full border-4 border-[#d8ad61] bg-[#4b160e] shadow-[0_5px_0_rgba(75,22,14,0.18)]">
-          <img src={category.iconImage} alt="" className="w-[82px]" />
+        <div className="absolute left-1/2 top-[-70px] grid size-[126px] -translate-x-1/2 place-items-center rounded-full border-4 border-[#d8ad61] bg-[#4b160e] shadow-[0_9px_0_rgba(75,22,14,0.18),0_18px_34px_rgba(67,22,15,0.20)] ring-[5px] ring-white">
+          <span className="absolute inset-2 rounded-full bg-[radial-gradient(circle_at_34%_24%,rgba(216,173,97,0.28),transparent_42%)]" />
+          <span className="absolute inset-[13px] rounded-full border border-[#d8ad61]/35" />
+          <img
+            src={category.iconImage}
+            alt=""
+            className="relative z-10 w-[78px] drop-shadow-[0_3px_0_rgba(0,0,0,0.24)]"
+          />
         </div>
 
         <h1
@@ -1115,14 +1151,14 @@ function CategoryDishCard({ product, onOpen }) {
       type="button"
       onClick={onOpen}
       aria-label={buildProductAriaLabel(product)}
-      className="grid min-h-[116px] w-full grid-cols-[1fr_130px] gap-3 rounded-lg bg-[#f0f0f0] p-3 text-left"
+      className="grid h-[116px] w-full grid-cols-[1fr_130px] gap-3 overflow-hidden rounded-lg bg-[#f0f0f0] p-3 text-left"
     >
-      <span className="min-w-0">
-        <span className="line-clamp-1 block text-[13px] font-black">{product.name.toUpperCase()}</span>
-        <span className="mt-1.5 line-clamp-3 block text-[13px] font-medium leading-[18px]">
+      <span className="flex min-w-0 flex-col overflow-hidden">
+        <span className="line-clamp-2 block text-[13px] font-black leading-tight">{product.name.toUpperCase()}</span>
+        <span className="mt-1.5 line-clamp-2 block text-[13px] font-medium leading-[18px]">
           {product.description}
         </span>
-        <span className="mt-1 block text-sm font-black">{formatCurrency(product.price)}</span>
+        <span className="mt-auto block text-sm font-black">{formatCurrency(product.price)}</span>
       </span>
       <span className="relative block h-[90px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
         <img src={product.image} alt="" className="block size-full object-cover" />
@@ -1190,20 +1226,12 @@ function MenuScreen({
   const visibleProducts = filterProducts(products, searchQuery)
   const selectedCategory = categories.find((category) => category.id === activeCategory) ?? categories[0]
   const categoryProducts = visibleProducts.filter((product) => product.category === activeCategory)
-  const menuProductSource = searchQuery.trim()
-    ? visibleProducts
-    : menuCategorySelected
-      ? categoryProducts
-      : visibleProducts
-  const featuredProducts = (menuProductSource.length ? menuProductSource : visibleProducts).slice(
-    0,
-    menuMode === 'simplificado' ? 4 : 6,
-  )
-  const menuSectionTitle = searchQuery.trim()
-    ? 'RESULTADOS'
-    : menuCategorySelected
-      ? selectedCategory.label.toUpperCase()
-      : 'DESTAQUES'
+  const featuredProducts = visibleProducts.slice(0, menuMode === 'simplificado' ? 4 : 5)
+  const selectedDailySource = menuCategorySelected && categoryProducts.length ? categoryProducts : visibleProducts
+  const dailyProducts = selectedDailySource
+    .filter((product) => !featuredProducts.some((featuredProduct) => featuredProduct.id === product.id))
+    .slice(0, menuMode === 'simplificado' ? 2 : 4)
+  const menuSectionTitle = searchQuery.trim() ? 'RESULTADOS' : 'DESTAQUES'
   const previewCategories = categories.slice(0, 3)
 
   useEffect(() => {
@@ -1300,8 +1328,8 @@ function MenuScreen({
           </button>
         </div>
 
-        <div className="-mx-8 mt-1 overflow-hidden">
-          <div className="relative left-1/2 flex w-max -translate-x-1/2 gap-2 pt-1">
+        <div className="-mx-8 -mt-2 overflow-hidden pt-3">
+          <div className="relative left-1/2 flex w-max -translate-x-1/2 gap-2">
             {previewCategories.map((category) => (
               <CategoryPreviewCard
                 key={category.id}
@@ -1327,6 +1355,27 @@ function MenuScreen({
             )
           ))}
         </div>
+
+        {!searchQuery.trim() && dailyProducts.length > 0 && (
+          <>
+            <div className="mt-4 flex items-center justify-between">
+              <h2 className="text-[15px] font-medium">PRATOS DO DIA</h2>
+              <span className="text-[11px] font-semibold text-[#a98272]">
+                {menuCategorySelected ? selectedCategory.label : 'Seleção da casa'}
+              </span>
+            </div>
+
+            <div className={productLayout === 'grade' ? '-mx-4 mt-2 grid grid-cols-2 gap-2.5' : '-mx-4 mt-2 space-y-2.5'}>
+              {dailyProducts.map((product) => (
+                productLayout === 'grade' ? (
+                  <MenuProductGridCard key={product.id} product={product} onOpen={() => onOpenProduct(product)} />
+                ) : (
+                  <MenuProductCard key={product.id} product={product} onOpen={() => onOpenProduct(product)} />
+                )
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {cartQuantity > 0 && (
@@ -1532,7 +1581,11 @@ function CategoryPreviewCard({ category, active, onClick }) {
             active ? 'scale-105' : 'scale-100'
           }`}
         >
-          <img src={category.iconImage} alt="" className="w-5.5" />
+          <img
+            src={category.iconImage}
+            alt=""
+            className="w-8 rounded-full drop-shadow-[0_1px_0_rgba(0,0,0,0.24)]"
+          />
         </span>
       </span>
       <span className="mt-0.5 flex h-7 items-start justify-center text-center text-[12px] font-black leading-[1.05]">
@@ -1579,14 +1632,14 @@ function MenuProductCard({ product, onOpen }) {
       type="button"
       onClick={onOpen}
       aria-label={buildProductAriaLabel(product)}
-      className="grid min-h-[114px] w-full grid-cols-[1fr_130px] gap-3 rounded-lg bg-[#f0f0f0] p-3 text-left"
+      className="grid h-[116px] w-full grid-cols-[1fr_130px] gap-3 overflow-hidden rounded-lg bg-[#f0f0f0] p-3 text-left"
     >
-      <span>
-        <span className="block text-sm font-black">{product.name.toUpperCase()}</span>
-        <span className="mt-2 line-clamp-3 block text-[13px] font-medium leading-5">
+      <span className="flex min-w-0 flex-col overflow-hidden">
+        <span className="line-clamp-2 block text-sm font-black leading-tight">{product.name.toUpperCase()}</span>
+        <span className="mt-1.5 line-clamp-2 block text-[13px] font-medium leading-[18px]">
           {product.description}
         </span>
-        <span className="mt-1 block text-sm font-black">{formatCurrency(product.price)}</span>
+        <span className="mt-auto block text-sm font-black">{formatCurrency(product.price)}</span>
       </span>
       <span className="relative block h-[96px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
         <img src={product.image} alt="" className="block size-full object-cover" />
@@ -1604,7 +1657,7 @@ function MenuProductGridCard({ product, onOpen }) {
       type="button"
       onClick={onOpen}
       aria-label={buildProductAriaLabel(product)}
-      className="min-h-[204px] rounded-lg bg-[#f0f0f0] p-2.5 text-left transition active:scale-[0.99]"
+      className="h-[204px] overflow-hidden rounded-lg bg-[#f0f0f0] p-2.5 text-left transition active:scale-[0.99]"
     >
       <span className="relative block h-[108px] overflow-hidden rounded-lg bg-[#4b160e]">
         <img src={product.image} alt="" className="block size-full object-cover" />
@@ -1612,11 +1665,11 @@ function MenuProductGridCard({ product, onOpen }) {
           VER PRATO &gt;
         </span>
       </span>
-      <span className="mt-3 block text-[13px] font-black leading-tight">{product.name.toUpperCase()}</span>
-      <span className="mt-1 line-clamp-2 block text-[11px] font-medium leading-4 text-[#5e332a]">
+      <span className="mt-3 line-clamp-2 block min-h-[32px] text-[13px] font-black leading-tight">{product.name.toUpperCase()}</span>
+      <span className="mt-1 line-clamp-1 block h-4 text-[11px] font-medium leading-4 text-[#5e332a]">
         {product.description}
       </span>
-      <span className="mt-2 block text-sm font-black">{formatCurrency(product.price)}</span>
+      <span className="mt-1.5 block text-sm font-black">{formatCurrency(product.price)}</span>
     </button>
   )
 }
@@ -1840,68 +1893,16 @@ function SettingsScreen({
   generatedNfcLink,
   nfcTable,
   products,
-  onAddAdminItem,
   onBack,
   onCopyNfcLink,
   onNfcTableChange,
   onOpenNfcPreview,
   onOpenPartnerLink,
   onLogout,
-  onRemoveProduct,
-  onToggleProductActive,
-  onUpdateProduct,
+  onOpenMenuEditor,
 }) {
   const [activeTab, setActiveTab] = useState(() => getInitialAdminTab())
-  const [cardapioView, setCardapioView] = useState('inicio')
-  const [productFormOpen, setProductFormOpen] = useState(false)
-  const [editingProductId, setEditingProductId] = useState('')
-  const [form, setForm] = useState({
-    name: '',
-    category: 'frutos-do-mar',
-    price: '',
-    description: '',
-    ingredients: '',
-  })
 
-  function submitItem(event) {
-    event.preventDefault()
-
-    const price = Number(String(form.price).replace(',', '.'))
-    const ingredients = form.ingredients
-      .split(',')
-      .map((ingredient) => ingredient.trim())
-      .filter(Boolean)
-
-    if (!form.name.trim() || !price) {
-      return
-    }
-
-    const currentProduct = products.find((product) => product.id === editingProductId)
-    const productPayload = {
-      ...(currentProduct ?? {}),
-      id: currentProduct?.id ?? `admin-${Date.now()}`,
-      category: form.category,
-      name: form.name.trim(),
-      price,
-      image: currentProduct?.image ?? fallbackImages[form.category],
-      badge: currentProduct?.badge ?? 'Admin',
-      badgeTone: currentProduct?.badgeTone ?? 'border-slate-200 bg-white text-slate-600',
-      badgeIcon: currentProduct?.badgeIcon ?? Save,
-      badgeIconTone: currentProduct?.badgeIconTone ?? 'text-slate-600',
-      description: form.description.trim() || 'Item cadastrado pelo administrador do cardápio.',
-      tags: ingredients.length ? ingredients : ['Cadastro admin', 'Disponível', 'Novo item'],
-      active: currentProduct?.active !== false,
-    }
-
-    if (currentProduct) {
-      onUpdateProduct(productPayload)
-    } else {
-      onAddAdminItem(productPayload)
-    }
-
-    resetProductForm()
-    setProductFormOpen(false)
-  }
 
   const settingsTabs = [
     { id: 'cardapio', label: 'Cardápio', icon: BadgePlus },
@@ -1909,55 +1910,6 @@ function SettingsScreen({
     { id: 'vezz', label: 'Vezz', icon: BarChart3 },
     { id: 'cartao', label: 'Cartão', icon: CreditCard },
   ]
-
-  function editProduct(product) {
-    setEditingProductId(product.id)
-    setActiveTab('cardapio')
-    setCardapioView('editor')
-    setProductFormOpen(true)
-    setForm({
-      name: product.name,
-      category: product.category,
-      price: String(product.price).replace('.', ','),
-      description: product.description,
-      ingredients: product.tags.join(', '),
-    })
-  }
-
-  function resetProductForm() {
-    setEditingProductId('')
-    setForm({
-      name: '',
-      category: 'frutos-do-mar',
-      price: '',
-      description: '',
-      ingredients: '',
-    })
-  }
-
-  function startNewProduct() {
-    resetProductForm()
-    setActiveTab('cardapio')
-    setCardapioView('editor')
-    setProductFormOpen(true)
-  }
-
-  function cancelEdit() {
-    resetProductForm()
-    setProductFormOpen(false)
-  }
-
-  function removeProduct(product) {
-    const shouldRemove = window.confirm(`Remover "${product.name}" do cardapio?`)
-
-    if (!shouldRemove) return
-
-    if (editingProductId === product.id) {
-      cancelEdit()
-    }
-
-    onRemoveProduct(product.id)
-  }
 
   return (
     <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-8">
@@ -2007,186 +1959,16 @@ function SettingsScreen({
           ))}
         </div>
 
-        {activeTab === 'cardapio' && cardapioView === 'inicio' && (
+        {activeTab === 'cardapio' && (
           <AdminMenuStart
             activeProducts={products.filter((product) => product.active !== false).length}
             categoriesCount={categories.length}
             productsCount={products.length}
-            onOpenEditor={() => setCardapioView('editor')}
-            onStartNewProduct={startNewProduct}
+            onOpenEditor={onOpenMenuEditor}
+            onStartNewProduct={onOpenMenuEditor}
           />
         )}
 
-        {activeTab === 'cardapio' && cardapioView === 'editor' && (
-          <AdminMenuEditor
-            categories={categories}
-            products={products}
-            onBack={() => setCardapioView('inicio')}
-            onEditProduct={editProduct}
-            onRemoveProduct={removeProduct}
-            onStartNewProduct={startNewProduct}
-            onToggleProductActive={onToggleProductActive}
-          />
-        )}
-
-        {activeTab === 'cardapio' && productFormOpen && (
-          <AdminProductFormModal
-            categories={categories}
-            editing={Boolean(editingProductId)}
-            form={form}
-            onCancel={cancelEdit}
-            onChange={setForm}
-            onSubmit={submitItem}
-          />
-        )}
-
-        {activeTab === 'cardapio' && cardapioView === 'legado' && (
-          <form onSubmit={submitItem} className="mt-5 space-y-4">
-            <section className="rounded-lg border border-slate-200 bg-white p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-base font-black text-slate-950">
-                    {editingProductId ? 'Editar item' : 'Novo item'}
-                  </h2>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    {editingProductId ? 'Atualize preço, ingredientes e descrição.' : 'Cadastro rápido para o menu.'}
-                  </p>
-                </div>
-                <Save size={19} className="text-slate-400" />
-              </div>
-
-              <div className="mt-4 space-y-3">
-                <AdminInput
-                  label="Nome"
-                  value={form.name}
-                  placeholder="Ex.: Combo da Casa"
-                  onChange={(value) => setForm((current) => ({ ...current, name: value }))}
-                />
-
-                <div className="grid grid-cols-[1fr_104px] gap-3">
-                  <label className="block text-xs font-black text-slate-600">
-                    Categoria
-                    <select
-                      value={form.category}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, category: event.target.value }))
-                      }
-                      className="mt-2 h-11 w-full rounded-lg bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none ring-1 ring-slate-200"
-                    >
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <AdminInput
-                    label="Preço"
-                    value={form.price}
-                    placeholder="39,90"
-                    onChange={(value) => setForm((current) => ({ ...current, price: value }))}
-                  />
-                </div>
-
-                <AdminInput
-                  label="Ingredientes"
-                  value={form.ingredients}
-                  placeholder="Pão, carne 150g, queijo"
-                  onChange={(value) =>
-                    setForm((current) => ({ ...current, ingredients: value }))
-                  }
-                />
-
-                <AdminInput
-                  label="Descrição"
-                  value={form.description}
-                  placeholder="Resumo do item"
-                  onChange={(value) =>
-                    setForm((current) => ({ ...current, description: value }))
-                  }
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 text-sm font-black text-white transition active:scale-[0.99]"
-              >
-                <Save size={17} />
-                {editingProductId ? 'ATUALIZAR ITEM' : 'SALVAR ITEM'}
-              </button>
-
-              {editingProductId && (
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  className="mt-2 h-10 w-full rounded-lg bg-white text-sm font-black text-slate-700 ring-1 ring-slate-200 transition active:scale-[0.99]"
-                >
-                  CANCELAR EDIÇÃO
-                </button>
-              )}
-            </section>
-
-            <section className="rounded-lg border border-slate-200 bg-white">
-              <div className="flex items-center justify-between border-b border-slate-100 p-4">
-                <div>
-                  <h2 className="text-base font-black text-slate-950">Produtos</h2>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    Edite sem perder histórico.
-                  </p>
-                </div>
-                <span className="text-sm font-black text-slate-400">{products.length}</span>
-              </div>
-
-              <div className="divide-y divide-slate-100">
-                {products.map((product) => (
-                  <div key={product.id} className="grid grid-cols-[1fr_auto] gap-3 p-4">
-                    <button
-                      type="button"
-                      onClick={() => editProduct(product)}
-                      className="min-w-0 text-left"
-                    >
-                      <span className="block truncate text-sm font-black text-slate-950">
-                        {product.name}
-                      </span>
-                      <span className="mt-1 block text-xs font-bold text-slate-500">
-                        {formatCurrency(product.price)} ·{' '}
-                        {categories.find((category) => category.id === product.category)?.label}
-                      </span>
-                    </button>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => editProduct(product)}
-                        aria-label={`Editar ${product.name}`}
-                        className="grid size-9 place-items-center rounded-lg bg-slate-50 text-slate-700 ring-1 ring-slate-200"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onToggleProductActive(product.id)}
-                        aria-label={
-                          product.active === false
-                            ? `Ativar ${product.name}`
-                            : `Desativar ${product.name}`
-                        }
-                        className={`h-9 rounded-lg px-3 text-xs font-black ring-1 ${
-                          product.active === false
-                            ? 'bg-slate-50 text-slate-500 ring-slate-200'
-                            : 'bg-emerald-50 text-emerald-600 ring-emerald-100'
-                        }`}
-                      >
-                        {product.active === false ? 'INATIVO' : 'ATIVO'}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </form>
-        )}
 
         {activeTab === 'mesas' && (
           <section className="mt-5 space-y-4">
@@ -2399,122 +2181,402 @@ function AdminStat({ label, value }) {
   )
 }
 
+function buildAdminProductDraft(product, fallbackCategory = 'frutos-do-mar') {
+  const category = product?.category ?? fallbackCategory
+  const options = product?.options?.length
+    ? product.options
+    : [
+        {
+          id: 'base',
+          label: '1 pessoa',
+          detail: 'Porção individual',
+          price: product?.price ?? '',
+          people: 1,
+        },
+      ]
+
+  return {
+    name: product?.name ?? '',
+    category,
+    description: product?.description ?? '',
+    image: product?.image ?? fallbackImages[category],
+    tags: product?.tags ?? [],
+    options: options.map((option) => ({
+      id: option.id,
+      label: option.label,
+      detail: option.detail,
+      people: String(option.people ?? option.label?.match(/\d+/)?.[0] ?? ''),
+      price: formatAdminPriceInput(option.price),
+    })),
+  }
+}
+
+function buildAdminProductPayload(draft, currentProduct) {
+  const options = draft.options.map((option) => {
+    const people = Number(option.people) || null
+
+    return {
+      id: option.id,
+      label: option.label || `${option.people} ${people === 1 ? 'pessoa' : 'pessoas'}`,
+      detail: option.detail,
+      price: parseAdminPrice(option.price),
+      people,
+    }
+  })
+  const price = options[0]?.price || currentProduct?.price || 0
+
+  return {
+    ...(currentProduct ?? {}),
+    id: currentProduct?.id ?? `admin-${Date.now()}`,
+    category: draft.category,
+    name: draft.name.trim(),
+    price,
+    image: draft.image || fallbackImages[draft.category],
+    badge: currentProduct?.badge ?? 'Admin',
+    badgeTone: currentProduct?.badgeTone ?? 'border-slate-200 bg-white text-slate-600',
+    badgeIcon: currentProduct?.badgeIcon ?? Save,
+    badgeIconTone: currentProduct?.badgeIconTone ?? 'text-slate-600',
+    description: draft.description.trim() || 'Item cadastrado pelo administrador do cardápio.',
+    tags: draft.tags.length ? draft.tags : ['Cadastro admin', 'Disponível', 'Novo item'],
+    options,
+    active: currentProduct?.active !== false,
+  }
+}
+
+function parseAdminPrice(value) {
+  const normalizedValue = String(value ?? '')
+    .replace(/[R$\s.]/g, '')
+    .replace(',', '.')
+
+  return Number(normalizedValue) || 0
+}
+
+function formatAdminPriceInput(value) {
+  if (value === '' || value === null || value === undefined) return ''
+
+  return String(value).replace('.', ',')
+}
+
+function getAllergenIcon(label) {
+  const normalizedLabel = normalizeText(label)
+
+  if (normalizedLabel.includes('ovo')) return 'O'
+  if (normalizedLabel.includes('gluten')) return 'G'
+  if (normalizedLabel.includes('peixe')) return 'P'
+  if (normalizedLabel.includes('lactose')) return 'L'
+  if (normalizedLabel.includes('crustaceos')) return 'C'
+  if (normalizedLabel.includes('castanhas')) return 'N'
+  if (normalizedLabel.includes('soja')) return 'S'
+
+  return '+'
+}
+
 function AdminMenuEditor({
   categories,
   products,
+  onAddAdminItem,
   onBack,
-  onEditProduct,
   onRemoveProduct,
-  onStartNewProduct,
   onToggleProductActive,
+  onUpdateProduct,
 }) {
-  return (
-    <section className="mt-5 space-y-5 pb-4">
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/80">
-        <div className="relative h-[106px]">
-          <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
-          <div className="absolute inset-0 bg-black/10" />
-          <button
-            type="button"
-            onClick={onBack}
-            className="absolute left-3 top-3 grid size-9 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow"
-            aria-label="Voltar para opcoes do cardapio"
-          >
-            <ArrowLeft size={19} strokeWidth={2.6} />
-          </button>
-          <button
-            type="button"
-            className="absolute right-3 top-3 grid size-9 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow"
-            aria-label="Imagem de capa"
-          >
-            <Camera size={18} strokeWidth={2.4} />
-          </button>
-        </div>
+  const [editorView, setEditorView] = useState('home')
+  const [editorPromos, setEditorPromos] = useState(promoSlides)
+  const [editorCategories, setEditorCategories] = useState(categories)
+  const [editingPromoId, setEditingPromoId] = useState('')
+  const [editingProductId, setEditingProductId] = useState('')
+  const [editingCategoryId, setEditingCategoryId] = useState('')
+  const [productReturnView, setProductReturnView] = useState('home')
+  const [pendingDelete, setPendingDelete] = useState(null)
 
-        <div className="relative px-4 pb-5 pt-9">
-          <div className="absolute left-5 top-[-50px]">
+  function editProduct(product, returnView = 'home') {
+    setEditingProductId(product.id)
+    setEditingCategoryId(product.category)
+    setProductReturnView(returnView)
+    setEditorView('product')
+  }
+
+  function editPromo(slide) {
+    setEditingPromoId(slide.id)
+    setEditorView('promo')
+  }
+
+  function addPromo() {
+    const nextPromo = {
+      id: `admin-promo-${Date.now()}`,
+      image: promoShrimp,
+      alt: 'Novo card promocional',
+      fit: 'contain',
+    }
+
+    setEditorPromos((items) => [...items, nextPromo])
+    setEditingPromoId(nextPromo.id)
+    setEditorView('promo')
+  }
+
+  function savePromo(updatedPromo) {
+    setEditorPromos((items) =>
+      items.map((item) => (item.id === updatedPromo.id ? { ...item, ...updatedPromo } : item)),
+    )
+    setEditingPromoId('')
+    setEditorView('home')
+  }
+
+  function requestRemovePromo(slide) {
+    setPendingDelete({
+      title: 'Voce tem certeza que deseja excluir?',
+      onConfirm: () => {
+        setEditorPromos((items) => items.filter((item) => item.id !== slide.id))
+        setPendingDelete(null)
+      },
+    })
+  }
+
+  function startNewProduct(returnView = 'home', categoryId = editingCategoryId) {
+    setEditingProductId('')
+    setEditingCategoryId(categoryId)
+    setProductReturnView(returnView)
+    setEditorView('product')
+  }
+
+  function closeProductEditor() {
+    setEditingProductId('')
+    setEditorView(productReturnView)
+  }
+
+  function saveProduct(productPayload) {
+    if (editingProductId) {
+      onUpdateProduct(productPayload)
+    } else {
+      onAddAdminItem(productPayload)
+    }
+
+    closeProductEditor()
+  }
+
+  function requestRemoveProduct(product) {
+    setPendingDelete({
+      title: 'Voce tem certeza que deseja excluir?',
+      onConfirm: () => {
+        onRemoveProduct(product.id)
+        setPendingDelete(null)
+      },
+    })
+  }
+
+  function openCategoryProducts(categoryId) {
+    setEditingCategoryId(categoryId)
+    setEditorView('category-products')
+  }
+
+  function openCategoriesEditor() {
+    setEditingCategoryId('')
+    setEditorView('categories')
+  }
+
+  function addCategory() {
+    const nextCategory = {
+      id: `admin-category-${Date.now()}`,
+      label: 'Nova Categoria',
+      shortLabel: 'Nova',
+      iconImage: iconEntradas,
+      image: categoriaEntradas,
+    }
+
+    setEditorCategories((items) => [...items, nextCategory])
+  }
+
+  function requestRemoveCategory(category) {
+    setPendingDelete({
+      title: 'Voce tem certeza que deseja excluir?',
+      onConfirm: () => {
+        setEditorCategories((items) => items.filter((item) => item.id !== category.id))
+        setPendingDelete(null)
+      },
+    })
+  }
+
+  const editingProduct = products.find((product) => product.id === editingProductId) ?? null
+  const editingPromo = editorPromos.find((slide) => slide.id === editingPromoId) ?? editorPromos[0]
+  const editingCategory =
+    editorCategories.find((category) => category.id === editingCategoryId) ?? editorCategories[0] ?? categories[0]
+  const deleteDialog = pendingDelete && (
+    <AdminConfirmDialog
+      title={pendingDelete.title}
+      confirmLabel="Excluir"
+      onCancel={() => setPendingDelete(null)}
+      onConfirm={pendingDelete.onConfirm}
+    />
+  )
+
+  if (editorView === 'product') {
+    return (
+      <div className="relative h-full">
+        <AdminProductEditScreen
+          categories={editorCategories}
+          fallbackCategory={editingCategory.id}
+          product={editingProduct}
+          onBack={closeProductEditor}
+          onSave={saveProduct}
+        />
+      </div>
+    )
+  }
+
+  if (editorView === 'promo') {
+    return (
+      <div className="relative h-full">
+        <AdminPromoEditScreen
+          promo={editingPromo}
+          onBack={() => setEditorView('home')}
+          onSave={savePromo}
+        />
+      </div>
+    )
+  }
+
+  if (editorView === 'categories') {
+    return (
+      <div className="relative h-full">
+        <AdminCategoriesEditorScreen
+          categories={editorCategories}
+          onAddCategory={addCategory}
+          onBack={() => setEditorView('home')}
+          onEditCategory={(category) => openCategoryProducts(category.id)}
+          onRemoveCategory={requestRemoveCategory}
+        />
+        {deleteDialog}
+      </div>
+    )
+  }
+
+  if (editorView === 'category-products') {
+    return (
+      <div className="relative h-full">
+        <AdminCategoryProductsEditorScreen
+          category={editingCategory}
+          products={products.filter((product) => product.category === editingCategory.id)}
+          onAddProduct={() => startNewProduct('category-products', editingCategory.id)}
+          onBack={openCategoriesEditor}
+          onEditProduct={(product) => editProduct(product, 'category-products')}
+          onRemoveProduct={requestRemoveProduct}
+        />
+        {deleteDialog}
+      </div>
+    )
+  }
+
+  return (
+    <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]">
+      <div className="sticky top-0 z-0 h-[142px] overflow-hidden">
+        <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
+        <div className="absolute inset-0 bg-black/10" />
+        <button
+          type="button"
+          onClick={onBack}
+          className="absolute right-5 top-9 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
+          aria-label="Voltar ao painel administrativo"
+        >
+          <Settings size={24} strokeWidth={2.6} />
+        </button>
+      </div>
+
+      <div className="relative z-10 -mt-6 rounded-t-[22px] bg-white px-5 pb-8 pt-5 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <div className="grid grid-cols-[128px_1fr] items-start gap-4">
+          <div className="relative -mt-16">
             <img
               src={cocoLogo}
               alt="Coco Bambu"
-              className="size-[96px] rounded-full border-[3px] border-[#d8ad61] bg-[#4b160e]"
+              className="size-[116px] rounded-full border-[3px] border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.22)]"
               draggable="false"
             />
             <button
               type="button"
-              className="absolute -bottom-1 right-1 grid size-8 place-items-center rounded-full bg-slate-100 text-slate-700 ring-2 ring-white"
+              className="absolute bottom-1 right-3 grid size-9 place-items-center rounded-full bg-slate-100 text-slate-700 ring-2 ring-white"
               aria-label="Alterar logo"
             >
-              <Camera size={15} strokeWidth={2.5} />
+              <Camera size={17} strokeWidth={2.5} />
             </button>
           </div>
 
-          <div className="ml-[132px] space-y-3">
-            <div className="h-9 rounded-lg bg-slate-100 px-4 text-sm font-semibold leading-9 text-slate-600">
+          <div className="space-y-2 pt-1">
+            <button
+              type="button"
+              className="h-8 w-full rounded-lg bg-slate-100 px-4 text-left text-sm font-semibold text-slate-600"
+            >
               Coco Bambu
-            </div>
-            <div className="h-9 rounded-lg bg-slate-100 px-4 text-sm font-semibold leading-9 text-slate-600">
+            </button>
+            <button
+              type="button"
+              className="h-8 w-full rounded-lg bg-slate-100 px-4 text-left text-sm font-semibold text-slate-600"
+            >
               Derby, Recife - PE
-            </div>
+            </button>
           </div>
+        </div>
+
+        <AdminEditorSectionTitle title="Cards promocao" actionLabel="Adicionar" onAction={addPromo} />
+        <div className="-mx-5 mt-3 flex gap-3 overflow-x-auto px-5 pb-1">
+          {editorPromos.map((slide) => (
+            <div
+              key={slide.id}
+              className="grid w-[390px] max-w-[calc(100vw-52px)] shrink-0 grid-cols-[1fr_92px] gap-2 rounded-lg bg-slate-100 p-2"
+            >
+              <img
+                src={slide.image}
+                alt={slide.alt}
+                className="h-[108px] w-full rounded-md bg-[#4b160e] object-contain"
+                draggable="false"
+              />
+              <AdminActionStack onEdit={() => editPromo(slide)} onRemove={() => requestRemovePromo(slide)} />
+            </div>
+          ))}
+        </div>
+        <div className="mt-1 flex justify-center gap-1.5">
+          <span className="size-2 rounded-full bg-slate-300" />
+          <span className="size-2 rounded-full bg-slate-300" />
+          <span className="size-2 rounded-full bg-slate-300" />
+        </div>
+
+        <AdminEditorSectionTitle title="Categorias" actionLabel="Editar" onAction={openCategoriesEditor} />
+        <div className="-mx-5 mt-3 overflow-hidden">
+          <div className="flex gap-4 overflow-x-auto px-5 pb-2">
+            {editorCategories.map((category) => (
+              <div key={category.id} className="w-[164px] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => openCategoryProducts(category.id)}
+                  className="block w-full overflow-hidden rounded-md bg-slate-100 text-left"
+                >
+                  <img src={category.image} alt="" className="h-[112px] w-full object-cover" draggable="false" />
+                </button>
+                <p className="mt-2 truncate text-center text-sm font-black text-[#4b160e]">
+                  {category.label.toUpperCase()}
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-1.5">
+                  <AdminMiniAction icon={Pencil} label="Editar" onClick={() => openCategoryProducts(category.id)} />
+                  <AdminMiniAction icon={Trash2} label="Excluir" onClick={() => requestRemoveCategory(category)} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <AdminEditorSectionTitle title="Destaques" actionLabel="Adicionar" onAction={() => startNewProduct()} />
+        <div className="mt-3 space-y-3">
+          {products.map((product) => (
+            <AdminProductEditorCard
+              key={product.id}
+              product={product}
+              onEdit={() => editProduct(product)}
+              onRemove={() => requestRemoveProduct(product)}
+              onToggle={() => onToggleProductActive(product.id)}
+            />
+          ))}
         </div>
       </div>
 
-      <AdminEditorSectionTitle
-        title="Cards promocao"
-        actionLabel="Adicionar"
-        onAction={onStartNewProduct}
-      />
-      <div className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-1">
-        {promoSlides.map((slide) => (
-          <div
-            key={slide.id}
-            className="grid w-[386px] max-w-[calc(100vw-64px)] shrink-0 grid-cols-[1fr_96px] gap-3 rounded-lg bg-slate-100 p-3"
-          >
-            <img
-              src={slide.image}
-              alt={slide.alt}
-              className="h-[112px] w-full rounded-md bg-[#4b160e] object-contain"
-              draggable="false"
-            />
-            <AdminActionStack disabled />
-          </div>
-        ))}
-      </div>
-
-      <AdminEditorSectionTitle
-        title="Categorias"
-        actionLabel="Adicionar"
-        onAction={onStartNewProduct}
-      />
-      <div className="grid grid-cols-3 gap-3">
-        {categories.slice(0, 6).map((category) => (
-          <div key={category.id} className="min-w-0">
-            <div className="overflow-hidden rounded-md bg-slate-100">
-              <img src={category.image} alt="" className="h-[88px] w-full object-cover" draggable="false" />
-            </div>
-            <p className="mt-2 truncate text-center text-[12px] font-black text-[#4b160e]">
-              {category.label.toUpperCase()}
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-1.5">
-              <AdminMiniAction icon={Pencil} label="Editar" disabled />
-              <AdminMiniAction icon={Trash2} label="Excluir" disabled />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <AdminEditorSectionTitle title="Destaques" actionLabel="Adicionar" onAction={onStartNewProduct} />
-      <div className="space-y-3">
-        {products.map((product) => (
-          <AdminProductEditorCard
-            key={product.id}
-            product={product}
-            onEdit={() => onEditProduct(product)}
-            onRemove={() => onRemoveProduct(product)}
-            onToggle={() => onToggleProductActive(product.id)}
-          />
-        ))}
-      </div>
+      {deleteDialog}
     </section>
   )
 }
@@ -2562,10 +2624,11 @@ function AdminActionStack({ disabled = false, onEdit, onRemove }) {
   )
 }
 
-function AdminMiniAction({ icon: Icon, label, disabled = false }) {
+function AdminMiniAction({ icon: Icon, label, disabled = false, onClick }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       disabled={disabled}
       className="flex h-8 items-center justify-center gap-1 rounded-md bg-slate-200 text-[10px] font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-70"
     >
@@ -2621,6 +2684,531 @@ function AdminProductEditorCard({ product, onEdit, onRemove, onToggle }) {
         </button>
       </div>
     </article>
+  )
+}
+
+function AdminPromoEditScreen({ promo, onBack, onSave }) {
+  const [draft, setDraft] = useState(() => ({
+    ...promo,
+    alt: promo?.alt ?? 'Card promocional',
+  }))
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false)
+
+  return (
+    <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-7 text-[#4b160e]">
+      <TopPhotoBar onBack={onBack} onOpenSettings={onBack} compact />
+
+      <div className="relative z-10 -mt-9 rounded-t-[22px] bg-white px-8 pb-8 pt-7 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <div className="relative overflow-hidden rounded-lg bg-[#4b160e]">
+          <img
+            src={draft.image}
+            alt=""
+            className="h-[178px] w-full object-contain"
+            draggable="false"
+          />
+          <button
+            type="button"
+            className="absolute bottom-3 right-3 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/95 px-3 text-xs font-bold text-[#8f746d] shadow"
+          >
+            <Camera size={15} />
+            Trocar foto
+          </button>
+        </div>
+
+        <label className="mt-4 block text-sm font-black text-[#6b433a]">
+          Nome do card
+          <input
+            value={draft.alt}
+            onChange={(event) => setDraft((current) => ({ ...current, alt: event.target.value }))}
+            className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] px-3 text-sm font-semibold text-[#4b160e] outline-none"
+          />
+        </label>
+
+        <button
+          type="button"
+          onClick={() => setSaveConfirmOpen(true)}
+          className="mx-auto mt-6 flex h-10 w-[90%] items-center justify-center rounded-full bg-[#4b160e] text-base font-semibold text-white"
+        >
+          Salvar alterações
+        </button>
+      </div>
+
+      {saveConfirmOpen && (
+        <AdminConfirmDialog
+          title="Você tem certeza que deseja salvar as alterações?"
+          confirmLabel="Salvar"
+          onCancel={() => setSaveConfirmOpen(false)}
+          onConfirm={() => onSave(draft)}
+        />
+      )}
+    </section>
+  )
+}
+
+function AdminProductEditScreen({ categories, fallbackCategory, product, onBack, onSave }) {
+  const [draft, setDraft] = useState(() => buildAdminProductDraft(product, fallbackCategory || categories[0]?.id))
+  const [allergenOpen, setAllergenOpen] = useState(false)
+  const [saveConfirmOpen, setSaveConfirmOpen] = useState(false)
+  const [deleteOptionId, setDeleteOptionId] = useState('')
+  const [optionDraft, setOptionDraft] = useState(null)
+  const previewImage = draft.image || fallbackImages[draft.category] || categoriaFrutosDoMar
+
+  function updateDraftField(field, value) {
+    setDraft((current) => ({ ...current, [field]: value }))
+  }
+
+  function toggleTag(tag) {
+    setDraft((current) => ({
+      ...current,
+      tags: current.tags.includes(tag)
+        ? current.tags.filter((item) => item !== tag)
+        : [...current.tags, tag],
+    }))
+  }
+
+  function removeTag(tag) {
+    setDraft((current) => ({
+      ...current,
+      tags: current.tags.filter((item) => item !== tag),
+    }))
+  }
+
+  function editOption(option) {
+    setOptionDraft({ ...option })
+  }
+
+  function startOption() {
+    setOptionDraft({
+      id: `opt-${Date.now()}`,
+      people: '',
+      detail: '',
+      price: '',
+    })
+  }
+
+  function concludeOption() {
+    if (!optionDraft?.people || !optionDraft?.price) return
+
+    setDraft((current) => {
+      const exists = current.options.some((option) => option.id === optionDraft.id)
+      const nextOption = {
+        ...optionDraft,
+        label: `${optionDraft.people} ${Number(optionDraft.people) === 1 ? 'pessoa' : 'pessoas'}`,
+      }
+
+      return {
+        ...current,
+        options: exists
+          ? current.options.map((option) => (option.id === optionDraft.id ? nextOption : option))
+          : [...current.options, nextOption],
+      }
+    })
+    setOptionDraft(null)
+  }
+
+  function removeOption(optionId) {
+    setDraft((current) => ({
+      ...current,
+      options: current.options.filter((option) => option.id !== optionId),
+    }))
+    setDeleteOptionId('')
+  }
+
+  function confirmSave() {
+    onSave(buildAdminProductPayload(draft, product))
+  }
+
+  return (
+    <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-7 text-[#4b160e]">
+      <TopPhotoBar onBack={onBack} onOpenSettings={onBack} compact />
+
+      <div className="relative z-10 -mt-9 rounded-t-[22px] bg-white px-8 pb-8 pt-7 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <div className="relative overflow-hidden rounded-lg bg-[#4b160e]">
+          <img
+            src={previewImage}
+            alt=""
+            className="h-[178px] w-full object-cover"
+            draggable="false"
+          />
+          <button
+            type="button"
+            className="absolute bottom-3 right-3 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/95 px-3 text-xs font-bold text-[#8f746d] shadow"
+          >
+            <Camera size={15} />
+            Trocar foto
+          </button>
+        </div>
+
+        <label className="mt-3 block text-sm font-black text-[#6b433a]">
+          Nome do prato
+          <input
+            value={draft.name}
+            onChange={(event) => updateDraftField('name', event.target.value)}
+            placeholder="Nome do prato"
+            className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] px-3 text-sm font-semibold text-[#4b160e] outline-none"
+          />
+        </label>
+
+        <label className="mt-3 block text-sm font-black text-[#6b433a]">
+          Descrição
+          <textarea
+            value={draft.description}
+            onChange={(event) => updateDraftField('description', event.target.value)}
+            placeholder="Descrição do prato"
+            className="mt-1 h-[112px] w-full resize-none rounded-lg border border-[#b7928b] px-3 py-3 text-sm font-semibold leading-5 text-[#6b433a] outline-none"
+          />
+        </label>
+
+        <div className="mt-4">
+          <h2 className="text-sm font-black text-[#6b433a]">Alergênicos</h2>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {draft.tags.map((tag) => (
+              <AdminAllergenChip key={tag} label={tag} onRemove={() => removeTag(tag)} />
+            ))}
+            <button
+              type="button"
+              onClick={() => setAllergenOpen(true)}
+              className="inline-flex h-8 items-center gap-1 rounded-full border border-[#b7928b] px-3 text-xs font-bold text-[#8b6d66]"
+            >
+              Adicionar
+              <Plus size={13} />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5">
+          <h2 className="text-sm font-black text-[#6b433a]">Opções de porções e preços</h2>
+          <div className="mt-2 space-y-2">
+            {draft.options.map((option) => (
+              <AdminPortionOptionRow
+                key={option.id}
+                option={option}
+                onEdit={() => editOption(option)}
+                onRemove={() => setDeleteOptionId(option.id)}
+              />
+            ))}
+
+            {optionDraft && (
+              <div className="grid grid-cols-[1fr_1.2fr_1.2fr_auto] gap-2 rounded-lg border border-[#b7928b] bg-[#f5e7d2] p-2">
+                <label className="text-[11px] font-semibold">
+                  Pessoas
+                  <input
+                    value={optionDraft.people}
+                    onChange={(event) => setOptionDraft((current) => ({ ...current, people: event.target.value }))}
+                    className="mt-1 h-8 w-full rounded border border-[#b7928b] px-2 text-sm outline-none"
+                  />
+                </label>
+                <label className="text-[11px] font-semibold">
+                  Peso
+                  <input
+                    value={optionDraft.detail}
+                    onChange={(event) => setOptionDraft((current) => ({ ...current, detail: event.target.value }))}
+                    className="mt-1 h-8 w-full rounded border border-[#b7928b] px-2 text-sm outline-none"
+                  />
+                </label>
+                <label className="text-[11px] font-semibold">
+                  Preço
+                  <input
+                    value={optionDraft.price}
+                    onChange={(event) => setOptionDraft((current) => ({ ...current, price: event.target.value }))}
+                    className="mt-1 h-8 w-full rounded border border-[#b7928b] px-2 text-sm outline-none"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={concludeOption}
+                  className="mt-[18px] h-9 rounded-lg bg-[#4b160e] px-3 text-xs font-bold text-white"
+                >
+                  Concluir
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={startOption}
+          className="mx-auto mt-4 flex h-10 w-[90%] items-center justify-center gap-2 rounded-full bg-[#4b160e] text-base font-semibold text-white"
+        >
+          Adicionar
+          <Plus size={18} />
+        </button>
+        <button
+          type="button"
+          onClick={() => setSaveConfirmOpen(true)}
+          className="mx-auto mt-2 flex h-10 w-[90%] items-center justify-center rounded-full border border-[#4b160e] bg-white text-base font-semibold text-[#4b160e]"
+        >
+          Salvar alterações
+        </button>
+      </div>
+
+      {allergenOpen && (
+        <AdminAllergenDialog
+          selectedTags={draft.tags}
+          onClose={() => setAllergenOpen(false)}
+          onToggle={toggleTag}
+        />
+      )}
+      {deleteOptionId && (
+        <AdminConfirmDialog
+          title="Você tem certeza que deseja excluir?"
+          confirmLabel="Excluir"
+          onCancel={() => setDeleteOptionId('')}
+          onConfirm={() => removeOption(deleteOptionId)}
+        />
+      )}
+      {saveConfirmOpen && (
+        <AdminConfirmDialog
+          title="Você tem certeza que deseja salvar as alterações?"
+          confirmLabel="Salvar"
+          onCancel={() => setSaveConfirmOpen(false)}
+          onConfirm={confirmSave}
+        />
+      )}
+    </section>
+  )
+}
+
+function AdminCategoriesEditorScreen({ categories, onAddCategory, onBack, onEditCategory, onRemoveCategory }) {
+  return (
+    <section className="relative h-full overflow-y-auto bg-white pb-8 text-[#4b160e]">
+      <TopPhotoBar onBack={onBack} onOpenSettings={onBack} compact />
+      <div className="relative z-10 -mt-9 rounded-t-[22px] bg-white px-5 pt-6 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <img
+          src={cocoLogo}
+          alt="Coco Bambu"
+          className="relative z-20 mx-auto -mt-20 size-[112px] rounded-full border-4 border-[#d8ad61] bg-[#4a160f]"
+          draggable="false"
+        />
+        <h1 data-screen-title="true" tabIndex={-1} className="mt-2 text-center text-xl font-medium outline-none">
+          CATEGORIAS
+        </h1>
+        <button
+          type="button"
+          onClick={onAddCategory}
+          className="mx-auto mt-4 flex h-10 w-[66%] items-center justify-center gap-2 rounded-full bg-[#4b160e] text-sm font-black text-[#d8ad61]"
+        >
+          <Plus size={17} />
+          ADICIONAR CATEGORIA
+        </button>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          {categories.map((category) => (
+            <div key={category.id} className="rounded-lg bg-[#f4f4f4] p-2 text-center">
+              <button
+                type="button"
+                onClick={() => onEditCategory(category)}
+                className="relative block w-full pb-7"
+              >
+                <span className="block aspect-[154/107] overflow-hidden rounded-lg border-[3px] border-[#4b160e] bg-white">
+                  <img src={category.image} alt="" className="block size-full object-cover" draggable="false" />
+                </span>
+                <span className="absolute bottom-0 left-1/2 grid size-14 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e]">
+                  <img src={category.iconImage} alt="" className="w-8" draggable="false" />
+                </span>
+              </button>
+              <p className="mt-1 h-9 text-sm font-black leading-tight">{category.label.toUpperCase()}</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <AdminMiniAction icon={Pencil} label="Editar" onClick={() => onEditCategory(category)} />
+                <AdminMiniAction icon={Trash2} label="Excluir" onClick={() => onRemoveCategory(category)} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function AdminCategoryProductsEditorScreen({ category, products, onAddProduct, onBack, onEditProduct, onRemoveProduct }) {
+  const groupedProducts = groupProductsByMenuSection(products, category)
+
+  return (
+    <section className="relative h-full overflow-y-auto bg-white pb-8 text-[#43160f]">
+      <TopPhotoBar onBack={onBack} onOpenSettings={onBack} compact />
+      <div className="relative z-10 -mt-7 rounded-t-[26px] bg-white px-4 pb-8 pt-[70px] shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <div className="absolute left-1/2 top-[-70px] grid size-[126px] -translate-x-1/2 place-items-center rounded-full border-4 border-[#d8ad61] bg-[#4b160e] shadow-[0_9px_0_rgba(75,22,14,0.18),0_18px_34px_rgba(67,22,15,0.20)] ring-[5px] ring-white">
+          <img src={category.iconImage} alt="" className="w-[78px]" draggable="false" />
+        </div>
+
+        <h1 data-screen-title="true" tabIndex={-1} className="text-center text-[22px] font-black outline-none">
+          {category.label.toUpperCase()}
+        </h1>
+        <button
+          type="button"
+          onClick={onAddProduct}
+          className="mx-auto mt-3 flex h-9 w-[68%] items-center justify-center gap-2 rounded-full bg-[#4b160e] text-xs font-black text-[#d8ad61]"
+        >
+          <Plus size={15} />
+          ADICIONAR PRATO
+        </button>
+
+        <div className="mt-5 space-y-5">
+          {groupedProducts.length ? (
+            groupedProducts.map((group) => (
+              <section key={group.title}>
+                <h2 className="mb-2 px-1 text-[17px] font-black">{group.title}</h2>
+                <div className="space-y-2.5">
+                  {group.products.map((product) => (
+                    <AdminCategoryProductCard
+                      key={product.id}
+                      product={product}
+                      onEdit={() => onEditProduct(product)}
+                      onRemove={() => onRemoveProduct(product)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))
+          ) : (
+            <p className="rounded-lg bg-[#f0f0f0] p-4 text-sm font-bold text-[#7d6259]">
+              Nenhum prato cadastrado nesta categoria.
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function AdminCategoryProductCard({ product, onEdit, onRemove }) {
+  return (
+    <article className="grid min-h-[112px] grid-cols-[118px_1fr_96px] gap-2 rounded-lg bg-[#f0f0f0] p-2">
+      <img src={product.image} alt="" className="h-[96px] rounded-md object-cover" draggable="false" />
+      <div className="min-w-0 py-1">
+        <h3 className="line-clamp-2 text-[13px] font-black leading-tight">{product.name.toUpperCase()}</h3>
+        <p className="mt-1 line-clamp-3 text-[11px] font-medium leading-[14px]">{product.description}</p>
+        <p className="mt-1 text-sm font-black">{formatCurrency(product.price)}</p>
+      </div>
+      <div className="grid content-center gap-2">
+        <button
+          type="button"
+          onClick={onRemove}
+          className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-200 text-xs font-bold text-slate-600"
+        >
+          <Trash2 size={15} />
+          Excluir
+        </button>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-200 text-xs font-bold text-slate-600"
+        >
+          <Pencil size={15} />
+          Editar
+        </button>
+      </div>
+    </article>
+  )
+}
+
+function AdminPortionOptionRow({ option, onEdit, onRemove }) {
+  return (
+    <article className="grid min-h-[64px] grid-cols-[42px_1fr_auto_auto_auto] items-center gap-2 rounded-lg border border-[#b7928b] bg-white p-2">
+      <Table2 size={25} className="text-[#7d5148]" />
+      <div className="min-w-0">
+        <h3 className="text-sm font-black">{option.label}</h3>
+        <p className="truncate text-xs font-semibold text-[#9d817a]">{option.detail}</p>
+      </div>
+      <p className="whitespace-nowrap text-sm font-black">{formatCurrency(parseAdminPrice(option.price))}</p>
+      <button
+        type="button"
+        onClick={onEdit}
+        className="grid size-9 place-items-center rounded-lg border border-[#b7928b] text-[#7d5148]"
+        aria-label="Editar porção"
+      >
+        <Pencil size={18} />
+      </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="grid size-9 place-items-center rounded-lg border border-[#b7928b] text-[#7d5148]"
+        aria-label="Excluir porção"
+      >
+        <Trash2 size={18} />
+      </button>
+    </article>
+  )
+}
+
+function AdminAllergenDialog({ selectedTags, onClose, onToggle }) {
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 px-5 backdrop-blur-[1px]">
+      <section className="w-full rounded-2xl border border-[#4b160e] bg-white px-4 py-5 text-center shadow-xl">
+        <h2 className="text-xl font-black text-[#6b433a]">Alergênicos</h2>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          {allergenOptions.map((option) => (
+            <button
+              type="button"
+              key={option.id}
+              onClick={() => onToggle(option.id)}
+              aria-pressed={selectedTags.includes(option.id)}
+              className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-base font-semibold ${
+                selectedTags.includes(option.id)
+                  ? 'border-[#4b160e] bg-white text-[#6b433a]'
+                  : 'border-transparent bg-slate-100 text-[#8e8e8e]'
+              }`}
+            >
+              <span className="grid size-7 place-items-center rounded-full bg-[#fff2df] text-[13px]">
+                {getAllergenIcon(option.id)}
+              </span>
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mx-auto mt-5 flex h-9 w-32 items-center justify-center rounded-full bg-[#4b160e] text-base font-semibold text-white"
+        >
+          Salvar
+        </button>
+      </section>
+    </div>
+  )
+}
+
+function AdminAllergenChip({ label, onRemove }) {
+  return (
+    <span className="inline-flex h-8 items-center gap-1 rounded-full bg-slate-100 px-2 text-xs font-semibold text-[#8b6d66]">
+      <span className="grid size-6 place-items-center rounded-full bg-[#fff2df] text-[11px]">{getAllergenIcon(label)}</span>
+      {label}
+      <button
+        type="button"
+        onClick={onRemove}
+        className="grid size-4 place-items-center rounded-full bg-slate-300 text-[10px] font-black text-white"
+        aria-label={`Remover ${label}`}
+      >
+        x
+      </button>
+    </span>
+  )
+}
+
+function AdminConfirmDialog({ title, confirmLabel, onCancel, onConfirm }) {
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/72 px-8 backdrop-blur-[1px]">
+      <section className="w-full rounded-2xl border border-[#4b160e] bg-white px-7 py-6 text-center shadow-xl">
+        <h2 className="text-lg font-black leading-7 text-[#6b433a]">{title}</h2>
+        <div className="mt-5 flex justify-center gap-6">
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="h-10 min-w-[112px] rounded bg-[#4b160e] px-5 text-base font-semibold text-white"
+          >
+            {confirmLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-10 min-w-[112px] rounded border border-[#4b160e] px-5 text-base font-semibold text-[#4b160e]"
+          >
+            Cancelar
+          </button>
+        </div>
+      </section>
+    </div>
   )
 }
 
@@ -3211,6 +3799,7 @@ function getInitialScreen() {
   if (hash === '#menu') return 'menu'
   if (hash === '#categorias') return 'categorias'
   if (hash.startsWith('#configuracoes')) return 'configuracoes'
+  if (hash.startsWith('#admin-cardapio')) return 'admin-cardapio'
 
   return 'menu'
 }
