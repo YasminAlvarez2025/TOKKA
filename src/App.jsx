@@ -90,6 +90,12 @@ const tableOptions = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10'
 
 const restaurantId = 'tokka-foods'
 const restaurantName = 'COCO BAMBU'
+const defaultRestaurantProfile = {
+  name: 'COCO BAMBU',
+  location: 'Derby, Recife - PE',
+  logo: cocoLogo,
+  cover: cocoBackground,
+}
 const defaultAdminEmail = 'admin@tokkafoods.com.br'
 const analyticsStorageKey = 'food99like-events'
 const sessionStorageKey = 'food99like-session'
@@ -363,6 +369,8 @@ function App() {
   const [menuCategorySelected, setMenuCategorySelected] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState(() => getProductFromHash())
   const [productReturnScreen, setProductReturnScreen] = useState('menu')
+  const [restaurantProfile, setRestaurantProfile] = useState(defaultRestaurantProfile)
+  const [promoItems, setPromoItems] = useState(promoSlides)
   const [products, setProducts] = useState(baseProducts)
   const [cart, setCart] = useState([])
   const [tableNumber, setTableNumber] = useState(initialTable || '')
@@ -511,6 +519,7 @@ function App() {
     try {
       await loginAdmin(email, password)
       trackEvent('admin_login', { email })
+      showScreen('admin-cardapio')
     } catch (error) {
       setAdminLoginError(translateAdminAuthError(error))
     } finally {
@@ -879,13 +888,15 @@ function App() {
             cartQuantity={cartQuantity}
             cartTotal={cartTotal}
             menuMode={menuMode}
+            promoItems={promoItems}
+            restaurantProfile={restaurantProfile}
             searchQuery={searchQuery}
             tableNumber={tableNumber}
             onBack={() => showScreen('entrada')}
             onCategoryChange={(categoryId) => openCategoryProducts(categoryId)}
             onSearchChange={changeSearchQuery}
             onOpenCategories={() => showScreen('categorias')}
-            onOpenSettings={() => showScreen('configuracoes')}
+            onOpenSettings={() => showScreen('admin-cardapio')}
             onOpenProduct={openProduct}
             onAddToCart={addToCart}
             onOpenOrder={() => showScreen('pedido')}
@@ -900,8 +911,9 @@ function App() {
         {screen === 'categorias' && (
           <CategoriesScreen
             categories={categories}
+            restaurantProfile={restaurantProfile}
             onBack={() => showScreen('menu')}
-            onOpenSettings={() => showScreen('configuracoes')}
+            onOpenSettings={() => showScreen('admin-cardapio')}
             onSelectCategory={openCategoryProducts}
           />
         )}
@@ -910,9 +922,10 @@ function App() {
           <CategoryProductsScreen
             category={categories.find((category) => category.id === activeCategory) ?? categories[0]}
             products={menuProducts.filter((product) => product.category === activeCategory)}
+            restaurantProfile={restaurantProfile}
             onBack={() => showScreen('categorias')}
             onOpenProduct={openProduct}
-            onOpenSettings={() => showScreen('configuracoes')}
+            onOpenSettings={() => showScreen('admin-cardapio')}
           />
         )}
 
@@ -978,10 +991,19 @@ function App() {
           <AdminMenuEditor
             categories={categories}
             products={products}
+            promoItems={promoItems}
+            restaurantProfile={restaurantProfile}
             onAddAdminItem={addAdminItem}
-            onBack={() => showScreen('configuracoes')}
+            onBack={() => showScreen('menu')}
+            onDone={(nextProfile) => {
+              if (nextProfile) {
+                setRestaurantProfile(nextProfile)
+              }
+              showScreen('menu')
+            }}
             onRemoveProduct={removeProduct}
             onToggleProductActive={toggleProductActive}
+            onUpdatePromos={setPromoItems}
             onUpdateProduct={updateProduct}
           />
         )}
@@ -1043,14 +1065,14 @@ function EntryScreen({ onStart }) {
   )
 }
 
-function CategoriesScreen({ categories, onBack, onOpenSettings, onSelectCategory }) {
+function CategoriesScreen({ categories, restaurantProfile = defaultRestaurantProfile, onBack, onOpenSettings, onSelectCategory }) {
   return (
     <section className="h-full overflow-y-auto bg-white pb-8 text-[#43160f]">
-      <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} compact />
+      <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onOpenSettings} compact />
       <div className="relative z-10 -mt-9 rounded-t-[36px] bg-white px-5 pt-6 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <img
-          src={cocoLogo}
-          alt="Coco Bambu"
+          src={restaurantProfile.logo}
+          alt={restaurantProfile.name}
           loading="eager"
           decoding="sync"
           className="relative z-20 mx-auto -mt-20 size-[112px] rounded-full border-4 border-[#d8ad61] bg-[#4a160f]"
@@ -1091,12 +1113,12 @@ function CategoriesScreen({ categories, onBack, onOpenSettings, onSelectCategory
   )
 }
 
-function CategoryProductsScreen({ category, products, onBack, onOpenProduct, onOpenSettings }) {
+function CategoryProductsScreen({ category, products, restaurantProfile = defaultRestaurantProfile, onBack, onOpenProduct, onOpenSettings }) {
   const groupedProducts = groupProductsByMenuSection(products, category)
 
   return (
     <section className="h-full overflow-y-auto bg-white pb-8 text-[#43160f]" aria-labelledby="category-products-title">
-      <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} compact />
+      <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onOpenSettings} compact />
 
       <div className="relative z-10 -mt-7 rounded-t-[26px] bg-white px-4 pb-8 pt-[70px] shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <div className="absolute left-1/2 top-[-70px] grid size-[126px] -translate-x-1/2 place-items-center rounded-full border-4 border-[#d8ad61] bg-[#4b160e] shadow-[0_9px_0_rgba(75,22,14,0.18),0_18px_34px_rgba(67,22,15,0.20)] ring-[5px] ring-white">
@@ -1170,10 +1192,17 @@ function CategoryDishCard({ product, onOpen }) {
   )
 }
 
-function TopPhotoBar({ onBack, onOpenSettings, trailingIcon = 'settings', compact = false, showBack = true }) {
+function TopPhotoBar({
+  backgroundImage = cocoBackground,
+  onBack,
+  onOpenSettings,
+  trailingIcon = 'settings',
+  compact = false,
+  showBack = true,
+}) {
   return (
     <div className={`relative overflow-hidden ${compact ? 'h-[144px]' : 'h-[124px]'}`}>
-      <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
+      <img src={backgroundImage} alt="" className="h-full w-full object-cover" draggable="false" />
       <div className="absolute inset-0 bg-black/10" />
       {showBack && (
         <button
@@ -1208,6 +1237,8 @@ function MenuScreen({
   cartQuantity,
   cartTotal,
   menuMode,
+  promoItems = promoSlides,
+  restaurantProfile = defaultRestaurantProfile,
   searchQuery,
   onBack,
   onCategoryChange,
@@ -1233,14 +1264,17 @@ function MenuScreen({
     .slice(0, menuMode === 'simplificado' ? 2 : 4)
   const menuSectionTitle = searchQuery.trim() ? 'RESULTADOS' : 'DESTAQUES'
   const previewCategories = categories.slice(0, 3)
+  const safePromoIndex = promoItems.length ? Math.min(promoIndex, promoItems.length - 1) : 0
 
   useEffect(() => {
+    if (!promoItems.length) return undefined
+
     const intervalId = window.setInterval(() => {
-      setPromoIndex((currentIndex) => (currentIndex + 1) % promoSlides.length)
+      setPromoIndex((currentIndex) => (currentIndex + 1) % promoItems.length)
     }, 5200)
 
     return () => window.clearInterval(intervalId)
-  }, [])
+  }, [promoItems.length])
 
   function handleMenuScroll(event) {
     const nextValue = event.currentTarget.scrollTop > 24
@@ -1254,12 +1288,17 @@ function MenuScreen({
       onScroll={handleMenuScroll}
     >
       <div className="sticky top-0 z-0">
-        <TopPhotoBar onBack={onBack} onOpenSettings={onOpenSettings} showBack={false} />
+        <TopPhotoBar
+          backgroundImage={restaurantProfile.cover}
+          onBack={onBack}
+          onOpenSettings={onOpenSettings}
+          showBack={false}
+        />
       </div>
 
       <img
-        src={cocoLogo}
-        alt="Coco Bambu"
+        src={restaurantProfile.logo}
+        alt={restaurantProfile.name}
         loading="eager"
         decoding="sync"
         className={`pointer-events-none absolute left-1/2 top-[43px] size-[82px] -translate-x-1/2 rounded-full border-[3px] border-[#d8ad61] bg-[#4a160f] transition-all duration-500 ease-out ${
@@ -1271,32 +1310,33 @@ function MenuScreen({
       <div className="relative z-20 -mt-8 rounded-t-[34px] bg-white px-8 pb-4 pt-9 shadow-[0_-18px_42px_rgba(67,22,15,0.12)]">
         <div className="text-center">
           <h1 id="menu-title" data-screen-title="true" tabIndex={-1} className="text-[22px] font-black outline-none">
-            COCO BAMBU
+            {restaurantProfile.name}
           </h1>
           <p className="mt-0.5 flex items-center justify-center gap-1 text-[11px] text-[#4b231b]">
             <MapPin size={12} fill="#111" />
-            Derby, Recife - PE
+            {restaurantProfile.location}
           </p>
         </div>
 
         <div className="-mx-8 mt-3">
           <PromoCarousel
-            activeIndex={promoIndex}
+            activeIndex={safePromoIndex}
+            slides={promoItems}
             onSelect={setPromoIndex}
             onOpenVezz={onOpenVezz}
           />
         </div>
 
         <div className="mt-1 flex justify-center gap-1.5" aria-label="Selecionar banner">
-          {promoSlides.map((slide, index) => (
+          {promoItems.map((slide, index) => (
             <button
               type="button"
               key={slide.id}
               onClick={() => setPromoIndex(index)}
               aria-label={`Mostrar banner ${index + 1}`}
-              aria-current={promoIndex === index}
+              aria-current={safePromoIndex === index}
               className={`size-2 rounded-full transition ${
-                promoIndex === index ? 'bg-[#4b160e]' : 'bg-[#d0d0d0]'
+                safePromoIndex === index ? 'bg-[#4b160e]' : 'bg-[#d0d0d0]'
               }`}
             />
           ))}
@@ -1385,7 +1425,7 @@ function MenuScreen({
   )
 }
 
-function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
+function PromoCarousel({ activeIndex, slides = promoSlides, onSelect, onOpenVezz }) {
   const carouselRef = useRef(null)
   const touchStartRef = useRef(null)
   const swipeMovedRef = useRef(false)
@@ -1413,14 +1453,14 @@ function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
   }, [])
 
   function selectRelativeSlide(direction) {
-    onSelect((activeIndex + direction + promoSlides.length) % promoSlides.length)
+    onSelect((activeIndex + direction + slides.length) % slides.length)
   }
 
   function getSlideOffset(index) {
     let offset = index - activeIndex
 
-    if (offset > promoSlides.length / 2) offset -= promoSlides.length
-    if (offset < -promoSlides.length / 2) offset += promoSlides.length
+    if (offset > slides.length / 2) offset -= slides.length
+    if (offset < -slides.length / 2) offset += slides.length
 
     return offset
   }
@@ -1502,6 +1542,8 @@ function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
     }, 120)
   }
 
+  if (!slides.length) return null
+
   return (
     <div
       ref={carouselRef}
@@ -1511,7 +1553,7 @@ function PromoCarousel({ activeIndex, onSelect, onOpenVezz }) {
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
     >
-      {promoSlides.map((slide, index) => {
+      {slides.map((slide, index) => {
         const offset = getSlideOffset(index)
         const slidePosition = offset + dragOffset / slideWidth
         const distanceFromCenter = Math.abs(slidePosition)
@@ -2274,19 +2316,27 @@ function getAllergenIcon(label) {
 function AdminMenuEditor({
   categories,
   products,
+  promoItems = promoSlides,
+  restaurantProfile = defaultRestaurantProfile,
   onAddAdminItem,
   onBack,
+  onDone,
   onRemoveProduct,
   onToggleProductActive,
+  onUpdatePromos,
   onUpdateProduct,
 }) {
   const [editorView, setEditorView] = useState('home')
-  const [editorPromos, setEditorPromos] = useState(promoSlides)
+  const [editorProfile, setEditorProfile] = useState(restaurantProfile)
+  const [editorPromos, setEditorPromos] = useState(promoItems)
   const [editorCategories, setEditorCategories] = useState(categories)
   const [editingPromoId, setEditingPromoId] = useState('')
   const [editingProductId, setEditingProductId] = useState('')
   const [editingCategoryId, setEditingCategoryId] = useState('')
   const [productReturnView, setProductReturnView] = useState('home')
+  const [profileEditorOpen, setProfileEditorOpen] = useState(false)
+  const [editorActionsOpen, setEditorActionsOpen] = useState(false)
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(null)
 
   function editProduct(product, returnView = 'home') {
@@ -2315,11 +2365,12 @@ function AdminMenuEditor({
   }
 
   function savePromo(updatedPromo) {
-    setEditorPromos((items) =>
-      items.map((item) => (item.id === updatedPromo.id ? { ...item, ...updatedPromo } : item)),
-    )
+    const nextPromos = editorPromos.map((item) => (item.id === updatedPromo.id ? { ...item, ...updatedPromo } : item))
+
+    setEditorPromos(nextPromos)
+    onUpdatePromos?.(nextPromos)
     setEditingPromoId('')
-    setEditorView('home')
+    onDone(editorProfile)
   }
 
   function requestRemovePromo(slide) {
@@ -2351,7 +2402,17 @@ function AdminMenuEditor({
       onAddAdminItem(productPayload)
     }
 
-    closeProductEditor()
+    onDone(editorProfile)
+  }
+
+  function saveEditorProfile() {
+    onUpdatePromos?.(editorPromos)
+    onDone(editorProfile)
+  }
+
+  function openExitConfirmation() {
+    setEditorActionsOpen(false)
+    setExitConfirmOpen(true)
   }
 
   function requestRemoveProduct(product) {
@@ -2400,6 +2461,10 @@ function AdminMenuEditor({
   const editingPromo = editorPromos.find((slide) => slide.id === editingPromoId) ?? editorPromos[0]
   const editingCategory =
     editorCategories.find((category) => category.id === editingCategoryId) ?? editorCategories[0] ?? categories[0]
+  const adminFeaturedProducts = products.slice(0, 5)
+  const adminDailyProducts = products
+    .filter((product) => !adminFeaturedProducts.some((featuredProduct) => featuredProduct.id === product.id))
+    .slice(0, 4)
   const deleteDialog = pendingDelete && (
     <AdminConfirmDialog
       title={pendingDelete.title}
@@ -2416,6 +2481,7 @@ function AdminMenuEditor({
           categories={editorCategories}
           fallbackCategory={editingCategory.id}
           product={editingProduct}
+          restaurantProfile={editorProfile}
           onBack={closeProductEditor}
           onSave={saveProduct}
         />
@@ -2428,6 +2494,7 @@ function AdminMenuEditor({
       <div className="relative h-full">
         <AdminPromoEditScreen
           promo={editingPromo}
+          restaurantProfile={editorProfile}
           onBack={() => setEditorView('home')}
           onSave={savePromo}
         />
@@ -2440,6 +2507,7 @@ function AdminMenuEditor({
       <div className="relative h-full">
         <AdminCategoriesEditorScreen
           categories={editorCategories}
+          restaurantProfile={editorProfile}
           onAddCategory={addCategory}
           onBack={() => setEditorView('home')}
           onEditCategory={(category) => openCategoryProducts(category.id)}
@@ -2456,6 +2524,7 @@ function AdminMenuEditor({
         <AdminCategoryProductsEditorScreen
           category={editingCategory}
           products={products.filter((product) => product.category === editingCategory.id)}
+          restaurantProfile={editorProfile}
           onAddProduct={() => startNewProduct('category-products', editingCategory.id)}
           onBack={openCategoriesEditor}
           onEditProduct={(product) => editProduct(product, 'category-products')}
@@ -2468,30 +2537,71 @@ function AdminMenuEditor({
 
   return (
     <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]">
-      <div className="sticky top-0 z-0 h-[142px] overflow-hidden">
-        <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
+      <div className="sticky top-0 h-[142px]">
+        <img src={editorProfile.cover} alt="" className="h-full w-full object-cover" draggable="false" />
         <div className="absolute inset-0 bg-black/10" />
         <button
           type="button"
-          onClick={onBack}
-          className="absolute right-5 top-9 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
-          aria-label="Voltar ao painel administrativo"
+          onClick={() => setProfileEditorOpen(true)}
+          className="absolute bottom-3 left-5 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-bold text-[#6b433a] shadow-md shadow-black/10"
         >
-          <Settings size={24} strokeWidth={2.6} />
+          <Camera size={15} />
+          Trocar capa
         </button>
+        <div className="absolute right-5 top-9 z-50">
+          <button
+            type="button"
+            onClick={() => setEditorActionsOpen((currentValue) => !currentValue)}
+            className="grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
+            aria-label="Abrir ações do editor"
+            aria-expanded={editorActionsOpen}
+          >
+            <Settings
+              size={24}
+              strokeWidth={2.6}
+              className={`transition-transform duration-500 ease-out ${editorActionsOpen ? 'rotate-180' : 'rotate-0'}`}
+            />
+          </button>
+
+          <div
+            className={`absolute right-0 top-[52px] z-50 w-[184px] origin-top-right rounded-2xl border border-white/70 bg-white/95 p-2 shadow-xl shadow-[#4b160e]/18 backdrop-blur transition-all duration-300 ease-out ${
+              editorActionsOpen
+                ? 'translate-y-0 scale-100 opacity-100'
+                : 'pointer-events-none -translate-y-2 scale-95 opacity-0'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={saveEditorProfile}
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#4b160e] text-xs font-black uppercase tracking-wide text-white"
+            >
+              <Save size={15} />
+              Salvar
+            </button>
+            <button
+              type="button"
+              onClick={openExitConfirmation}
+              className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#4b160e] bg-white text-xs font-black uppercase tracking-wide text-[#4b160e]"
+            >
+              <LogOut size={15} />
+              Sair / descartar
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="relative z-10 -mt-6 rounded-t-[22px] bg-white px-5 pb-8 pt-5 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <div className="grid grid-cols-[128px_1fr] items-start gap-4">
           <div className="relative -mt-16">
             <img
-              src={cocoLogo}
-              alt="Coco Bambu"
+              src={editorProfile.logo}
+              alt={editorProfile.name}
               className="size-[116px] rounded-full border-[3px] border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.22)]"
               draggable="false"
             />
             <button
               type="button"
+              onClick={() => setProfileEditorOpen(true)}
               className="absolute bottom-1 right-3 grid size-9 place-items-center rounded-full bg-slate-100 text-slate-700 ring-2 ring-white"
               aria-label="Alterar logo"
             >
@@ -2502,15 +2612,17 @@ function AdminMenuEditor({
           <div className="space-y-2 pt-1">
             <button
               type="button"
+              onClick={() => setProfileEditorOpen(true)}
               className="h-8 w-full rounded-lg bg-slate-100 px-4 text-left text-sm font-semibold text-slate-600"
             >
-              Coco Bambu
+              {editorProfile.name}
             </button>
             <button
               type="button"
+              onClick={() => setProfileEditorOpen(true)}
               className="h-8 w-full rounded-lg bg-slate-100 px-4 text-left text-sm font-semibold text-slate-600"
             >
-              Derby, Recife - PE
+              {editorProfile.location}
             </button>
           </div>
         </div>
@@ -2564,7 +2676,7 @@ function AdminMenuEditor({
 
         <AdminEditorSectionTitle title="Destaques" actionLabel="Adicionar" onAction={() => startNewProduct()} />
         <div className="mt-3 space-y-3">
-          {products.map((product) => (
+          {adminFeaturedProducts.map((product) => (
             <AdminProductEditorCard
               key={product.id}
               product={product}
@@ -2574,8 +2686,39 @@ function AdminMenuEditor({
             />
           ))}
         </div>
+
+        <AdminEditorSectionTitle title="Pratos do dia" actionLabel="Adicionar" onAction={() => startNewProduct()} />
+        <div className="mt-3 space-y-3">
+          {adminDailyProducts.map((product) => (
+            <AdminProductEditorCard
+              key={product.id}
+              product={product}
+              onEdit={() => editProduct(product)}
+              onRemove={() => requestRemoveProduct(product)}
+              onToggle={() => onToggleProductActive(product.id)}
+            />
+          ))}
+        </div>
+
       </div>
 
+      {profileEditorOpen && (
+        <AdminRestaurantProfileDialog
+          profile={editorProfile}
+          onCancel={() => setProfileEditorOpen(false)}
+          onSave={(nextProfile) => {
+            setEditorProfile(nextProfile)
+            setProfileEditorOpen(false)
+          }}
+        />
+      )}
+      {exitConfirmOpen && (
+        <AdminExitConfirmDialog
+          onCancel={() => setExitConfirmOpen(false)}
+          onDiscard={onBack}
+          onSave={saveEditorProfile}
+        />
+      )}
       {deleteDialog}
     </section>
   )
@@ -2583,7 +2726,7 @@ function AdminMenuEditor({
 
 function AdminEditorSectionTitle({ title, actionLabel, onAction }) {
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="mt-5 flex items-center justify-between gap-3">
       <h2 className="text-sm font-black uppercase text-[#4b160e]">{title}</h2>
       {onAction && (
         <button
@@ -2595,6 +2738,173 @@ function AdminEditorSectionTitle({ title, actionLabel, onAction }) {
           {actionLabel}
         </button>
       )}
+    </div>
+  )
+}
+
+function readAdminImageFile(file, onReady) {
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = () => onReady(String(reader.result || ''))
+  reader.readAsDataURL(file)
+}
+
+function AdminRestaurantProfileDialog({ profile, onCancel, onSave }) {
+  const [draft, setDraft] = useState(profile)
+  const coverInputRef = useRef(null)
+  const logoInputRef = useRef(null)
+
+  function updateField(field, value) {
+    setDraft((current) => ({ ...current, [field]: value }))
+  }
+
+  function updateImage(field, event) {
+    const file = event.target.files?.[0]
+
+    readAdminImageFile(file, (imageUrl) => updateField(field, imageUrl))
+    event.target.value = ''
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/76 px-5 py-8 backdrop-blur-[2px] md:absolute">
+      <section className="w-full rounded-[22px] border border-[#4b160e] bg-white p-5 shadow-2xl shadow-[#4b160e]/15">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black text-[#4b160e]">Editar restaurante</h2>
+            <p className="mt-1 text-xs font-semibold text-[#8b6d66]">
+              Atualize as informações exibidas no cardápio.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="grid size-9 place-items-center rounded-lg bg-slate-100 text-[#6b433a]"
+            aria-label="Fechar edição do restaurante"
+          >
+            x
+          </button>
+        </div>
+
+        <div className="mt-5">
+          <div className="relative overflow-hidden rounded-xl bg-[#4b160e]">
+            <img src={draft.cover} alt="" className="h-[132px] w-full object-cover" draggable="false" />
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              className="absolute bottom-3 right-3 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/95 px-3 text-xs font-bold text-[#6b433a] shadow"
+            >
+              <Camera size={15} />
+              Trocar capa
+            </button>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(event) => updateImage('cover', event)}
+            />
+          </div>
+
+          <div className="mt-4 grid grid-cols-[88px_1fr] items-center gap-4">
+            <div className="relative">
+              <img
+                src={draft.logo}
+                alt=""
+                className="size-[88px] rounded-full border-[3px] border-[#d8ad61] bg-[#4b160e] object-cover"
+                draggable="false"
+              />
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 grid size-8 place-items-center rounded-full bg-slate-100 text-[#6b433a] ring-2 ring-white"
+                aria-label="Trocar logo"
+              >
+                <Camera size={15} />
+              </button>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(event) => updateImage('logo', event)}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-xs font-black uppercase text-[#6b433a]">
+                Nome
+                <input
+                  value={draft.name}
+                  onChange={(event) => updateField('name', event.target.value)}
+                  className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] px-3 text-sm font-semibold text-[#4b160e] outline-none"
+                />
+              </label>
+              <label className="block text-xs font-black uppercase text-[#6b433a]">
+                Localização
+                <input
+                  value={draft.location}
+                  onChange={(event) => updateField('location', event.target.value)}
+                  className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] px-3 text-sm font-semibold text-[#4b160e] outline-none"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-10 rounded-full border border-[#4b160e] text-sm font-black text-[#4b160e]"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => onSave(draft)}
+            className="h-10 rounded-full bg-[#4b160e] text-sm font-black text-white"
+          >
+            Salvar
+          </button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function AdminExitConfirmDialog({ onCancel, onDiscard, onSave }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/76 px-7 backdrop-blur-[2px] md:absolute">
+      <section className="w-full rounded-[22px] border border-[#4b160e] bg-white px-6 py-6 text-center shadow-2xl shadow-[#4b160e]/15">
+        <h2 className="text-xl font-black leading-7 text-[#5a2a22]">Salvar alterações antes de sair?</h2>
+        <p className="mt-2 text-sm font-semibold leading-5 text-[#8b6d66]">
+          Você pode publicar as mudanças agora ou voltar ao cardápio sem aplicar.
+        </p>
+        <div className="mt-6 space-y-2">
+          <button
+            type="button"
+            onClick={onSave}
+            className="h-11 w-full rounded-full bg-[#4b160e] text-sm font-black uppercase tracking-wide text-white"
+          >
+            Salvar e sair
+          </button>
+          <button
+            type="button"
+            onClick={onDiscard}
+            className="h-10 w-full rounded-full border border-[#4b160e] bg-white text-sm font-black uppercase tracking-wide text-[#4b160e]"
+          >
+            Descartar
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-10 w-full rounded-full bg-slate-100 text-sm font-black uppercase tracking-wide text-slate-600"
+          >
+            Continuar editando
+          </button>
+        </div>
+      </section>
     </div>
   )
 }
@@ -2687,16 +2997,26 @@ function AdminProductEditorCard({ product, onEdit, onRemove, onToggle }) {
   )
 }
 
-function AdminPromoEditScreen({ promo, onBack, onSave }) {
+function AdminPromoEditScreen({ promo, restaurantProfile = defaultRestaurantProfile, onBack, onSave }) {
   const [draft, setDraft] = useState(() => ({
     ...promo,
     alt: promo?.alt ?? 'Card promocional',
   }))
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false)
+  const imageInputRef = useRef(null)
+
+  function updatePromoImage(event) {
+    const file = event.target.files?.[0]
+
+    readAdminImageFile(file, (imageUrl) => {
+      setDraft((current) => ({ ...current, image: imageUrl, fit: 'contain' }))
+    })
+    event.target.value = ''
+  }
 
   return (
     <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-7 text-[#4b160e]">
-      <TopPhotoBar onBack={onBack} onOpenSettings={onBack} compact />
+      <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onBack} compact />
 
       <div className="relative z-10 -mt-9 rounded-t-[22px] bg-white px-8 pb-8 pt-7 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <div className="relative overflow-hidden rounded-lg bg-[#4b160e]">
@@ -2708,11 +3028,19 @@ function AdminPromoEditScreen({ promo, onBack, onSave }) {
           />
           <button
             type="button"
+            onClick={() => imageInputRef.current?.click()}
             className="absolute bottom-3 right-3 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/95 px-3 text-xs font-bold text-[#8f746d] shadow"
           >
             <Camera size={15} />
             Trocar foto
           </button>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={updatePromoImage}
+          />
         </div>
 
         <label className="mt-4 block text-sm font-black text-[#6b433a]">
@@ -2745,16 +3073,24 @@ function AdminPromoEditScreen({ promo, onBack, onSave }) {
   )
 }
 
-function AdminProductEditScreen({ categories, fallbackCategory, product, onBack, onSave }) {
+function AdminProductEditScreen({ categories, fallbackCategory, product, restaurantProfile = defaultRestaurantProfile, onBack, onSave }) {
   const [draft, setDraft] = useState(() => buildAdminProductDraft(product, fallbackCategory || categories[0]?.id))
   const [allergenOpen, setAllergenOpen] = useState(false)
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false)
   const [deleteOptionId, setDeleteOptionId] = useState('')
   const [optionDraft, setOptionDraft] = useState(null)
+  const imageInputRef = useRef(null)
   const previewImage = draft.image || fallbackImages[draft.category] || categoriaFrutosDoMar
 
   function updateDraftField(field, value) {
     setDraft((current) => ({ ...current, [field]: value }))
+  }
+
+  function updateProductImage(event) {
+    const file = event.target.files?.[0]
+
+    readAdminImageFile(file, (imageUrl) => updateDraftField('image', imageUrl))
+    event.target.value = ''
   }
 
   function toggleTag(tag) {
@@ -2820,7 +3156,7 @@ function AdminProductEditScreen({ categories, fallbackCategory, product, onBack,
 
   return (
     <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-7 text-[#4b160e]">
-      <TopPhotoBar onBack={onBack} onOpenSettings={onBack} compact />
+      <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onBack} compact />
 
       <div className="relative z-10 -mt-9 rounded-t-[22px] bg-white px-8 pb-8 pt-7 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <div className="relative overflow-hidden rounded-lg bg-[#4b160e]">
@@ -2832,11 +3168,19 @@ function AdminProductEditScreen({ categories, fallbackCategory, product, onBack,
           />
           <button
             type="button"
+            onClick={() => imageInputRef.current?.click()}
             className="absolute bottom-3 right-3 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/95 px-3 text-xs font-bold text-[#8f746d] shadow"
           >
             <Camera size={15} />
             Trocar foto
           </button>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={updateProductImage}
+          />
         </div>
 
         <label className="mt-3 block text-sm font-black text-[#6b433a]">
@@ -2970,14 +3314,21 @@ function AdminProductEditScreen({ categories, fallbackCategory, product, onBack,
   )
 }
 
-function AdminCategoriesEditorScreen({ categories, onAddCategory, onBack, onEditCategory, onRemoveCategory }) {
+function AdminCategoriesEditorScreen({
+  categories,
+  restaurantProfile = defaultRestaurantProfile,
+  onAddCategory,
+  onBack,
+  onEditCategory,
+  onRemoveCategory,
+}) {
   return (
     <section className="relative h-full overflow-y-auto bg-white pb-8 text-[#4b160e]">
-      <TopPhotoBar onBack={onBack} onOpenSettings={onBack} compact />
+      <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onBack} compact />
       <div className="relative z-10 -mt-9 rounded-t-[22px] bg-white px-5 pt-6 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <img
-          src={cocoLogo}
-          alt="Coco Bambu"
+          src={restaurantProfile.logo}
+          alt={restaurantProfile.name}
           className="relative z-20 mx-auto -mt-20 size-[112px] rounded-full border-4 border-[#d8ad61] bg-[#4a160f]"
           draggable="false"
         />
@@ -3021,12 +3372,20 @@ function AdminCategoriesEditorScreen({ categories, onAddCategory, onBack, onEdit
   )
 }
 
-function AdminCategoryProductsEditorScreen({ category, products, onAddProduct, onBack, onEditProduct, onRemoveProduct }) {
+function AdminCategoryProductsEditorScreen({
+  category,
+  products,
+  restaurantProfile = defaultRestaurantProfile,
+  onAddProduct,
+  onBack,
+  onEditProduct,
+  onRemoveProduct,
+}) {
   const groupedProducts = groupProductsByMenuSection(products, category)
 
   return (
     <section className="relative h-full overflow-y-auto bg-white pb-8 text-[#43160f]">
-      <TopPhotoBar onBack={onBack} onOpenSettings={onBack} compact />
+      <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onBack} compact />
       <div className="relative z-10 -mt-7 rounded-t-[26px] bg-white px-4 pb-8 pt-[70px] shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <div className="absolute left-1/2 top-[-70px] grid size-[126px] -translate-x-1/2 place-items-center rounded-full border-4 border-[#d8ad61] bg-[#4b160e] shadow-[0_9px_0_rgba(75,22,14,0.18),0_18px_34px_rgba(67,22,15,0.20)] ring-[5px] ring-white">
           <img src={category.iconImage} alt="" className="w-[78px]" draggable="false" />
@@ -3188,7 +3547,7 @@ function AdminAllergenChip({ label, onRemove }) {
 
 function AdminConfirmDialog({ title, confirmLabel, onCancel, onConfirm }) {
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/72 px-8 backdrop-blur-[1px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/72 px-8 backdrop-blur-[1px] md:absolute">
       <section className="w-full rounded-2xl border border-[#4b160e] bg-white px-7 py-6 text-center shadow-xl">
         <h2 className="text-lg font-black leading-7 text-[#6b433a]">{title}</h2>
         <div className="mt-5 flex justify-center gap-6">
