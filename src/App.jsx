@@ -21,7 +21,6 @@ import {
   Mail,
   MapPin,
   Mic,
-  MicOff,
   Minus,
   Nfc,
   Pencil,
@@ -36,6 +35,7 @@ import {
   Trash2,
   Volume2,
   VolumeX,
+  X,
 } from 'lucide-react'
 import cocoBackground from './assets/images/cocobambu_fundo.png'
 import promoShrimp from './assets/images/slide_0.png'
@@ -105,11 +105,27 @@ const partnerLinks = {
   instagram: 'https://www.instagram.com/',
   whatsapp: 'https://wa.me/5581999999999',
 }
+const protectedPromoSlideId = 'vezz-accessibility'
 
 const promoSlides = [
   {
     id: 'coco-brasil-promo',
     image: promoShrimp,
+    title: 'Camarão recheado com promoção',
+    subtitle: 'Camarão Praia de Olinda para 2 pessoas por R$ 99,90.',
+    targetType: 'promotion',
+    productId: 'praia-de-olinda',
+    includes: [
+      'Camarões refogados ao alho e cebola',
+      'Arroz cremoso com manjericão',
+      'Finalização com molho branco',
+    ],
+    conditions: [
+      'Promoção sujeita à disponibilidade da cozinha',
+      'Válida para consumo no restaurante',
+      'Não cumulativa com outras ofertas',
+    ],
+    delivery: 'Entregue à mesa em travessa quente, pronto para compartilhar.',
     alt: 'Promoção Camarão Coco Bambu por R$ 99,90',
     fit: 'contain',
   },
@@ -123,6 +139,21 @@ const promoSlides = [
   {
     id: 'camarao-scampi',
     image: promoScampi,
+    title: 'Lançamento Camarão Scampi',
+    subtitle: 'Camarões salteados com toque cítrico e molho da casa.',
+    targetType: 'promotion',
+    productId: 'camarao-jurere',
+    includes: [
+      'Camarões puxados no azeite',
+      'Molho aromático com ervas',
+      'Acompanhamento sugerido pela cozinha',
+    ],
+    conditions: [
+      'Disponível enquanto durar o estoque',
+      'Consulte o garçom sobre substituições',
+      'Imagem meramente ilustrativa',
+    ],
+    delivery: 'O prato chega montado para manter textura, aroma e temperatura.',
     alt: 'Lançamento Camarão Scampi Coco Bambu',
     fit: 'contain',
   },
@@ -368,10 +399,12 @@ function App() {
   const [activeCategory, setActiveCategory] = useState(() => getCategoryFromHash() || 'frutos-do-mar')
   const [menuCategorySelected, setMenuCategorySelected] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState(() => getProductFromHash())
+  const [selectedPromoId, setSelectedPromoId] = useState(() => getPromoFromHash())
   const [productReturnScreen, setProductReturnScreen] = useState('menu')
   const [restaurantProfile, setRestaurantProfile] = useState(defaultRestaurantProfile)
   const [promoItems, setPromoItems] = useState(promoSlides)
   const [products, setProducts] = useState(baseProducts)
+  const [favoriteProductIds, setFavoriteProductIds] = useState([])
   const [cart, setCart] = useState([])
   const [tableNumber, setTableNumber] = useState(initialTable || '')
   const [nfcTable, setNfcTable] = useState(initialTable || '01')
@@ -410,6 +443,7 @@ function App() {
   )
   const selectedProduct =
     menuProducts.find((product) => product.id === selectedProductId) ?? menuProducts[0] ?? products[0]
+  const selectedPromo = promoItems.find((slide) => slide.id === selectedPromoId) ?? promoItems[0]
   const cartItems = cart
     .map((item) => ({
       ...item,
@@ -543,8 +577,8 @@ function App() {
     }
   }
 
-  function openProduct(product) {
-    setProductReturnScreen(screen === 'categoria-pratos' ? 'categoria-pratos' : 'menu')
+  function openProduct(product, returnScreenOverride = '') {
+    setProductReturnScreen(returnScreenOverride || (screen === 'categoria-pratos' ? 'categoria-pratos' : 'menu'))
     setSelectedProductId(product.id)
     showScreen('produto', `produto=${product.id}`)
     trackEvent('product_view', {
@@ -556,6 +590,53 @@ function App() {
     if (voiceReaderEnabled) {
       readProductIngredients(product)
     }
+  }
+
+  function openPromotion(slide) {
+    if (!slide?.id) return
+
+    if (slide.targetType === 'link' && slide.targetUrl) {
+      trackEvent('promotion_link_click', {
+        promoId: slide.id,
+        promoTitle: slide.title ?? slide.alt ?? '',
+        url: slide.targetUrl,
+      })
+      window.open(slide.targetUrl, '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    if (slide.targetType === 'product' && slide.productId) {
+      const promoProduct = products.find((product) => product.id === slide.productId)
+
+      if (promoProduct) {
+        trackEvent('promotion_product_click', {
+          promoId: slide.id,
+          productId: promoProduct.id,
+          productName: promoProduct.name,
+        })
+        openProduct(promoProduct, 'menu')
+        return
+      }
+    }
+
+    setSelectedPromoId(slide.id)
+    showScreen('promocao', `promocao=${slide.id}`)
+    trackEvent('promotion_view', {
+      promoId: slide.id,
+      promoTitle: slide.title ?? slide.alt ?? '',
+    })
+  }
+
+  function toggleFavoriteProduct(productId) {
+    const product = products.find((item) => item.id === productId)
+    const willFavorite = !favoriteProductIds.includes(productId)
+
+    setFavoriteProductIds((items) =>
+      items.includes(productId)
+        ? items.filter((item) => item !== productId)
+        : [...items, productId],
+    )
+    setReaderStatus(`${product?.name ?? 'Prato'} ${willFavorite ? 'favoritado' : 'removido dos favoritos'}.`)
   }
 
   function addToCart(productId, quantity = 1, note = '', option = null) {
@@ -900,6 +981,7 @@ function App() {
             onOpenProduct={openProduct}
             onAddToCart={addToCart}
             onOpenOrder={() => showScreen('pedido')}
+            onOpenPromotion={openPromotion}
             onOpenVezz={openVezz}
             onStartVoiceCommand={startVoiceCommand}
             onToggleVoiceReader={toggleVoiceReader}
@@ -933,7 +1015,13 @@ function App() {
           <ProductScreen
             key={selectedProduct.id}
             product={selectedProduct}
+            isFavorite={favoriteProductIds.includes(selectedProduct.id)}
             onBack={() => {
+              if (productReturnScreen === 'promocao') {
+                showScreen('promocao', `promocao=${selectedPromoId}`)
+                return
+              }
+
               if (productReturnScreen === 'categoria-pratos') {
                 showScreen('categoria-pratos', `categoria=${activeCategory}`)
                 return
@@ -944,6 +1032,19 @@ function App() {
             onAddToCart={addToCart}
             onOrderNow={() => showScreen('pedido')}
             onReadProduct={readProductIngredients}
+            onToggleFavorite={() => toggleFavoriteProduct(selectedProduct.id)}
+          />
+        )}
+
+        {screen === 'promocao' && (
+          <PromotionScreen
+            promo={selectedPromo}
+            onBack={() => showScreen('menu')}
+            onOpenProduct={(productId) => {
+              const promoProduct = products.find((product) => product.id === productId) ?? selectedProduct
+
+              openProduct(promoProduct, 'promocao')
+            }}
           />
         )}
 
@@ -1197,6 +1298,7 @@ function TopPhotoBar({
   onBack,
   onOpenSettings,
   trailingIcon = 'settings',
+  trailingActive = false,
   compact = false,
   showBack = true,
 }) {
@@ -1219,12 +1321,16 @@ function TopPhotoBar({
       <button
         type="button"
         onClick={onOpenSettings}
-        aria-label={trailingIcon === 'heart' ? 'Favoritar' : 'Configurações'}
+        aria-label={trailingIcon === 'heart' ? (trailingActive ? 'Remover dos favoritos' : 'Favoritar') : 'Configurações'}
         className={`absolute right-7 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95 ${
           compact ? 'top-6' : 'top-8'
         }`}
       >
-        {trailingIcon === 'heart' ? <Heart size={25} strokeWidth={2.6} /> : <Settings size={25} strokeWidth={2.6} />}
+        {trailingIcon === 'heart' ? (
+          <Heart size={25} strokeWidth={2.6} fill={trailingActive ? '#4b160e' : 'none'} />
+        ) : (
+          <Settings size={25} strokeWidth={2.6} />
+        )}
       </button>
     </div>
   )
@@ -1247,9 +1353,12 @@ function MenuScreen({
   onOpenSettings,
   onOpenProduct,
   onOpenOrder,
+  onOpenPromotion,
   onOpenVezz,
   onStartVoiceCommand,
+  onToggleVoiceReader,
   voiceCommandListening,
+  voiceReaderEnabled,
 }) {
   const [promoIndex, setPromoIndex] = useState(0)
   const [productLayout, setProductLayout] = useState('lista')
@@ -1263,7 +1372,7 @@ function MenuScreen({
     .filter((product) => !featuredProducts.some((featuredProduct) => featuredProduct.id === product.id))
     .slice(0, menuMode === 'simplificado' ? 2 : 4)
   const menuSectionTitle = searchQuery.trim() ? 'RESULTADOS' : 'DESTAQUES'
-  const previewCategories = categories.slice(0, 3)
+  const isSearching = Boolean(searchQuery.trim())
   const safePromoIndex = promoItems.length ? Math.min(promoIndex, promoItems.length - 1) : 0
 
   useEffect(() => {
@@ -1323,6 +1432,7 @@ function MenuScreen({
             activeIndex={safePromoIndex}
             slides={promoItems}
             onSelect={setPromoIndex}
+            onOpenPromo={onOpenPromotion}
             onOpenVezz={onOpenVezz}
           />
         </div>
@@ -1342,44 +1452,66 @@ function MenuScreen({
           ))}
         </div>
 
-        <div className="mt-2.5 grid h-10 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-full bg-[#eeeeee] px-4">
+        <div className="mt-2.5 grid h-10 grid-cols-[auto_1fr_auto_auto] items-center gap-2 rounded-full bg-[#eeeeee] px-4">
           <Search size={20} className="text-[#bdb8b5]" />
           <input
             value={searchQuery}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Buscar pratos..."
-            className="h-full bg-transparent text-sm font-medium text-[#43160f] outline-none placeholder:text-[#bdb8b5]"
+            className="h-full bg-transparent text-base font-medium text-[#43160f] outline-none placeholder:text-[#bdb8b5]"
           />
+          {isSearching && (
+            <button
+              type="button"
+              onClick={() => onSearchChange('')}
+              aria-label="Limpar busca"
+              className="grid size-7 place-items-center rounded-full bg-white text-[#8f7d77] shadow-sm"
+            >
+              <X size={16} strokeWidth={2.7} />
+            </button>
+          )}
           <button
             type="button"
             onClick={onStartVoiceCommand}
             aria-label="Buscar por voz"
             aria-pressed={voiceCommandListening}
-            className={voiceCommandListening ? 'text-[#4b160e]' : 'text-[#bdb8b5]'}
+            className={`grid size-7 place-items-center rounded-full ${
+              voiceCommandListening ? 'bg-[#4b160e] text-white shadow-sm' : 'text-[#bdb8b5]'
+            }`}
           >
-            {voiceCommandListening ? <MicOff size={20} /> : <Mic size={20} />}
+            <Mic size={20} />
           </button>
         </div>
 
-        <div className="mt-2.5 flex items-center justify-between">
-          <h2 className="text-[15px] font-medium">CATEGORIAS</h2>
-          <button type="button" onClick={onOpenCategories} className="text-xs text-[#a98272]">
-            Ver todos &gt;
-          </button>
-        </div>
+        {!isSearching && (
+          <>
+            <div className="mt-2.5 flex items-center justify-between">
+              <h2 className="text-[15px] font-medium">CATEGORIAS</h2>
+              <button type="button" onClick={onOpenCategories} className="text-xs text-[#a98272]">
+                Ver todos &gt;
+              </button>
+            </div>
 
-        <div className="-mx-8 -mt-2 overflow-hidden pt-3">
-          <div className="relative left-1/2 flex w-max -translate-x-1/2 gap-2">
-            {previewCategories.map((category) => (
-              <CategoryPreviewCard
-                key={category.id}
-                category={category}
-                active={menuCategorySelected && category.id === activeCategory}
-                onClick={() => onCategoryChange(category.id)}
-              />
-            ))}
+            <div className="-mx-8 -mt-2 overflow-x-auto overflow-y-visible pt-3 [scrollbar-width:none]">
+              <div className="flex w-max gap-2 px-8 pb-1">
+                {categories.map((category) => (
+                  <CategoryPreviewCard
+                    key={category.id}
+                    category={category}
+                    active={menuCategorySelected && category.id === activeCategory}
+                    onClick={() => onCategoryChange(category.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {isSearching && (
+          <div className="mt-2.5 rounded-lg bg-[#f8f3ee] px-3 py-2 text-xs font-bold text-[#8b6d66]">
+            Exibindo pratos encontrados para "{searchQuery.trim()}".
           </div>
-        </div>
+        )}
 
         <div className="mt-1 flex items-center justify-between">
           <h2 className="text-[15px] font-medium">{menuSectionTitle}</h2>
@@ -1396,7 +1528,7 @@ function MenuScreen({
           ))}
         </div>
 
-        {!searchQuery.trim() && dailyProducts.length > 0 && (
+        {!isSearching && dailyProducts.length > 0 && (
           <>
             <div className="mt-4 flex items-center justify-between">
               <h2 className="text-[15px] font-medium">PRATOS DO DIA</h2>
@@ -1421,11 +1553,22 @@ function MenuScreen({
       {cartQuantity > 0 && (
         <CartBar quantity={cartQuantity} total={cartTotal} onOpenOrder={onOpenOrder} />
       )}
+      <button
+        type="button"
+        onClick={onToggleVoiceReader}
+        aria-label={voiceReaderEnabled ? 'Desativar leitor acessível' : 'Ativar leitor acessível'}
+        aria-pressed={voiceReaderEnabled}
+        className={`absolute right-4 z-40 grid size-12 place-items-center rounded-full shadow-2xl shadow-black/20 transition active:scale-95 ${
+          cartQuantity > 0 ? 'bottom-24' : 'bottom-5'
+        } ${voiceReaderEnabled ? 'bg-[#4b160e] text-white' : 'bg-white text-[#4b160e] ring-1 ring-[#eadfd9]'}`}
+      >
+        {voiceReaderEnabled ? <VolumeX size={21} /> : <Volume2 size={21} />}
+      </button>
     </section>
   )
 }
 
-function PromoCarousel({ activeIndex, slides = promoSlides, onSelect, onOpenVezz }) {
+function PromoCarousel({ activeIndex, slides = promoSlides, onSelect, onOpenPromo, onOpenVezz }) {
   const carouselRef = useRef(null)
   const touchStartRef = useRef(null)
   const swipeMovedRef = useRef(false)
@@ -1477,7 +1620,10 @@ function PromoCarousel({ activeIndex, slides = promoSlides, onSelect, onOpenVezz
 
     if (slide.action === 'vezz') {
       onOpenVezz()
+      return
     }
+
+    onOpenPromo?.(slide)
   }
 
   function handleTouchStart(event) {
@@ -1570,7 +1716,7 @@ function PromoCarousel({ activeIndex, slides = promoSlides, onSelect, onOpenVezz
             className={`absolute left-1/2 top-[5px] grid h-[86px] place-items-center overflow-hidden rounded-lg shadow-[0_10px_24px_rgba(67,22,15,0.10)] ${
               isDragging ? 'transition-none' : 'transition-all duration-700 ease-out'
             } ${
-              slide.id === 'vezz-accessibility' ? 'bg-[#15c8d0]' : 'bg-[#4b160e]'
+              slide.id === protectedPromoSlideId ? 'bg-[#15c8d0]' : 'bg-[#4b160e]'
             }`}
             style={{
               width: `${slideWidth}px`,
@@ -1716,7 +1862,120 @@ function MenuProductGridCard({ product, onOpen }) {
   )
 }
 
-function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct }) {
+function PromotionScreen({ promo, onBack, onOpenProduct }) {
+  const includes = promo?.includes ?? ['Oferta especial da casa']
+  const conditions = promo?.conditions ?? ['Consulte disponibilidade com o garçom']
+
+  return (
+    <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]" aria-labelledby="promotion-title">
+      <TopPhotoBar onBack={onBack} onOpenSettings={onBack} compact />
+
+      <div className="-mt-9 rounded-t-[36px] bg-white px-6 pb-8 pt-8 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <div className="overflow-hidden rounded-xl bg-[#4b160e] p-2 shadow-lg shadow-[#4b160e]/10">
+          <img
+            src={promo?.image}
+            alt={promo?.alt ?? 'Promoção'}
+            className="h-[164px] w-full rounded-lg object-contain"
+            draggable="false"
+          />
+        </div>
+
+        <div className="mt-5">
+          <p className="text-xs font-black uppercase tracking-wide text-[#d09a45]">Promoção em destaque</p>
+          <h1 id="promotion-title" data-screen-title="true" tabIndex={-1} className="mt-1 text-[26px] font-black leading-tight outline-none">
+            {(promo?.title ?? 'Promoção especial').toUpperCase()}
+          </h1>
+          <p className="mt-2 text-[15px] font-semibold leading-6 text-[#6b433a]">{promo?.subtitle}</p>
+        </div>
+
+        <section className="mt-5 rounded-xl border border-[#eadfd9] bg-[#fbf7f2] p-4">
+          <h2 className="text-sm font-black uppercase">O que inclui</h2>
+          <div className="mt-3 space-y-2">
+            {includes.map((item) => (
+              <p key={item} className="flex gap-2 text-sm font-semibold leading-5 text-[#5f352c]">
+                <CircleCheck size={16} className="mt-0.5 shrink-0 text-[#d09a45]" />
+                {item}
+              </p>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-3 rounded-xl border border-[#eadfd9] bg-white p-4">
+          <h2 className="text-sm font-black uppercase">Condições</h2>
+          <div className="mt-3 space-y-2">
+            {conditions.map((item) => (
+              <p key={item} className="text-sm font-semibold leading-5 text-[#6b433a]">
+                {item}
+              </p>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-3 rounded-xl bg-[#4b160e] p-4 text-white">
+          <h2 className="text-sm font-black uppercase text-[#d8ad61]">Como será entregue</h2>
+          <p className="mt-2 text-sm font-semibold leading-5 text-white/88">{promo?.delivery}</p>
+        </section>
+
+        {promo?.productId && (
+          <button
+            type="button"
+            onClick={() => onOpenProduct(promo.productId)}
+            className="mt-6 flex h-12 w-full items-center justify-center rounded-full bg-[#4b160e] text-sm font-black uppercase tracking-wide text-white transition active:scale-[0.99]"
+          >
+            Ver prato da promoção
+          </button>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function ProductImageGallery({ product }) {
+  const galleryImages = [
+    { id: 'principal', src: product.image, label: product.name },
+    { id: 'categoria', src: fallbackImages[product.category] || product.image, label: `Ambiente visual de ${product.name}` },
+  ].filter((item, index, items) => item.src && items.findIndex((candidate) => candidate.src === item.src) === index)
+
+  return (
+    <div className="-mx-7 overflow-x-auto [scrollbar-width:none]" aria-label="Fotos do prato">
+      <div className="flex w-max gap-3 px-7 pb-1">
+        {galleryImages.map((image) => (
+          <div key={image.id} className="relative w-[336px] max-w-[calc(100vw-72px)] shrink-0 overflow-hidden rounded-lg bg-[#4b160e] p-2">
+            <img
+              src={image.src}
+              alt={image.label}
+              className="h-[226px] w-full rounded-md object-cover"
+              draggable="false"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DishInfoChips({ product }) {
+  const infoTags = buildDishInfoTags(product)
+
+  return (
+    <section className="mt-4 rounded-xl border border-[#eadfd9] bg-[#fbf7f2] p-3" aria-label="Informações importantes do prato">
+      <h2 className="text-xs font-black uppercase tracking-wide text-[#6b433a]">Informações do prato</h2>
+      <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+        {infoTags.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full bg-white px-3 text-xs font-black text-[#4b160e] shadow-sm ring-1 ring-[#eadfd9]"
+          >
+            <BadgePlus size={14} className="text-[#d09a45]" />
+            {tag}
+          </span>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ProductScreen({ product, isFavorite = false, onBack, onAddToCart, onOrderNow, onReadProduct, onToggleFavorite }) {
   const productOptions = useMemo(
     () =>
       product.options?.length
@@ -1725,51 +1984,44 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
     [product],
   )
   const [selectedOptionId, setSelectedOptionId] = useState(() => productOptions.at(-1)?.id ?? 'base')
+  const [quantity, setQuantity] = useState(1)
+  const [note, setNote] = useState('')
+  const [itemAdded, setItemAdded] = useState(false)
   const selectedOption =
     productOptions.find((option) => option.id === selectedOptionId) ?? productOptions.at(-1)
+  const itemTotal = (selectedOption?.price ?? product.price) * quantity
 
-  function addCurrentItem(openOrder = false) {
-    onAddToCart(product.id, 1, '', selectedOption)
-
-    if (openOrder) {
-      onOrderNow()
-    }
+  function addCurrentItem() {
+    onAddToCart(product.id, quantity, note.trim(), selectedOption)
+    setItemAdded(true)
+    window.setTimeout(() => setItemAdded(false), 1600)
   }
 
   return (
     <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]" aria-labelledby="product-title">
-      <TopPhotoBar onBack={onBack} onOpenSettings={() => {}} trailingIcon="heart" compact />
+      <TopPhotoBar
+        onBack={onBack}
+        onOpenSettings={onToggleFavorite}
+        trailingIcon="heart"
+        trailingActive={isFavorite}
+        compact
+      />
 
       <div className="-mt-9 rounded-t-[36px] bg-white px-7 pb-8 pt-10 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
-        <div className="relative overflow-hidden rounded-lg bg-[#4b160e] p-2">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="h-[226px] w-full rounded-md object-cover"
-            draggable="false"
-          />
+        <div className="relative">
+          <ProductImageGallery product={product} />
           <button
             type="button"
             onClick={() => onReadProduct(product)}
             aria-label={`Ouvir descrição acessível de ${product.name}`}
             title="Ouvir descrição"
-            className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/90 text-[#4b160e] shadow-lg"
+            className="absolute right-8 top-4 grid size-10 place-items-center rounded-full bg-white/90 text-[#4b160e] shadow-lg"
           >
             <Volume2 size={18} />
           </button>
         </div>
 
-        <div className="mt-4 flex flex-wrap justify-center gap-1.5" aria-label="Alergênicos e características">
-          {product.tags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex min-h-6 items-center gap-1 rounded-full bg-[#eef1f3] px-2.5 text-[11px] font-medium text-[#9a8e89]"
-            >
-              <BadgePlus size={12} className="text-[#d5a55c]" />
-              {tag}
-            </span>
-          ))}
-        </div>
+        <DishInfoChips product={product} />
 
         <div className="mt-5 text-center">
           <h1
@@ -1785,7 +2037,39 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
           </p>
         </div>
 
-        <div className="mt-6 space-y-3">
+        <section className="mt-5 rounded-xl border border-[#eadfd9] bg-[#fbf7f2] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-black uppercase text-[#6b433a]">Quantidade do pedido</h2>
+              <p className="mt-1 text-xs font-semibold text-[#8b6d66]">
+                {quantity} {quantity === 1 ? 'unidade' : 'unidades'} da porção selecionada
+              </p>
+            </div>
+            <div className="inline-flex h-9 items-center rounded-full border border-[#4b160e] bg-white text-[#4b160e]">
+              <button
+                type="button"
+                onClick={() => setQuantity((current) => Math.max(1, current - 1))}
+                aria-label="Diminuir quantidade"
+                className="grid h-9 w-10 place-items-center"
+              >
+                <Minus size={15} strokeWidth={3} />
+              </button>
+              <span className="w-8 text-center text-sm font-black">{quantity}</span>
+              <button
+                type="button"
+                onClick={() => setQuantity((current) => current + 1)}
+                aria-label="Aumentar quantidade"
+                className="grid h-9 w-10 place-items-center"
+              >
+                <Plus size={15} strokeWidth={3} />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6">
+          <h2 className="text-sm font-black uppercase text-[#6b433a]">Escolha a porção</h2>
+          <div className="mt-2 space-y-3">
           {productOptions.map((option) => {
             const active = selectedOption?.id === option.id
 
@@ -1795,35 +2079,58 @@ function ProductScreen({ product, onBack, onAddToCart, onOrderNow, onReadProduct
                 key={option.id}
                 onClick={() => setSelectedOptionId(option.id)}
                 aria-pressed={active}
-                className={`grid min-h-[64px] w-full grid-cols-[40px_1fr_auto_22px] items-center gap-3 rounded-lg border px-4 text-left transition active:scale-[0.99] ${
+                className={`grid min-h-[72px] w-full grid-cols-[40px_1fr_auto] items-center gap-3 rounded-lg border px-4 text-left transition active:scale-[0.99] ${
                   active
                     ? 'border-[#4b160e] bg-[#f2e3cc]'
                     : 'border-[#bfa8a0] bg-white'
                 }`}
               >
                 <Table2 size={28} strokeWidth={1.8} className="text-[#8b6d63]" />
-                <span>
-                  <span className="block text-sm font-black">{option.label}</span>
-                  <span className="mt-0.5 block text-xs font-semibold text-[#aa9b96]">{option.detail}</span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-black">Serve {option.label}</span>
+                  <span className="mt-0.5 block text-xs font-semibold text-[#8b6d66]">Porção: {option.detail}</span>
+                  {active && (
+                    <span className="mt-1 inline-flex rounded-full bg-[#4b160e] px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                      Selecionado
+                    </span>
+                  )}
                 </span>
                 <span className="text-base font-black">{formatCurrency(option.price)}</span>
-                <span
-                  className={`size-5 rounded-full border ${
-                    active ? 'border-[#4b160e] bg-[#4b160e]' : 'border-[#bfa8a0] bg-white'
-                  }`}
-                  aria-hidden="true"
-                />
               </button>
             )
           })}
-        </div>
+          </div>
+        </section>
+
+        <label className="mt-5 block text-sm font-black uppercase text-[#6b433a]">
+          Observação para este prato
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Ex.: sem bacon, ponto da carne, molho à parte"
+            className="mt-2 h-[78px] w-full resize-none rounded-lg border border-[#d8c7bf] px-4 py-3 text-base font-semibold normal-case text-[#4b160e] outline-none placeholder:text-[#b6a4a0]"
+          />
+        </label>
+
+        {itemAdded && (
+          <div className="mt-4 rounded-lg bg-[#f2e3cc] px-4 py-3 text-center" role="status">
+            <p className="text-sm font-black text-[#4b160e]">Prato adicionado ao pedido.</p>
+            <button
+              type="button"
+              onClick={onOrderNow}
+              className="mt-2 text-xs font-black uppercase tracking-wide text-[#4b160e] underline underline-offset-4"
+            >
+              Ver meu pedido
+            </button>
+          </div>
+        )}
 
         <button
           type="button"
-          onClick={() => addCurrentItem(true)}
+          onClick={addCurrentItem}
           className="mx-auto mt-8 flex h-14 w-[86%] items-center justify-center rounded-full bg-[#4b160e] text-base font-black text-white transition active:scale-[0.99]"
         >
-          ADICIONAR - {formatCurrency(selectedOption?.price ?? product.price)}
+          ADICIONAR AO PEDIDO - {formatCurrency(itemTotal)}
         </button>
       </div>
     </section>
@@ -1853,9 +2160,9 @@ function AdminLoginScreen({ error, loading, onBack, onLogin }) {
           type="button"
           onClick={onBack}
           aria-label="Voltar ao cardapio"
-          className="absolute right-7 top-8 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
+          className="absolute left-7 top-8 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
         >
-          <Settings size={25} strokeWidth={2.6} />
+          <ArrowLeft size={25} strokeWidth={2.8} />
         </button>
       </div>
 
@@ -2347,6 +2654,8 @@ function AdminMenuEditor({
   }
 
   function editPromo(slide) {
+    if (slide.id === protectedPromoSlideId) return
+
     setEditingPromoId(slide.id)
     setEditorView('promo')
   }
@@ -2356,6 +2665,7 @@ function AdminMenuEditor({
       id: `admin-promo-${Date.now()}`,
       image: promoShrimp,
       alt: 'Novo card promocional',
+      targetType: 'promotion',
       fit: 'contain',
     }
 
@@ -2365,6 +2675,8 @@ function AdminMenuEditor({
   }
 
   function savePromo(updatedPromo) {
+    if (updatedPromo.id === protectedPromoSlideId) return
+
     const nextPromos = editorPromos.map((item) => (item.id === updatedPromo.id ? { ...item, ...updatedPromo } : item))
 
     setEditorPromos(nextPromos)
@@ -2374,6 +2686,8 @@ function AdminMenuEditor({
   }
 
   function requestRemovePromo(slide) {
+    if (slide.id === protectedPromoSlideId) return
+
     setPendingDelete({
       title: 'Voce tem certeza que deseja excluir?',
       onConfirm: () => {
@@ -2494,6 +2808,7 @@ function AdminMenuEditor({
       <div className="relative h-full">
         <AdminPromoEditScreen
           promo={editingPromo}
+          products={products}
           restaurantProfile={editorProfile}
           onBack={() => setEditorView('home')}
           onSave={savePromo}
@@ -2537,18 +2852,20 @@ function AdminMenuEditor({
 
   return (
     <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]">
-      <div className="sticky top-0 h-[142px]">
+      <div className="sticky top-0 z-0 h-[142px] overflow-visible">
         <img src={editorProfile.cover} alt="" className="h-full w-full object-cover" draggable="false" />
         <div className="absolute inset-0 bg-black/10" />
         <button
           type="button"
           onClick={() => setProfileEditorOpen(true)}
-          className="absolute bottom-3 left-5 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-bold text-[#6b433a] shadow-md shadow-black/10"
+          className={`absolute left-5 top-5 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-bold text-[#6b433a] shadow-md shadow-black/10 transition-all duration-300 ${
+            editorActionsOpen ? 'pointer-events-none -translate-x-2 opacity-0' : 'translate-x-0 opacity-100'
+          }`}
         >
           <Camera size={15} />
           Trocar capa
         </button>
-        <div className="absolute right-5 top-9 z-50">
+        <div className="absolute right-5 top-9 z-[90]">
           <button
             type="button"
             onClick={() => setEditorActionsOpen((currentValue) => !currentValue)}
@@ -2564,33 +2881,33 @@ function AdminMenuEditor({
           </button>
 
           <div
-            className={`absolute right-0 top-[52px] z-50 w-[184px] origin-top-right rounded-2xl border border-white/70 bg-white/95 p-2 shadow-xl shadow-[#4b160e]/18 backdrop-blur transition-all duration-300 ease-out ${
+            className={`absolute right-[54px] top-[-34px] z-[100] flex h-11 w-[264px] origin-bottom-right gap-2 rounded-2xl border border-white/70 bg-white/95 p-1.5 shadow-xl shadow-[#4b160e]/18 backdrop-blur transition-all duration-300 ease-out ${
               editorActionsOpen
-                ? 'translate-y-0 scale-100 opacity-100'
-                : 'pointer-events-none -translate-y-2 scale-95 opacity-0'
+                ? 'translate-x-0 scale-100 opacity-100'
+                : 'pointer-events-none translate-x-3 scale-95 opacity-0'
             }`}
           >
             <button
               type="button"
               onClick={saveEditorProfile}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#4b160e] text-xs font-black uppercase tracking-wide text-white"
+              className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#4b160e] text-[10px] font-black uppercase tracking-wide text-white"
             >
-              <Save size={15} />
+              <Save size={13} />
               Salvar
             </button>
             <button
               type="button"
               onClick={openExitConfirmation}
-              className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#4b160e] bg-white text-xs font-black uppercase tracking-wide text-[#4b160e]"
+              className="flex h-8 flex-[1.25] items-center justify-center gap-1.5 rounded-xl border border-[#4b160e] bg-white text-[10px] font-black uppercase tracking-wide text-[#4b160e]"
             >
-              <LogOut size={15} />
-              Sair / descartar
+              <LogOut size={13} />
+              Sair/descartar
             </button>
           </div>
         </div>
       </div>
 
-      <div className="relative z-10 -mt-6 rounded-t-[22px] bg-white px-5 pb-8 pt-5 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+      <div className="relative z-20 -mt-6 rounded-t-[22px] bg-white px-5 pb-8 pt-5 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <div className="grid grid-cols-[128px_1fr] items-start gap-4">
           <div className="relative -mt-16">
             <img
@@ -2629,20 +2946,39 @@ function AdminMenuEditor({
 
         <AdminEditorSectionTitle title="Cards promocao" actionLabel="Adicionar" onAction={addPromo} />
         <div className="-mx-5 mt-3 flex gap-3 overflow-x-auto px-5 pb-1">
-          {editorPromos.map((slide) => (
+          {editorPromos.map((slide) => {
+            const locked = slide.id === protectedPromoSlideId
+
+            return (
             <div
               key={slide.id}
               className="grid w-[390px] max-w-[calc(100vw-52px)] shrink-0 grid-cols-[1fr_92px] gap-2 rounded-lg bg-slate-100 p-2"
             >
-              <img
-                src={slide.image}
-                alt={slide.alt}
-                className="h-[108px] w-full rounded-md bg-[#4b160e] object-contain"
-                draggable="false"
-              />
-              <AdminActionStack onEdit={() => editPromo(slide)} onRemove={() => requestRemovePromo(slide)} />
+              <div className="relative">
+                <img
+                  src={slide.image}
+                  alt={slide.alt}
+                  className="h-[108px] w-full rounded-md bg-[#4b160e] object-contain"
+                  draggable="false"
+                />
+                {locked && (
+                  <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-1 text-[9px] font-black uppercase text-[#4b160e] shadow">
+                    Fixo
+                  </span>
+                )}
+              </div>
+              {locked ? (
+                <div className="grid content-center gap-2 rounded-lg bg-white/70 px-2 text-center text-[10px] font-black uppercase text-slate-500 ring-1 ring-slate-200">
+                  <LockKeyhole size={18} className="mx-auto text-slate-500" />
+                  Slide fixo
+                  <span className="text-[9px] font-bold normal-case text-slate-400">Vezz protegido</span>
+                </div>
+              ) : (
+                <AdminActionStack onEdit={() => editPromo(slide)} onRemove={() => requestRemovePromo(slide)} />
+              )}
             </div>
-          ))}
+            )
+          })}
         </div>
         <div className="mt-1 flex justify-center gap-1.5">
           <span className="size-2 rounded-full bg-slate-300" />
@@ -2997,13 +3333,16 @@ function AdminProductEditorCard({ product, onEdit, onRemove, onToggle }) {
   )
 }
 
-function AdminPromoEditScreen({ promo, restaurantProfile = defaultRestaurantProfile, onBack, onSave }) {
+function AdminPromoEditScreen({ promo, products = [], restaurantProfile = defaultRestaurantProfile, onBack, onSave }) {
   const [draft, setDraft] = useState(() => ({
     ...promo,
     alt: promo?.alt ?? 'Card promocional',
+    targetType: promo?.targetType ?? 'promotion',
+    targetUrl: promo?.targetUrl ?? '',
   }))
   const [saveConfirmOpen, setSaveConfirmOpen] = useState(false)
   const imageInputRef = useRef(null)
+  const selectableProducts = products
 
   function updatePromoImage(event) {
     const file = event.target.files?.[0]
@@ -3012,6 +3351,15 @@ function AdminPromoEditScreen({ promo, restaurantProfile = defaultRestaurantProf
       setDraft((current) => ({ ...current, image: imageUrl, fit: 'contain' }))
     })
     event.target.value = ''
+  }
+
+  function updateDestinationType(targetType) {
+    setDraft((current) => ({
+      ...current,
+      targetType,
+      targetUrl: targetType === 'link' ? current.targetUrl : '',
+      productId: targetType === 'promotion' ? current.productId : targetType === 'product' ? (current.productId || selectableProducts[0]?.id || '') : '',
+    }))
   }
 
   return (
@@ -3051,6 +3399,67 @@ function AdminPromoEditScreen({ promo, restaurantProfile = defaultRestaurantProf
             className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] px-3 text-sm font-semibold text-[#4b160e] outline-none"
           />
         </label>
+
+        <section className="mt-4 rounded-xl border border-[#eadfd9] bg-[#fbf7f2] p-3">
+          <h2 className="text-sm font-black text-[#6b433a]">Direcionamento do clique</h2>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {[
+              ['promotion', 'Promoção'],
+              ['product', 'Prato'],
+              ['link', 'Link'],
+            ].map(([targetType, label]) => (
+              <button
+                type="button"
+                key={targetType}
+                onClick={() => updateDestinationType(targetType)}
+                aria-pressed={draft.targetType === targetType}
+                className={`h-9 rounded-lg text-[11px] font-black transition active:scale-[0.98] ${
+                  draft.targetType === targetType
+                    ? 'bg-[#4b160e] text-white'
+                    : 'bg-white text-[#6b433a] ring-1 ring-[#eadfd9]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {draft.targetType === 'promotion' && (
+            <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-semibold leading-5 text-[#8b6d66] ring-1 ring-[#eadfd9]">
+              Ao clicar, o cliente verá a tela explicando a promoção, condições e itens inclusos.
+            </p>
+          )}
+
+          {draft.targetType === 'product' && (
+            <label className="mt-3 block text-xs font-black uppercase text-[#6b433a]">
+              Prato de destino
+              <select
+                value={draft.productId ?? ''}
+                onChange={(event) => setDraft((current) => ({ ...current, productId: event.target.value }))}
+                className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] bg-white px-3 text-sm font-semibold normal-case text-[#4b160e] outline-none"
+              >
+                {selectableProducts.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {draft.targetType === 'link' && (
+            <label className="mt-3 block text-xs font-black uppercase text-[#6b433a]">
+              Link externo
+              <input
+                type="url"
+                value={draft.targetUrl}
+                onChange={(event) => setDraft((current) => ({ ...current, targetUrl: event.target.value }))}
+                placeholder="https://..."
+                className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] px-3 text-sm font-semibold normal-case text-[#4b160e] outline-none placeholder:text-[#b6a4a0]"
+              />
+            </label>
+          )}
+        </section>
 
         <button
           type="button"
@@ -3713,9 +4122,9 @@ function OrderScreen({
               </span>
               <div>
                 <h1 data-screen-title="true" tabIndex={-1} className="text-lg font-black outline-none">
-                  SEU PEDIDO
+                  MEU PEDIDO
                 </h1>
-                <p className="text-sm font-medium">Confirme os itens do seu pedido</p>
+                <p className="text-sm font-medium">Revise os itens antes de chamar o garçom</p>
               </div>
             </div>
 
@@ -3833,6 +4242,9 @@ function OrderItemCard({ item, onUpdateCartItem }) {
       <div className="min-w-0 py-1">
         <h2 className="line-clamp-2 text-sm font-black">{item.product.name.toUpperCase()}</h2>
         <p className="mt-1 text-sm font-medium">{detail}</p>
+        {item.note && (
+          <p className="mt-1 line-clamp-2 text-xs font-semibold text-[#8b6d66]">Obs.: {item.note}</p>
+        )}
         <div className="mt-3 inline-flex h-7 items-center rounded-full border border-[#4b160e] bg-[#f7ead7] text-[#4b160e]">
           <button
             type="button"
@@ -3882,7 +4294,7 @@ function CartBar({ quantity, total, onOpenOrder }) {
           </span>
         </span>
         <span className="rounded-lg bg-[#f8a91f] px-4 py-3 text-xs font-black text-white">
-          VER CARRINHO
+          VER PEDIDO
         </span>
       </button>
     </div>
@@ -4153,6 +4565,7 @@ function getInitialScreen() {
   const hash = window.location.hash
 
   if (hash.startsWith('#produto=')) return 'produto'
+  if (hash.startsWith('#promocao=')) return 'promocao'
   if (hash.startsWith('#categoria=')) return 'categoria-pratos'
   if (hash === '#pedido') return 'pedido'
   if (hash === '#menu') return 'menu'
@@ -4169,6 +4582,10 @@ function getCategoryFromHash() {
   return categories.some((category) => category.id === categoryId)
     ? categoryId
     : ''
+}
+
+function getPromoFromHash() {
+  return window.location.hash.replace('#promocao=', '')
 }
 
 function getInitialAdminTab() {
@@ -4190,6 +4607,17 @@ function buildNfcUrl(tableNumber) {
   url.searchParams.set('mesa', tableNumber)
   url.hash = 'menu'
   return url.toString()
+}
+
+function buildDishInfoTags(product) {
+  const tags = [...(product.tags ?? [])]
+  const normalizedCategory = normalizeText(product.category)
+
+  if ((normalizedCategory.includes('sobremesas') || normalizedCategory.includes('bebidas')) && !tags.includes('Açúcar')) {
+    tags.push('Açúcar')
+  }
+
+  return tags.length ? tags : ['Consultar alergênicos']
 }
 
 function buildProductAriaLabel(product) {
