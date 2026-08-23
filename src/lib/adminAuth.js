@@ -1,4 +1,11 @@
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth'
+import {
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+} from 'firebase/auth'
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db } from './firebase'
 
@@ -18,6 +25,7 @@ export function watchAdminSession(restaurantId, onChange) {
       if (!adminSnapshot.exists() && user.email === bootstrapAdminEmail) {
         await setDoc(adminRef, {
           email: user.email,
+          username: user.displayName || 'Administrador',
           role: 'owner',
           createdAt: serverTimestamp(),
         })
@@ -46,6 +54,49 @@ export function loginAdmin(email, password) {
   return signInWithEmailAndPassword(auth, email.trim(), password)
 }
 
+export async function registerAdmin(restaurantId, { username, email, password }) {
+  const normalizedEmail = email.trim().toLowerCase()
+  const normalizedUsername = username.trim()
+  const role = normalizedEmail === bootstrapAdminEmail ? 'owner' : 'admin'
+  let credential
+
+  try {
+    credential = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
+  } catch (error) {
+    if (error?.code !== 'auth/email-already-in-use') {
+      throw error
+    }
+
+    credential = await signInWithEmailAndPassword(auth, normalizedEmail, password)
+  }
+
+  if (normalizedUsername) {
+    await updateProfile(credential.user, { displayName: normalizedUsername })
+  }
+
+  const adminRef = doc(db, 'restaurants', restaurantId, 'admins', credential.user.uid)
+  const adminSnapshot = await getDoc(adminRef)
+
+  if (adminSnapshot.exists()) {
+    return credential
+  }
+
+  await setDoc(adminRef, {
+    email: normalizedEmail,
+    username: normalizedUsername,
+    role,
+    createdAt: serverTimestamp(),
+  })
+
+  return credential
+}
+
+export function recoverAdminPassword(email) {
+  return sendPasswordResetEmail(auth, email.trim(), {
+    url: `${window.location.origin}${window.location.pathname}#admin-principal`,
+  })
+}
+
 export function logoutAdmin() {
   return signOut(auth)
 }
@@ -61,12 +112,28 @@ export function translateAdminAuthError(error) {
     return 'Conta administrativa nao encontrada.'
   }
 
+  if (code.includes('auth/email-already-in-use')) {
+    return 'Este email ja possui uma conta administrativa.'
+  }
+
+  if (code.includes('auth/weak-password')) {
+    return 'Use uma senha com pelo menos 6 caracteres.'
+  }
+
+  if (code.includes('auth/invalid-email')) {
+    return 'Informe um email valido.'
+  }
+
+  if (code.includes('auth/missing-password')) {
+    return 'Informe a senha para continuar.'
+  }
+
   if (code.includes('auth/too-many-requests')) {
     return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'
   }
 
   if (code.includes('permission-denied')) {
-    return 'Conta autenticada, mas sem permissao administrativa.'
+    return 'Conta criada, mas o perfil administrativo nao foi liberado pelas regras do Firebase.'
   }
 
   return 'Nao foi possivel entrar agora. Verifique a conexao e tente novamente.'

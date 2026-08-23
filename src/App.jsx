@@ -33,6 +33,7 @@ import {
   ShoppingCart,
   Table2,
   Trash2,
+  UserRound,
   Volume2,
   VolumeX,
   X,
@@ -61,8 +62,16 @@ import iconFrutosDoMar from './assets/icons/icon frutos do mar.png'
 import iconSaladas from './assets/icons/icon salada.png'
 import iconSobremesas from './assets/icons/icon sobremesa.png'
 import iconVeganos from './assets/icons/icon vegano.png'
-import { loginAdmin, logoutAdmin, translateAdminAuthError, watchAdminSession } from './lib/adminAuth'
+import {
+  loginAdmin,
+  logoutAdmin,
+  recoverAdminPassword,
+  registerAdmin,
+  translateAdminAuthError,
+  watchAdminSession,
+} from './lib/adminAuth'
 import { persistAnalyticsEvent, persistOrder } from './lib/firebaseEvents'
+import { loadMenuState, readCachedMenuState, saveMenuState } from './lib/menuPersistence'
 
 const categories = [
   { id: 'entradas', label: 'Entradas', shortLabel: 'Entradas', iconImage: iconEntradas, image: categoriaEntradas },
@@ -93,8 +102,14 @@ const restaurantName = 'COCO BAMBU'
 const defaultRestaurantProfile = {
   name: 'COCO BAMBU',
   location: 'Derby, Recife - PE',
+  slug: 'coco-bambu',
   logo: cocoLogo,
   cover: cocoBackground,
+  theme: {
+    primary: '#4b160e',
+    accent: '#d8ad61',
+    surface: '#ffffff',
+  },
 }
 const defaultAdminEmail = 'admin@tokkafoods.com.br'
 const analyticsStorageKey = 'food99like-events'
@@ -393,6 +408,8 @@ const baseProducts = [
 
 function App() {
   const initialTable = getTableFromUrl()
+  const initialMenuSlug = getMenuSlugFromHash() || defaultRestaurantProfile.slug
+  const initialMenuState = normalizeMenuStateSnapshot(readCachedMenuState(restaurantId, initialMenuSlug), initialMenuSlug)
   const [analyticsSession] = useState(() => getAnalyticsSession(initialTable))
   const [screen, setScreen] = useState(() => getInitialScreen())
   const [menuMode, setMenuMode] = useState('padrao')
@@ -401,9 +418,10 @@ function App() {
   const [selectedProductId, setSelectedProductId] = useState(() => getProductFromHash())
   const [selectedPromoId, setSelectedPromoId] = useState(() => getPromoFromHash())
   const [productReturnScreen, setProductReturnScreen] = useState('menu')
-  const [restaurantProfile, setRestaurantProfile] = useState(defaultRestaurantProfile)
-  const [promoItems, setPromoItems] = useState(promoSlides)
-  const [products, setProducts] = useState(baseProducts)
+  const [activeMenuSlug, setActiveMenuSlug] = useState(initialMenuSlug)
+  const [restaurantProfile, setRestaurantProfile] = useState(initialMenuState.profile)
+  const [promoItems, setPromoItems] = useState(initialMenuState.promoItems)
+  const [products, setProducts] = useState(initialMenuState.products)
   const [favoriteProductIds, setFavoriteProductIds] = useState([])
   const [cart, setCart] = useState([])
   const [tableNumber, setTableNumber] = useState(initialTable || '')
@@ -422,8 +440,15 @@ function App() {
   })
   const [adminLoginError, setAdminLoginError] = useState('')
   const [adminLoginLoading, setAdminLoginLoading] = useState(false)
+  const [adminRegisterError, setAdminRegisterError] = useState('')
+  const [adminRegisterLoading, setAdminRegisterLoading] = useState(false)
+  const [adminPasswordResetLoading, setAdminPasswordResetLoading] = useState(false)
+  const [toasts, setToasts] = useState([])
   const speechStopTimerRef = useRef(null)
+  const toastTimersRef = useRef(new Map())
+  const adminRegistrationPendingRef = useRef(false)
   const initialMenuEventSyncedRef = useRef(false)
+  const menuStateLoadedRef = useRef(false)
   const [analyticsEvents, setAnalyticsEvents] = useState(() => {
     const nextEvents = [
       ...readAnalyticsEvents(),
@@ -455,7 +480,7 @@ function App() {
     0,
   )
   const cartQuantity = cartItems.reduce((total, item) => total + item.quantity, 0)
-  const generatedNfcLink = buildNfcUrl(nfcTable || tableNumber || '01')
+  const generatedNfcLink = buildNfcUrl(nfcTable || tableNumber || '01', restaurantProfile.slug)
   const analyticsSummary = useMemo(
     () => buildAnalyticsSummary(analyticsEvents, products, analyticsSession),
     [analyticsEvents, products, analyticsSession],
@@ -474,6 +499,32 @@ function App() {
       persistAnalyticsEvent(event)
     },
     [analyticsSession],
+  )
+
+  const removeToast = useCallback((toastId) => {
+    const timer = toastTimersRef.current.get(toastId)
+
+    if (timer) {
+      window.clearTimeout(timer)
+      toastTimersRef.current.delete(toastId)
+    }
+
+    setToasts((items) => items.filter((toast) => toast.id !== toastId))
+  }, [])
+
+  const pushToast = useCallback(
+    ({ title, message = '', tone = 'success', duration = 6200 }) => {
+      const toastId = `toast-${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+      setToasts((items) => [...items, { id: toastId, title, message, tone }].slice(-3))
+
+      const timer = window.setTimeout(() => {
+        removeToast(toastId)
+      }, duration)
+
+      toastTimersRef.current.set(toastId, timer)
+    },
+    [removeToast],
   )
 
   const stopSpeech = useCallback((status = '') => {
@@ -495,6 +546,10 @@ function App() {
 
   useEffect(() => {
     return watchAdminSession(restaurantId, (session) => {
+      if (adminRegistrationPendingRef.current && session.user && !session.isAdmin) {
+        return
+      }
+
       setAdminSession(session)
 
       if (session.isAdmin) {
@@ -506,6 +561,88 @@ function App() {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+    const slug = activeMenuSlug || defaultRestaurantProfile.slug
+
+    menuStateLoadedRef.current = false
+
+    async function hydrateMenuState() {
+      const savedState = await loadMenuState(restaurantId, slug)
+
+      if (cancelled) return
+
+      const nextState = normalizeMenuStateSnapshot(savedState, slug)
+
+      setRestaurantProfile(nextState.profile)
+      setPromoItems(nextState.promoItems)
+      setProducts(nextState.products)
+      setSelectedProductId((currentProductId) =>
+        nextState.products.some((product) => product.id === currentProductId)
+          ? currentProductId
+          : nextState.products[0]?.id ?? '',
+      )
+      setCart([])
+      menuStateLoadedRef.current = true
+    }
+
+    hydrateMenuState()
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeMenuSlug])
+
+  useEffect(() => {
+    if (!menuStateLoadedRef.current || !adminSession.isAdmin) return undefined
+
+    const normalizedProfile = normalizeRestaurantProfile(restaurantProfile)
+    const saveTimer = window.setTimeout(() => {
+      saveMenuState(
+        restaurantId,
+        normalizedProfile.slug,
+        buildMenuStateSnapshot(normalizedProfile, promoItems, products),
+        { remote: true },
+      )
+    }, 700)
+
+    return () => window.clearTimeout(saveTimer)
+  }, [adminSession.isAdmin, activeMenuSlug, products, promoItems, restaurantProfile])
+
+  useEffect(() => {
+    function syncRouteFromHash() {
+      const nextScreen = getInitialScreen()
+      const nextMenuSlug = getMenuSlugFromHash()
+
+      setScreen(nextScreen)
+
+      if (nextMenuSlug) {
+        setActiveMenuSlug(nextMenuSlug)
+      }
+
+      if (nextScreen === 'categoria-pratos') {
+        const categoryId = getCategoryFromHash()
+
+        if (categoryId) {
+          setActiveCategory(categoryId)
+          setMenuCategorySelected(true)
+        }
+      }
+
+      if (nextScreen === 'produto') {
+        setSelectedProductId(getProductFromHash())
+      }
+
+      if (nextScreen === 'promocao') {
+        setSelectedPromoId(getPromoFromHash())
+      }
+    }
+
+    window.addEventListener('hashchange', syncRouteFromHash)
+
+    return () => window.removeEventListener('hashchange', syncRouteFromHash)
+  }, [])
+
+  useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       document.querySelector('[data-screen-title="true"]')?.focus()
     })
@@ -514,10 +651,15 @@ function App() {
   }, [screen, selectedProductId])
 
   useEffect(() => {
+    const toastTimers = toastTimersRef.current
+
     return () => {
       if (speechStopTimerRef.current) {
         window.clearTimeout(speechStopTimerRef.current)
       }
+
+      toastTimers.forEach((timer) => window.clearTimeout(timer))
+      toastTimers.clear()
 
       cancelSpeechQueue()
     }
@@ -539,11 +681,20 @@ function App() {
 
   function showScreen(nextScreen, hashValue = nextScreen) {
     const normalizedScreen = nextScreen === 'entrada' ? 'menu' : nextScreen
-    const normalizedHash = nextScreen === 'entrada' ? 'menu' : hashValue
+    const normalizedHash =
+      normalizedScreen === 'menu' && (hashValue === 'menu' || hashValue === 'entrada')
+        ? getPublicMenuHash(restaurantProfile.slug || restaurantProfile.name)
+        : nextScreen === 'entrada'
+          ? getPublicMenuHash(restaurantProfile.slug || restaurantProfile.name)
+          : hashValue
 
     stopSpeech()
     setScreen(normalizedScreen)
     window.location.hash = normalizedHash
+  }
+
+  function openAdminPrincipal() {
+    showScreen('admin-cardapio', getAdminPrincipalHash())
   }
 
   async function handleAdminLogin({ email, password }) {
@@ -553,17 +704,106 @@ function App() {
     try {
       await loginAdmin(email, password)
       trackEvent('admin_login', { email })
-      showScreen('admin-cardapio')
+      pushToast({
+        title: 'Login confirmado',
+        message: 'Painel administrativo aberto.',
+      })
+      openAdminPrincipal()
     } catch (error) {
-      setAdminLoginError(translateAdminAuthError(error))
+      const message = translateAdminAuthError(error)
+      setAdminLoginError(message)
+      pushToast({
+        title: 'Nao foi possivel entrar',
+        message,
+        tone: 'error',
+      })
     } finally {
       setAdminLoginLoading(false)
+    }
+  }
+
+  async function handleAdminRegister({ username, email, password }) {
+    setAdminRegisterError('')
+    setAdminRegisterLoading(true)
+    adminRegistrationPendingRef.current = true
+
+    try {
+      const credential = await registerAdmin(restaurantId, { username, email, password })
+
+      setAdminSession({
+        loading: false,
+        user: credential.user,
+        isAdmin: true,
+        error: '',
+      })
+      setAdminLoginError('')
+      trackEvent('admin_register', { email })
+      pushToast({
+        title: 'Cadastro administrativo criado',
+        message: 'Acesso liberado para editar o cardapio.',
+      })
+      openAdminPrincipal()
+      window.setTimeout(() => {
+        adminRegistrationPendingRef.current = false
+      }, 1200)
+    } catch (error) {
+      adminRegistrationPendingRef.current = false
+      const message = translateAdminAuthError(error)
+      setAdminRegisterError(message)
+      pushToast({
+        title: 'Cadastro nao concluido',
+        message,
+        tone: 'error',
+      })
+    } finally {
+      setAdminRegisterLoading(false)
+    }
+  }
+
+  async function handleAdminPasswordReset(email) {
+    const trimmedEmail = email.trim()
+
+    if (!trimmedEmail) {
+      const message = 'Informe o email administrativo para recuperar a senha.'
+      setAdminLoginError(message)
+      pushToast({
+        title: 'Email necessario',
+        message,
+        tone: 'warning',
+      })
+      return
+    }
+
+    setAdminLoginError('')
+    setAdminPasswordResetLoading(true)
+
+    try {
+      await recoverAdminPassword(trimmedEmail)
+      pushToast({
+        title: 'Recuperacao enviada',
+        message: 'Confira o email para redefinir a senha pelo Firebase.',
+      })
+    } catch (error) {
+      const message = translateAdminAuthError(error)
+      setAdminLoginError(message)
+      pushToast({
+        title: 'Nao foi possivel recuperar',
+        message,
+        tone: 'error',
+      })
+    } finally {
+      setAdminPasswordResetLoading(false)
     }
   }
 
   async function handleAdminLogout() {
     await logoutAdmin()
     setAdminLoginError('')
+    pushToast({
+      title: 'Sessao encerrada',
+      message: 'Voce saiu do painel administrativo.',
+      tone: 'warning',
+    })
     trackEvent('admin_logout')
   }
 
@@ -749,7 +989,7 @@ function App() {
   }
 
   function openNfcPreview() {
-    window.history.replaceState(null, '', `?mesa=${nfcTable || '01'}#menu`)
+    window.history.replaceState(null, '', `?mesa=${nfcTable || '01'}#${getPublicMenuHash(restaurantProfile.slug)}`)
     setTableNumber(nfcTable || '01')
     trackEvent('card_preview', { tableNumber: nfcTable || '01' })
     showScreen('menu')
@@ -805,7 +1045,7 @@ function App() {
 
     recognition.onstart = () => {
       setVoiceCommandListening(true)
-      setReaderStatus('Ouvindo comando de voz.')
+      setReaderStatus('Agora estamos te ouvindo.')
     }
 
     recognition.onresult = (event) => {
@@ -956,6 +1196,7 @@ function App() {
         className={`fixed inset-0 h-[100dvh] w-[100dvw] max-w-none overflow-hidden md:static md:mx-auto md:h-[932px] md:w-full md:max-w-[430px] md:rounded-[28px] md:shadow-2xl md:shadow-slate-300/80 ${
           screen === 'entrada' ? 'bg-[#45150d]' : 'bg-white'
         }`}
+        style={buildThemeStyle(restaurantProfile)}
       >
         {screen === 'entrada' && (
           <EntryScreen onStart={startMenuMode} />
@@ -977,7 +1218,7 @@ function App() {
             onCategoryChange={(categoryId) => openCategoryProducts(categoryId)}
             onSearchChange={changeSearchQuery}
             onOpenCategories={() => showScreen('categorias')}
-            onOpenSettings={() => showScreen('admin-cardapio')}
+            onOpenSettings={openAdminPrincipal}
             onOpenProduct={openProduct}
             onAddToCart={addToCart}
             onOpenOrder={() => showScreen('pedido')}
@@ -995,7 +1236,7 @@ function App() {
             categories={categories}
             restaurantProfile={restaurantProfile}
             onBack={() => showScreen('menu')}
-            onOpenSettings={() => showScreen('admin-cardapio')}
+            onOpenSettings={openAdminPrincipal}
             onSelectCategory={openCategoryProducts}
           />
         )}
@@ -1007,7 +1248,7 @@ function App() {
             restaurantProfile={restaurantProfile}
             onBack={() => showScreen('categorias')}
             onOpenProduct={openProduct}
-            onOpenSettings={() => showScreen('admin-cardapio')}
+            onOpenSettings={openAdminPrincipal}
           />
         )}
 
@@ -1053,8 +1294,10 @@ function App() {
             defaultEmail={defaultAdminEmail}
             error={adminLoginError}
             loading={adminLoginLoading || adminSession.loading}
+            recoveryLoading={adminPasswordResetLoading}
             onBack={() => showScreen('menu')}
             onLogin={handleAdminLogin}
+            onRecoverPassword={handleAdminPasswordReset}
           />
         )}
 
@@ -1074,7 +1317,7 @@ function App() {
             onOpenNfcPreview={openNfcPreview}
             onOpenPartnerLink={openPartnerLink}
             onLogout={handleAdminLogout}
-            onOpenMenuEditor={() => showScreen('admin-cardapio')}
+            onOpenMenuEditor={openAdminPrincipal}
           />
         )}
 
@@ -1083,8 +1326,20 @@ function App() {
             defaultEmail={defaultAdminEmail}
             error={adminLoginError}
             loading={adminLoginLoading || adminSession.loading}
+            recoveryLoading={adminPasswordResetLoading}
             onBack={() => showScreen('menu')}
             onLogin={handleAdminLogin}
+            onRecoverPassword={handleAdminPasswordReset}
+          />
+        )}
+
+        {screen === 'cadastro-administrador' && (
+          <AdminRegisterScreen
+            defaultEmail={defaultAdminEmail}
+            error={adminRegisterError}
+            loading={adminRegisterLoading}
+            onBack={openAdminPrincipal}
+            onRegister={handleAdminRegister}
           />
         )}
 
@@ -1098,7 +1353,18 @@ function App() {
             onBack={() => showScreen('menu')}
             onDone={(nextProfile) => {
               if (nextProfile) {
-                setRestaurantProfile(nextProfile)
+                const normalizedProfile = normalizeRestaurantProfile(nextProfile)
+
+                setActiveMenuSlug(normalizedProfile.slug)
+                setRestaurantProfile(normalizedProfile)
+                saveMenuState(
+                  restaurantId,
+                  normalizedProfile.slug,
+                  buildMenuStateSnapshot(normalizedProfile, promoItems, products),
+                  { remote: adminSession.isAdmin },
+                )
+                showScreen('menu', getPublicMenuHash(normalizedProfile.slug))
+                return
               }
               showScreen('menu')
             }}
@@ -1125,6 +1391,7 @@ function App() {
         <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
           {readerStatus}
         </p>
+        <ToastStack toasts={toasts} onDismiss={removeToast} />
       </div>
     </main>
   )
@@ -1170,40 +1437,35 @@ function CategoriesScreen({ categories, restaurantProfile = defaultRestaurantPro
   return (
     <section className="h-full overflow-y-auto bg-white pb-8 text-[#43160f]">
       <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onOpenSettings} compact />
-      <div className="relative z-10 -mt-9 rounded-t-[36px] bg-white px-5 pt-6 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+      <div className="relative z-10 -mt-8 rounded-t-[34px] bg-white px-5 pb-8 pt-6 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <img
           src={restaurantProfile.logo}
           alt={restaurantProfile.name}
           loading="eager"
           decoding="sync"
-          className="relative z-20 mx-auto -mt-20 size-[112px] rounded-full border-4 border-[#d8ad61] bg-[#4a160f]"
+          className="relative z-20 mx-auto -mt-[92px] size-[142px] rounded-full border-4 border-[#d8ad61] bg-[#4a160f]"
         />
-        <h1 data-screen-title="true" tabIndex={-1} className="mt-2 text-center text-xl font-medium outline-none">
+        <h1 data-screen-title="true" tabIndex={-1} className="mt-3 text-center text-[28px] font-medium leading-none outline-none">
           CATEGORIAS
         </h1>
-        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
+        <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4">
           {categories.map((category) => (
             <button
               type="button"
               key={category.id}
               onClick={() => onSelectCategory(category.id)}
-              className="min-h-[206px] text-center transition-transform duration-300 ease-out active:-translate-y-1"
+              className="text-center"
             >
-              <span className="relative block pb-8">
-                <span className="block aspect-[154/107] overflow-hidden rounded-lg border-[3px] border-[#4b160e] bg-white">
-                  <img
-                    src={category.image}
-                    alt=""
-                    loading="eager"
-                    decoding="sync"
-                    className="block size-full object-cover"
-                  />
-                </span>
-                <span className="absolute bottom-0 left-1/2 grid size-16 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.3)]">
-                  <img src={category.iconImage} alt="" className="w-9" />
-                </span>
+              <span className="block aspect-[1.47] overflow-hidden rounded-lg border-[3px] border-[#4b160e] bg-white">
+                <img
+                  src={category.image}
+                  alt=""
+                  loading="eager"
+                  decoding="sync"
+                  className="block size-full object-cover"
+                />
               </span>
-              <span className="mt-1 flex h-10 items-start justify-center text-center text-base font-black leading-[1.1]">
+              <span className="mt-1.5 flex min-h-7 items-start justify-center text-center text-[17px] font-black leading-tight">
                 {category.label.toUpperCase()}
               </span>
             </button>
@@ -1277,7 +1539,9 @@ function CategoryDishCard({ product, onOpen }) {
       className="grid h-[116px] w-full grid-cols-[1fr_130px] gap-3 overflow-hidden rounded-lg bg-[#f0f0f0] p-3 text-left"
     >
       <span className="flex min-w-0 flex-col overflow-hidden">
-        <span className="line-clamp-2 block text-[13px] font-black leading-tight">{product.name.toUpperCase()}</span>
+        <span className="block truncate text-[13px] font-black leading-tight" title={product.name}>
+          {product.name.toUpperCase()}
+        </span>
         <span className="mt-1.5 line-clamp-2 block text-[13px] font-medium leading-[18px]">
           {product.description}
         </span>
@@ -1311,7 +1575,7 @@ function TopPhotoBar({
           type="button"
           onClick={onBack}
           aria-label="Voltar"
-          className={`absolute left-7 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95 ${
+          className={`absolute left-7 grid size-11 place-items-center rounded-full bg-white/85 text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95 ${
             compact ? 'top-6' : 'top-8'
           }`}
         >
@@ -1322,12 +1586,12 @@ function TopPhotoBar({
         type="button"
         onClick={onOpenSettings}
         aria-label={trailingIcon === 'heart' ? (trailingActive ? 'Remover dos favoritos' : 'Favoritar') : 'Configurações'}
-        className={`absolute right-7 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95 ${
+        className={`absolute right-7 grid size-11 place-items-center rounded-full bg-white/85 text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95 ${
           compact ? 'top-6' : 'top-8'
         }`}
       >
         {trailingIcon === 'heart' ? (
-          <Heart size={25} strokeWidth={2.6} fill={trailingActive ? '#4b160e' : 'none'} />
+          <Heart size={25} strokeWidth={2.6} fill={trailingActive ? 'var(--brand-primary)' : 'none'} />
         ) : (
           <Settings size={25} strokeWidth={2.6} />
         )}
@@ -1363,16 +1627,22 @@ function MenuScreen({
   const [promoIndex, setPromoIndex] = useState(0)
   const [productLayout, setProductLayout] = useState('lista')
   const [menuSheetRaised, setMenuSheetRaised] = useState(false)
-  const visibleProducts = filterProducts(products, searchQuery)
+  const productSearch = searchProducts(products, searchQuery)
+  const visibleProducts = productSearch.items
+  const isSearching = Boolean(normalizeText(searchQuery))
   const selectedCategory = categories.find((category) => category.id === activeCategory) ?? categories[0]
   const categoryProducts = visibleProducts.filter((product) => product.category === activeCategory)
   const featuredProducts = visibleProducts.slice(0, menuMode === 'simplificado' ? 4 : 5)
+  const primaryProducts = isSearching ? visibleProducts : featuredProducts
   const selectedDailySource = menuCategorySelected && categoryProducts.length ? categoryProducts : visibleProducts
   const dailyProducts = selectedDailySource
     .filter((product) => !featuredProducts.some((featuredProduct) => featuredProduct.id === product.id))
     .slice(0, menuMode === 'simplificado' ? 2 : 4)
-  const menuSectionTitle = searchQuery.trim() ? 'RESULTADOS' : 'DESTAQUES'
-  const isSearching = Boolean(searchQuery.trim())
+  const menuSectionTitle = isSearching
+    ? productSearch.mode === 'similar'
+      ? 'SIMILARES'
+      : 'RESULTADOS'
+    : 'DESTAQUES'
   const safePromoIndex = promoItems.length ? Math.min(promoIndex, promoItems.length - 1) : 0
 
   useEffect(() => {
@@ -1392,7 +1662,7 @@ function MenuScreen({
 
   return (
     <section
-      className="relative h-full overflow-y-auto bg-white pb-28 text-[#43160f]"
+      className="relative h-full overflow-y-auto bg-white pb-28 text-[var(--brand-primary)]"
       aria-labelledby="menu-title"
       onScroll={handleMenuScroll}
     >
@@ -1410,13 +1680,13 @@ function MenuScreen({
         alt={restaurantProfile.name}
         loading="eager"
         decoding="sync"
-        className={`pointer-events-none absolute left-1/2 top-[43px] size-[82px] -translate-x-1/2 rounded-full border-[3px] border-[#d8ad61] bg-[#4a160f] transition-all duration-500 ease-out ${
+        className={`pointer-events-none absolute left-1/2 top-[43px] size-[82px] -translate-x-1/2 rounded-full border-[3px] border-[var(--brand-accent)] bg-[var(--brand-primary)] transition-all duration-500 ease-out ${
           menuSheetRaised ? 'z-0 -translate-y-5 opacity-0 scale-95' : 'z-30 translate-y-0 opacity-100 scale-100'
         }`}
         draggable="false"
       />
 
-      <div className="relative z-20 -mt-8 rounded-t-[34px] bg-white px-8 pb-4 pt-9 shadow-[0_-18px_42px_rgba(67,22,15,0.12)]">
+      <div className="relative z-20 -mt-8 rounded-t-[34px] bg-[var(--brand-surface)] px-8 pb-4 pt-9 shadow-[0_-18px_42px_rgba(67,22,15,0.12)]">
         <div className="text-center">
           <h1 id="menu-title" data-screen-title="true" tabIndex={-1} className="text-[22px] font-black outline-none">
             {restaurantProfile.name}
@@ -1452,20 +1722,20 @@ function MenuScreen({
           ))}
         </div>
 
-        <div className="mt-2.5 grid h-10 grid-cols-[auto_1fr_auto_auto] items-center gap-2 rounded-full bg-[#eeeeee] px-4">
-          <Search size={20} className="text-[#bdb8b5]" />
+        <div className="relative mt-2.5 h-10 overflow-hidden rounded-full bg-[#eeeeee]">
+          <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#bdb8b5]" />
           <input
             value={searchQuery}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Buscar pratos..."
-            className="h-full bg-transparent text-base font-medium text-[#43160f] outline-none placeholder:text-[#bdb8b5]"
+            className="h-full w-full min-w-0 bg-transparent pl-12 pr-24 text-base font-medium text-[#43160f] outline-none placeholder:text-[#bdb8b5]"
           />
           {isSearching && (
             <button
               type="button"
               onClick={() => onSearchChange('')}
               aria-label="Limpar busca"
-              className="grid size-7 place-items-center rounded-full bg-white text-[#8f7d77] shadow-sm"
+              className="absolute right-12 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-white text-[#8f7d77] shadow-sm"
             >
               <X size={16} strokeWidth={2.7} />
             </button>
@@ -1475,11 +1745,14 @@ function MenuScreen({
             onClick={onStartVoiceCommand}
             aria-label="Buscar por voz"
             aria-pressed={voiceCommandListening}
-            className={`grid size-7 place-items-center rounded-full ${
-              voiceCommandListening ? 'bg-[#4b160e] text-white shadow-sm' : 'text-[#bdb8b5]'
+            className={`absolute right-3 top-1/2 grid size-7 -translate-y-1/2 place-items-center overflow-hidden rounded-full transition ${
+              voiceCommandListening ? 'bg-[var(--brand-primary)] text-white shadow-sm' : 'text-[#bdb8b5]'
             }`}
           >
-            <Mic size={20} />
+            <Mic size={20} strokeWidth={2.4} />
+            {!voiceCommandListening && (
+              <span className="pointer-events-none absolute h-[2px] w-7 rotate-45 rounded-full bg-[#bdb8b5]" />
+            )}
           </button>
         </div>
 
@@ -1508,8 +1781,12 @@ function MenuScreen({
         )}
 
         {isSearching && (
-          <div className="mt-2.5 rounded-lg bg-[#f8f3ee] px-3 py-2 text-xs font-bold text-[#8b6d66]">
-            Exibindo pratos encontrados para "{searchQuery.trim()}".
+          <div className="mt-2.5 rounded-lg bg-[#f8f3ee] px-3 py-2 text-xs font-bold leading-4 text-[#8b6d66]">
+            {productSearch.mode === 'similar'
+              ? `Não encontramos exatamente "${searchQuery.trim()}". Mostrando similares por ingredientes, categoria e tags.`
+              : productSearch.mode === 'none'
+                ? `Nenhum prato encontrado para "${searchQuery.trim()}". Tente buscar por ingrediente, categoria ou restrição.`
+                : `Exibindo pratos encontrados para "${searchQuery.trim()}".`}
           </div>
         )}
 
@@ -1519,7 +1796,7 @@ function MenuScreen({
         </div>
 
         <div className={productLayout === 'grade' ? '-mx-4 mt-2 grid grid-cols-2 gap-2.5' : '-mx-4 mt-2 space-y-2.5'}>
-          {featuredProducts.map((product) => (
+          {primaryProducts.map((product) => (
             productLayout === 'grade' ? (
               <MenuProductGridCard key={product.id} product={product} onOpen={() => onOpenProduct(product)} />
             ) : (
@@ -1744,39 +2021,22 @@ function CategoryPreviewCard({ category, active, onClick }) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className="min-h-[104px] w-[calc((min(100vw,430px)-48px)/3)] flex-none text-center"
+      className="min-h-[86px] w-[calc((min(100vw,430px)-48px)/3)] flex-none text-center"
     >
       <span
-        className={`relative block pb-7 transition-transform duration-300 ease-out ${
-          active ? '-translate-y-2' : 'translate-y-0'
+        className={`block aspect-[152/90] overflow-hidden rounded-md bg-white transition ${
+          active ? 'ring-2 ring-[#4b160e] ring-offset-2 ring-offset-white' : ''
         }`}
       >
-        <span
-          className={`block aspect-[152/90] overflow-hidden rounded-md bg-white transition-shadow duration-300 ${
-            active ? 'shadow-lg shadow-[#4b160e]/15 ring-2 ring-[#4b160e]' : ''
-          }`}
-        >
-          <img
-            src={category.image}
-            alt=""
-            loading="eager"
-            decoding="sync"
-            className="block size-full object-cover"
-          />
-        </span>
-        <span
-          className={`absolute bottom-1 left-1/2 grid size-10 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.25)] transition-transform duration-300 ease-out ${
-            active ? 'scale-105' : 'scale-100'
-          }`}
-        >
-          <img
-            src={category.iconImage}
-            alt=""
-            className="w-8 rounded-full drop-shadow-[0_1px_0_rgba(0,0,0,0.24)]"
-          />
-        </span>
+        <img
+          src={category.image}
+          alt=""
+          loading="eager"
+          decoding="sync"
+          className="block size-full object-cover"
+        />
       </span>
-      <span className="mt-0.5 flex h-7 items-start justify-center text-center text-[12px] font-black leading-[1.05]">
+      <span className="mt-1.5 flex h-7 items-start justify-center text-center text-[12px] font-black leading-[1.05]">
         {category.label.toUpperCase()}
       </span>
     </button>
@@ -1823,7 +2083,9 @@ function MenuProductCard({ product, onOpen }) {
       className="grid h-[116px] w-full grid-cols-[1fr_130px] gap-3 overflow-hidden rounded-lg bg-[#f0f0f0] p-3 text-left"
     >
       <span className="flex min-w-0 flex-col overflow-hidden">
-        <span className="line-clamp-2 block text-sm font-black leading-tight">{product.name.toUpperCase()}</span>
+        <span className="block truncate text-sm font-black leading-tight" title={product.name}>
+          {product.name.toUpperCase()}
+        </span>
         <span className="mt-1.5 line-clamp-2 block text-[13px] font-medium leading-[18px]">
           {product.description}
         </span>
@@ -1853,7 +2115,9 @@ function MenuProductGridCard({ product, onOpen }) {
           VER PRATO &gt;
         </span>
       </span>
-      <span className="mt-3 line-clamp-2 block min-h-[32px] text-[13px] font-black leading-tight">{product.name.toUpperCase()}</span>
+      <span className="mt-3 block truncate text-[13px] font-black leading-tight" title={product.name}>
+        {product.name.toUpperCase()}
+      </span>
       <span className="mt-1 line-clamp-1 block h-4 text-[11px] font-medium leading-4 text-[#5e332a]">
         {product.description}
       </span>
@@ -2137,7 +2401,7 @@ function ProductScreen({ product, isFavorite = false, onBack, onAddToCart, onOrd
   )
 }
 
-function AdminLoginScreen({ error, loading, onBack, onLogin }) {
+function AdminLoginScreen({ error, loading, recoveryLoading = false, onBack, onLogin, onRecoverPassword }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
@@ -2160,9 +2424,9 @@ function AdminLoginScreen({ error, loading, onBack, onLogin }) {
           type="button"
           onClick={onBack}
           aria-label="Voltar ao cardapio"
-          className="absolute left-7 top-8 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
+          className="absolute right-7 top-8 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
         >
-          <ArrowLeft size={25} strokeWidth={2.8} />
+          <Settings size={25} strokeWidth={2.6} />
         </button>
       </div>
 
@@ -2172,7 +2436,7 @@ function AdminLoginScreen({ error, loading, onBack, onLogin }) {
           alt="Coco Bambu"
           loading="eager"
           decoding="sync"
-          className="absolute left-1/2 top-[-94px] size-[200px] -translate-x-1/2 rounded-full border-[12px] border-white bg-[#4b160e]"
+          className="absolute left-1/2 top-[-88px] size-[184px] -translate-x-1/2 rounded-full border-[11px] border-white bg-[#4b160e]"
           draggable="false"
         />
 
@@ -2185,7 +2449,7 @@ function AdminLoginScreen({ error, loading, onBack, onLogin }) {
           >
             LOGIN
           </h1>
-          <p className="mt-4 text-base font-medium uppercase leading-none">ACESSO ADMINISTRATIVO</p>
+          <p className="mt-4 text-base font-normal uppercase leading-none">ACESSO ADMINISTRATIVO</p>
         </div>
 
         <form onSubmit={submitLogin} className="mt-9 space-y-3">
@@ -2198,7 +2462,7 @@ function AdminLoginScreen({ error, loading, onBack, onLogin }) {
               onChange={(event) => setEmail(event.target.value)}
               placeholder="Email"
               autoComplete="email"
-              className="h-full bg-transparent text-base font-medium text-[#4b160e] outline-none placeholder:text-[#ad9995]"
+              className="h-full bg-transparent text-base font-normal text-[#4b160e] outline-none placeholder:text-[#ad9995]"
             />
           </label>
 
@@ -2211,9 +2475,18 @@ function AdminLoginScreen({ error, loading, onBack, onLogin }) {
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Senha"
               autoComplete="current-password"
-              className="h-full bg-transparent text-base font-medium text-[#4b160e] outline-none placeholder:text-[#ad9995]"
+              className="h-full bg-transparent text-base font-normal text-[#4b160e] outline-none placeholder:text-[#ad9995]"
             />
           </label>
+
+          <button
+            type="button"
+            onClick={() => onRecoverPassword(email)}
+            disabled={recoveryLoading}
+            className="ml-auto block text-xs font-normal text-[#7b5148] underline-offset-4 transition hover:underline disabled:opacity-60"
+          >
+            {recoveryLoading ? 'Enviando recuperacao...' : 'Esqueci minha senha'}
+          </button>
 
           {error && (
             <p className="pt-1 text-center text-xs font-bold text-red-700" role="alert">
@@ -2231,6 +2504,169 @@ function AdminLoginScreen({ error, loading, onBack, onLogin }) {
         </form>
       </div>
     </section>
+  )
+}
+
+function AdminRegisterScreen({ defaultEmail = '', error, loading, onBack, onRegister }) {
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState(defaultEmail)
+  const [password, setPassword] = useState('')
+
+  function submitRegister(event) {
+    event.preventDefault()
+
+    if (!username.trim() || !email.trim() || !password) {
+      return
+    }
+
+    onRegister({ username, email, password })
+  }
+
+  return (
+    <section className="h-full overflow-hidden bg-white text-[#4b160e]" aria-labelledby="admin-register-title">
+      <div className="relative h-[177px] overflow-hidden">
+        <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
+        <div className="absolute inset-0 bg-black/10" />
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Voltar ao login administrativo"
+          className="absolute left-7 top-8 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
+        >
+          <ArrowLeft size={25} strokeWidth={2.8} />
+        </button>
+      </div>
+
+      <div className="relative z-10 -mt-px min-h-[calc(100%-176px)] rounded-t-[18px] bg-white px-11 pt-[166px]">
+        <img
+          src={cocoLogo}
+          alt="Coco Bambu"
+          loading="eager"
+          decoding="sync"
+          className="absolute left-1/2 top-[-88px] size-[184px] -translate-x-1/2 rounded-full border-[11px] border-white bg-[#4b160e]"
+          draggable="false"
+        />
+
+        <div className="text-center">
+          <h1
+            id="admin-register-title"
+            data-screen-title="true"
+            tabIndex={-1}
+            className="text-[32px] font-black leading-none outline-none"
+          >
+            CADASTRO
+          </h1>
+          <p className="mt-4 text-base font-normal uppercase leading-none">ADMINISTRADOR</p>
+        </div>
+
+        <form onSubmit={submitRegister} className="mt-8 space-y-3">
+          <label className="grid h-[58px] grid-cols-[28px_1fr] items-center gap-3 rounded-[9px] bg-[#eeeeee] px-5 text-[#a9908b]">
+            <UserRound size={22} strokeWidth={2} />
+            <span className="sr-only">Usuario</span>
+            <input
+              type="text"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="Usuario"
+              autoComplete="name"
+              className="h-full bg-transparent text-base font-normal text-[#4b160e] outline-none placeholder:text-[#ad9995]"
+            />
+          </label>
+
+          <label className="grid h-[58px] grid-cols-[28px_1fr] items-center gap-3 rounded-[9px] bg-[#eeeeee] px-5 text-[#a9908b]">
+            <Mail size={22} strokeWidth={2} />
+            <span className="sr-only">Email</span>
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="Email"
+              autoComplete="email"
+              className="h-full bg-transparent text-base font-normal text-[#4b160e] outline-none placeholder:text-[#ad9995]"
+            />
+          </label>
+
+          <label className="grid h-[58px] grid-cols-[28px_1fr] items-center gap-3 rounded-[9px] bg-[#eeeeee] px-5 text-[#a9908b]">
+            <LockKeyhole size={22} strokeWidth={2} />
+            <span className="sr-only">Senha</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Senha"
+              autoComplete="new-password"
+              className="h-full bg-transparent text-base font-normal text-[#4b160e] outline-none placeholder:text-[#ad9995]"
+            />
+          </label>
+
+          {error && (
+            <p className="pt-1 text-center text-xs font-bold text-red-700" role="alert">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="mx-auto !mt-8 flex h-12 w-[247px] max-w-full items-center justify-center rounded-[9px] bg-[#4b160e] text-base font-black text-white transition active:scale-[0.99] disabled:bg-[#8f6b62]"
+          >
+            {loading ? 'CADASTRANDO...' : 'CADASTRAR'}
+          </button>
+        </form>
+      </div>
+    </section>
+  )
+}
+
+function ToastStack({ toasts, onDismiss }) {
+  if (!toasts.length) return null
+
+  const toneClasses = {
+    success: 'border-emerald-200 bg-white text-[#244537]',
+    error: 'border-red-200 bg-white text-[#5f1a14]',
+    warning: 'border-amber-200 bg-white text-[#5b3b12]',
+  }
+
+  const iconClasses = {
+    success: 'bg-emerald-50 text-emerald-700',
+    error: 'bg-red-50 text-red-700',
+    warning: 'bg-amber-50 text-amber-700',
+  }
+
+  return (
+    <div className="pointer-events-none fixed left-1/2 top-4 z-[140] grid w-[calc(100vw-32px)] max-w-[398px] -translate-x-1/2 gap-2">
+      {toasts.map((toast) => (
+        <article
+          key={toast.id}
+          role="status"
+          className={`pointer-events-auto grid grid-cols-[34px_1fr_auto] items-start gap-3 rounded-xl border px-3 py-3 shadow-2xl shadow-black/15 transition duration-700 ease-out ${
+            toneClasses[toast.tone] ?? toneClasses.success
+          }`}
+        >
+          <span
+            className={`mt-0.5 grid size-8 place-items-center rounded-full ${
+              iconClasses[toast.tone] ?? iconClasses.success
+            }`}
+          >
+            {toast.tone === 'error' ? <X size={16} strokeWidth={2.8} /> : <CircleCheck size={16} strokeWidth={2.8} />}
+          </span>
+          <span className="min-w-0">
+            <strong className="block text-sm font-black leading-tight">{toast.title}</strong>
+            {toast.message && (
+              <span className="mt-1 block text-xs font-medium leading-4 opacity-80">{toast.message}</span>
+            )}
+          </span>
+          <button
+            type="button"
+            onClick={() => onDismiss(toast.id)}
+            aria-label="Fechar notificacao"
+            className="grid size-7 place-items-center rounded-full text-current opacity-50 transition hover:bg-black/5 hover:opacity-90"
+          >
+            <X size={15} strokeWidth={2.5} />
+          </button>
+        </article>
+      ))}
+    </div>
   )
 }
 
@@ -2851,82 +3287,97 @@ function AdminMenuEditor({
   }
 
   return (
-    <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]">
-      <div className="sticky top-0 z-0 h-[142px] overflow-visible">
+    <section
+      className="relative h-full overflow-y-auto overflow-x-hidden bg-[var(--brand-surface)] pb-8 text-[var(--brand-primary)]"
+      style={buildThemeStyle(editorProfile)}
+    >
+      <div className="sticky top-0 h-[142px] overflow-visible">
         <img src={editorProfile.cover} alt="" className="h-full w-full object-cover" draggable="false" />
         <div className="absolute inset-0 bg-black/10" />
+      </div>
+
+      <button
+        type="button"
+        onClick={openExitConfirmation}
+        className="fixed left-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] top-[max(1rem,calc((100vh-932px)/2+1rem))] z-[180] inline-flex h-10 items-center gap-1.5 rounded-full bg-white/88 px-3 text-xs font-black uppercase tracking-wide text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
+        aria-label="Voltar ao cardapio"
+      >
+        <ArrowLeft size={18} strokeWidth={2.8} />
+        Voltar
+      </button>
+
+      <div className="fixed right-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] top-[max(1rem,calc((100vh-932px)/2+1rem))] z-[180] grid justify-items-end gap-2">
+        <button
+          type="button"
+          onClick={() => setEditorActionsOpen((currentValue) => !currentValue)}
+          className="grid size-11 place-items-center rounded-full bg-white/85 text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
+          aria-label="Abrir ações do editor"
+          aria-expanded={editorActionsOpen}
+        >
+          <Settings
+            size={24}
+            strokeWidth={2.6}
+            className={`transition-transform duration-500 ease-out ${editorActionsOpen ? 'rotate-180' : 'rotate-0'}`}
+          />
+        </button>
+
         <button
           type="button"
           onClick={() => setProfileEditorOpen(true)}
-          className={`absolute left-5 top-5 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-bold text-[#6b433a] shadow-md shadow-black/10 transition-all duration-300 ${
-            editorActionsOpen ? 'pointer-events-none -translate-x-2 opacity-0' : 'translate-x-0 opacity-100'
+          className={`inline-flex h-8 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-bold text-[#6b433a] shadow-md shadow-black/10 ring-1 ring-white/70 transition-all duration-300 ${
+            editorActionsOpen ? 'pointer-events-none translate-y-1 opacity-0' : 'translate-y-0 opacity-100'
           }`}
         >
           <Camera size={15} />
           Trocar capa
         </button>
-        <div className="absolute right-5 top-9 z-[90]">
+
+        <div
+          className={`absolute right-0 top-[54px] z-[190] grid w-[178px] origin-top-right gap-2 rounded-2xl border border-white/70 bg-white/95 p-2 shadow-2xl shadow-[#4b160e]/20 backdrop-blur transition-all duration-300 ease-out ${
+            editorActionsOpen
+              ? 'translate-y-0 scale-100 opacity-100'
+              : 'pointer-events-none -translate-y-2 scale-95 opacity-0'
+          }`}
+        >
           <button
             type="button"
-            onClick={() => setEditorActionsOpen((currentValue) => !currentValue)}
-            className="grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
-            aria-label="Abrir ações do editor"
-            aria-expanded={editorActionsOpen}
+            onClick={saveEditorProfile}
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[var(--brand-primary)] text-[11px] font-black uppercase tracking-wide text-white"
           >
-            <Settings
-              size={24}
-              strokeWidth={2.6}
-              className={`transition-transform duration-500 ease-out ${editorActionsOpen ? 'rotate-180' : 'rotate-0'}`}
-            />
+            <Save size={13} />
+            Salvar
           </button>
-
-          <div
-            className={`absolute right-[54px] top-[-34px] z-[100] flex h-11 w-[264px] origin-bottom-right gap-2 rounded-2xl border border-white/70 bg-white/95 p-1.5 shadow-xl shadow-[#4b160e]/18 backdrop-blur transition-all duration-300 ease-out ${
-              editorActionsOpen
-                ? 'translate-x-0 scale-100 opacity-100'
-                : 'pointer-events-none translate-x-3 scale-95 opacity-0'
-            }`}
+          <button
+            type="button"
+            onClick={openExitConfirmation}
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[var(--brand-primary)] bg-white text-[10px] font-black uppercase tracking-wide text-[var(--brand-primary)]"
           >
-            <button
-              type="button"
-              onClick={saveEditorProfile}
-              className="flex h-8 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#4b160e] text-[10px] font-black uppercase tracking-wide text-white"
-            >
-              <Save size={13} />
-              Salvar
-            </button>
-            <button
-              type="button"
-              onClick={openExitConfirmation}
-              className="flex h-8 flex-[1.25] items-center justify-center gap-1.5 rounded-xl border border-[#4b160e] bg-white text-[10px] font-black uppercase tracking-wide text-[#4b160e]"
-            >
-              <LogOut size={13} />
-              Sair/descartar
-            </button>
-          </div>
+            <LogOut size={13} />
+            Sair/descartar
+          </button>
         </div>
       </div>
 
-      <div className="relative z-20 -mt-6 rounded-t-[22px] bg-white px-5 pb-8 pt-5 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
-        <div className="grid grid-cols-[128px_1fr] items-start gap-4">
-          <div className="relative -mt-16">
+      <div className="relative z-20 -mt-6 rounded-t-[22px] bg-[var(--brand-surface)] px-5 pb-8 pt-5 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <div className="relative">
+          <div className="relative z-30 mx-auto -mt-[76px] w-fit">
             <img
               src={editorProfile.logo}
               alt={editorProfile.name}
-              className="size-[116px] rounded-full border-[3px] border-[#d8ad61] bg-[#4b160e] shadow-[0_3px_0_rgba(75,22,14,0.22)]"
+              className="size-[124px] rounded-full border-[3px] border-[var(--brand-accent)] bg-[var(--brand-primary)] shadow-[0_3px_0_rgba(75,22,14,0.22)]"
               draggable="false"
             />
             <button
               type="button"
               onClick={() => setProfileEditorOpen(true)}
-              className="absolute bottom-1 right-3 grid size-9 place-items-center rounded-full bg-slate-100 text-slate-700 ring-2 ring-white"
+              className="absolute bottom-0 right-2 grid size-9 place-items-center rounded-full bg-slate-100 text-slate-700 ring-2 ring-white"
               aria-label="Alterar logo"
             >
               <Camera size={17} strokeWidth={2.5} />
             </button>
           </div>
 
-          <div className="space-y-2 pt-1">
+          <div className="mt-3 space-y-2">
             <button
               type="button"
               onClick={() => setProfileEditorOpen(true)}
@@ -2941,7 +3392,25 @@ function AdminMenuEditor({
             >
               {editorProfile.location}
             </button>
+            <button
+              type="button"
+              onClick={() => setProfileEditorOpen(true)}
+              className="h-8 w-full truncate rounded-lg bg-slate-100 px-4 text-left text-xs font-black lowercase text-slate-500"
+            >
+              #{getPublicMenuHash(editorProfile.slug || editorProfile.name)}
+            </button>
           </div>
+        </div>
+
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={saveEditorProfile}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 text-xs font-black uppercase tracking-wide text-white shadow-lg shadow-[#4b160e]/10 transition active:scale-[0.98]"
+          >
+            <Save size={15} strokeWidth={2.8} />
+            Salvar alterações
+          </button>
         </div>
 
         <AdminEditorSectionTitle title="Cards promocao" actionLabel="Adicionar" onAction={addPromo} />
@@ -3063,7 +3532,7 @@ function AdminMenuEditor({
 function AdminEditorSectionTitle({ title, actionLabel, onAction }) {
   return (
     <div className="mt-5 flex items-center justify-between gap-3">
-      <h2 className="text-sm font-black uppercase text-[#4b160e]">{title}</h2>
+      <h2 className="text-sm font-black uppercase text-[var(--brand-primary)]">{title}</h2>
       {onAction && (
         <button
           type="button"
@@ -3087,12 +3556,24 @@ function readAdminImageFile(file, onReady) {
 }
 
 function AdminRestaurantProfileDialog({ profile, onCancel, onSave }) {
-  const [draft, setDraft] = useState(profile)
+  const [draft, setDraft] = useState(() => normalizeRestaurantProfile(profile))
   const coverInputRef = useRef(null)
   const logoInputRef = useRef(null)
+  const draftTheme = normalizeRestaurantProfile(draft).theme
 
   function updateField(field, value) {
     setDraft((current) => ({ ...current, [field]: value }))
+  }
+
+  function updateThemeField(field, value) {
+    setDraft((current) => ({
+      ...current,
+      theme: {
+        ...defaultRestaurantProfile.theme,
+        ...(current.theme ?? {}),
+        [field]: value,
+      },
+    }))
   }
 
   function updateImage(field, event) {
@@ -3104,10 +3585,13 @@ function AdminRestaurantProfileDialog({ profile, onCancel, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/76 px-5 py-8 backdrop-blur-[2px] md:absolute">
-      <section className="w-full rounded-[22px] border border-[#4b160e] bg-white p-5 shadow-2xl shadow-[#4b160e]/15">
+      <section
+        className="w-full rounded-[22px] border border-[var(--brand-primary)] bg-white p-5 shadow-2xl shadow-[#4b160e]/15"
+        style={buildThemeStyle(draft)}
+      >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-black text-[#4b160e]">Editar restaurante</h2>
+            <h2 className="text-xl font-black text-[var(--brand-primary)]">Editar restaurante</h2>
             <p className="mt-1 text-xs font-semibold text-[#8b6d66]">
               Atualize as informações exibidas no cardápio.
             </p>
@@ -3123,7 +3607,7 @@ function AdminRestaurantProfileDialog({ profile, onCancel, onSave }) {
         </div>
 
         <div className="mt-5">
-          <div className="relative overflow-hidden rounded-xl bg-[#4b160e]">
+          <div className="relative overflow-hidden rounded-xl bg-[var(--brand-primary)]">
             <img src={draft.cover} alt="" className="h-[132px] w-full object-cover" draggable="false" />
             <button
               type="button"
@@ -3147,7 +3631,7 @@ function AdminRestaurantProfileDialog({ profile, onCancel, onSave }) {
               <img
                 src={draft.logo}
                 alt=""
-                className="size-[88px] rounded-full border-[3px] border-[#d8ad61] bg-[#4b160e] object-cover"
+                className="size-[88px] rounded-full border-[3px] border-[var(--brand-accent)] bg-[var(--brand-primary)] object-cover"
                 draggable="false"
               />
               <button
@@ -3173,7 +3657,7 @@ function AdminRestaurantProfileDialog({ profile, onCancel, onSave }) {
                 <input
                   value={draft.name}
                   onChange={(event) => updateField('name', event.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] px-3 text-sm font-semibold text-[#4b160e] outline-none"
+                  className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] px-3 text-sm font-semibold text-[var(--brand-primary)] outline-none"
                 />
               </label>
               <label className="block text-xs font-black uppercase text-[#6b433a]">
@@ -3181,9 +3665,54 @@ function AdminRestaurantProfileDialog({ profile, onCancel, onSave }) {
                 <input
                   value={draft.location}
                   onChange={(event) => updateField('location', event.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] px-3 text-sm font-semibold text-[#4b160e] outline-none"
+                  className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] px-3 text-sm font-semibold text-[var(--brand-primary)] outline-none"
                 />
               </label>
+            </div>
+          </div>
+
+          <label className="mt-4 block text-xs font-black uppercase text-[#6b433a]">
+            Sublink do cardapio
+            <div className="mt-1 grid h-10 grid-cols-[92px_1fr] overflow-hidden rounded-lg border border-[#b7928b] bg-white">
+              <span className="grid place-items-center bg-[#f4efed] text-[11px] font-black lowercase text-[#8b6d66]">
+                #cardapio-
+              </span>
+              <input
+                value={draft.slug ?? ''}
+                onChange={(event) => updateField('slug', event.target.value)}
+                onBlur={(event) => updateField('slug', slugifyMenuName(event.target.value || draft.name))}
+                className="min-w-0 px-3 text-sm font-semibold lowercase text-[var(--brand-primary)] outline-none"
+              />
+            </div>
+            <span className="mt-1 block truncate text-[10px] font-semibold normal-case text-[#9b817a]">
+              {buildPublicMenuUrl(draft.slug || draft.name)}
+            </span>
+          </label>
+
+          <div className="mt-4 rounded-xl border border-[#eadfd9] bg-[#fbf8f6] p-3">
+            <h3 className="text-xs font-black uppercase text-[#6b433a]">Padrao de cores</h3>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {[
+                ['primary', 'Principal'],
+                ['accent', 'Destaque'],
+                ['surface', 'Fundo'],
+              ].map(([field, label]) => (
+                <label key={field} className="grid gap-1 text-[10px] font-black uppercase text-[#8b6d66]">
+                  {label}
+                  <span className="grid h-10 grid-cols-[38px_1fr] overflow-hidden rounded-lg border border-[#d8c7bf] bg-white">
+                    <input
+                      type="color"
+                      value={draftTheme[field]}
+                      onChange={(event) => updateThemeField(field, event.target.value)}
+                      className="h-10 w-full cursor-pointer border-0 bg-transparent p-1"
+                      aria-label={`Cor ${label.toLowerCase()}`}
+                    />
+                    <span className="grid place-items-center text-[10px] font-bold normal-case text-[#6b433a]">
+                      {draftTheme[field]}
+                    </span>
+                  </span>
+                </label>
+              ))}
             </div>
           </div>
         </div>
@@ -3192,14 +3721,14 @@ function AdminRestaurantProfileDialog({ profile, onCancel, onSave }) {
           <button
             type="button"
             onClick={onCancel}
-            className="h-10 rounded-full border border-[#4b160e] text-sm font-black text-[#4b160e]"
+            className="h-10 rounded-full border border-[var(--brand-primary)] text-sm font-black text-[var(--brand-primary)]"
           >
             Cancelar
           </button>
           <button
             type="button"
-            onClick={() => onSave(draft)}
-            className="h-10 rounded-full bg-[#4b160e] text-sm font-black text-white"
+            onClick={() => onSave(normalizeRestaurantProfile(draft))}
+            className="h-10 rounded-full bg-[var(--brand-primary)] text-sm font-black text-white"
           >
             Salvar
           </button>
@@ -3294,7 +3823,7 @@ function AdminProductEditorCard({ product, onEdit, onRemove, onToggle }) {
         draggable="false"
       />
       <div className="min-w-0 py-1">
-        <h3 className="line-clamp-2 text-sm font-black leading-tight text-[#4b160e]">
+        <h3 className="truncate text-sm font-black leading-tight text-[#4b160e]" title={product.name}>
           {product.name.toUpperCase()}
         </h3>
         <p className="mt-1 line-clamp-3 text-[12px] font-semibold leading-4 text-[#4b2a22]">
@@ -3845,7 +4374,9 @@ function AdminCategoryProductCard({ product, onEdit, onRemove }) {
     <article className="grid min-h-[112px] grid-cols-[118px_1fr_96px] gap-2 rounded-lg bg-[#f0f0f0] p-2">
       <img src={product.image} alt="" className="h-[96px] rounded-md object-cover" draggable="false" />
       <div className="min-w-0 py-1">
-        <h3 className="line-clamp-2 text-[13px] font-black leading-tight">{product.name.toUpperCase()}</h3>
+        <h3 className="truncate text-[13px] font-black leading-tight" title={product.name}>
+          {product.name.toUpperCase()}
+        </h3>
         <p className="mt-1 line-clamp-3 text-[11px] font-medium leading-[14px]">{product.description}</p>
         <p className="mt-1 text-sm font-black">{formatCurrency(product.price)}</p>
       </div>
@@ -4240,7 +4771,9 @@ function OrderItemCard({ item, onUpdateCartItem }) {
         className="h-[92px] w-full rounded-md object-cover"
       />
       <div className="min-w-0 py-1">
-        <h2 className="line-clamp-2 text-sm font-black">{item.product.name.toUpperCase()}</h2>
+        <h2 className="truncate text-sm font-black" title={item.product.name}>
+          {item.product.name.toUpperCase()}
+        </h2>
         <p className="mt-1 text-sm font-medium">{detail}</p>
         {item.note && (
           <p className="mt-1 line-clamp-2 text-xs font-semibold text-[#8b6d66]">Obs.: {item.note}</p>
@@ -4477,30 +5010,126 @@ function buildAnalyticsSummary(events, products, session) {
   }
 }
 
-function filterProducts(products, query) {
+function searchProducts(products, query) {
   const normalizedQuery = normalizeText(query)
 
-  if (!normalizedQuery) return products
+  if (!normalizedQuery) {
+    return { items: products, mode: 'all' }
+  }
 
   const withoutMatch = normalizedQuery.match(/\bsem\s+(.+)/)
 
   if (withoutMatch) {
     const blockedTerms = withoutMatch[1].split(/\s+/).filter(Boolean)
 
-    return products.filter((product) => {
-      const searchable = normalizeText(`${product.name} ${product.description} ${product.tags.join(' ')}`)
+    const filteredItems = products.filter((product) => {
+      const searchable = getProductSearchProfile(product).full
       return blockedTerms.every((term) => !searchable.includes(term))
     })
+
+    return { items: filteredItems, mode: filteredItems.length ? 'direct' : 'none' }
   }
 
-  const terms = normalizedQuery
-    .split(/\s+/)
-    .filter((term) => term.length > 1 && !['com', 'para', 'quero', 'mostrar'].includes(term))
+  const terms = getSearchTerms(normalizedQuery)
 
-  return products.filter((product) => {
-    const searchable = normalizeText(`${product.name} ${product.description} ${product.tags.join(' ')}`)
+  if (!terms.length) {
+    return { items: products, mode: 'all' }
+  }
+
+  const directMatches = products.filter((product) => {
+    const searchable = getProductSearchProfile(product).full
     return terms.every((term) => searchable.includes(term))
   })
+
+  if (directMatches.length) {
+    return { items: directMatches, mode: 'direct' }
+  }
+
+  const similarMatches = products
+    .map((product) => ({ product, score: getProductSimilarityScore(product, terms) }))
+    .filter(({ score }) => score > 0)
+    .sort((firstItem, secondItem) => secondItem.score - firstItem.score)
+    .map(({ product }) => product)
+
+  return {
+    items: similarMatches,
+    mode: similarMatches.length ? 'similar' : 'none',
+  }
+}
+
+function getSearchTerms(normalizedQuery) {
+  const ignoredTerms = new Set([
+    'a',
+    'as',
+    'ao',
+    'aos',
+    'com',
+    'da',
+    'das',
+    'de',
+    'do',
+    'dos',
+    'e',
+    'em',
+    'na',
+    'nas',
+    'no',
+    'nos',
+    'o',
+    'os',
+    'para',
+    'por',
+    'prato',
+    'pratos',
+    'quero',
+    'um',
+    'uma',
+    'ver',
+  ])
+
+  return normalizedQuery
+    .split(/\s+/)
+    .filter((term) => (term.length > 1 || /\d/.test(term)) && !ignoredTerms.has(term))
+}
+
+function getProductSearchProfile(product) {
+  const category = categories.find((item) => item.id === product.category)
+  const optionText = (product.options ?? [])
+    .map((option) => `${option.label ?? ''} ${option.detail ?? ''} ${option.people ?? ''} pessoas ${option.price ?? ''}`)
+    .join(' ')
+  const tags = product.tags ?? []
+  const name = normalizeText(product.name)
+  const categoryText = normalizeText(`${category?.label ?? ''} ${category?.shortLabel ?? ''} ${product.category}`)
+  const tagText = normalizeText(tags.join(' '))
+  const details = normalizeText(`${product.description ?? ''} ${product.voiceDescription ?? ''} ${product.badge ?? ''} ${optionText}`)
+  const full = normalizeText(`${name} ${categoryText} ${tagText} ${details}`)
+
+  return {
+    name,
+    category: categoryText,
+    tags: tagText,
+    details,
+    full,
+    tokens: full.split(/\s+/),
+  }
+}
+
+function getProductSimilarityScore(product, terms) {
+  const profile = getProductSearchProfile(product)
+
+  return terms.reduce((score, term) => {
+    let nextScore = score
+
+    if (profile.name.includes(term)) nextScore += 10
+    if (profile.tags.includes(term)) nextScore += 8
+    if (profile.category.includes(term)) nextScore += 7
+    if (profile.details.includes(term)) nextScore += 4
+    if (term.length > 3 && profile.tokens.some((token) => token.length > 3 && (token.startsWith(term) || term.startsWith(token)))) {
+      nextScore += 2
+    }
+
+    return nextScore
+  }, 0)
 }
 
 function findProductByCommand(products, command) {
@@ -4554,11 +5183,134 @@ function normalizeText(value) {
   return String(value)
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^\p{Letter}\p{Number}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
     .toLowerCase()
+}
+
+function slugifyMenuName(value) {
+  return normalizeText(value)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || 'cardapio'
+}
+
+function getPublicMenuHash(slugOrName = defaultRestaurantProfile.slug) {
+  return `cardapio-${slugifyMenuName(slugOrName)}`
+}
+
+function getAdminPrincipalHash() {
+  return 'admin-principal'
+}
+
+function buildPublicMenuUrl(slugOrName = defaultRestaurantProfile.slug) {
+  const url = new URL(window.location.href)
+
+  url.hash = getPublicMenuHash(slugOrName)
+  return url.toString()
+}
+
+function normalizeRestaurantProfile(profile = defaultRestaurantProfile) {
+  return {
+    ...defaultRestaurantProfile,
+    ...profile,
+    slug: slugifyMenuName(profile.slug || profile.name || defaultRestaurantProfile.slug),
+    theme: {
+      ...defaultRestaurantProfile.theme,
+      ...(profile.theme ?? {}),
+    },
+  }
+}
+
+function buildThemeStyle(profile = defaultRestaurantProfile) {
+  const theme = normalizeRestaurantProfile(profile).theme
+
+  return {
+    '--brand-primary': theme.primary,
+    '--brand-accent': theme.accent,
+    '--brand-surface': theme.surface,
+    accentColor: theme.primary,
+  }
+}
+
+function buildMenuStateSnapshot(profile = defaultRestaurantProfile, promoItems = promoSlides, products = baseProducts) {
+  const normalizedProfile = normalizeRestaurantProfile(profile)
+
+  return {
+    version: 1,
+    profile: normalizedProfile,
+    promoItems: serializePromoItems(promoItems),
+    products: serializeProducts(products),
+  }
+}
+
+function normalizeMenuStateSnapshot(menuState, fallbackSlug = defaultRestaurantProfile.slug) {
+  const profile = normalizeRestaurantProfile({
+    ...defaultRestaurantProfile,
+    ...(menuState?.profile ?? menuState?.restaurantProfile ?? {}),
+    slug: fallbackSlug || menuState?.profile?.slug || menuState?.restaurantProfile?.slug || defaultRestaurantProfile.slug,
+  })
+
+  return {
+    profile,
+    promoItems: hydratePromoItems(menuState?.promoItems),
+    products: hydrateProducts(menuState?.products),
+  }
+}
+
+function serializePromoItems(items = promoSlides) {
+  return items.map((item) => ({ ...item }))
+}
+
+function serializeProducts(items = baseProducts) {
+  return items.map((item) => {
+    const serializableItem = { ...item }
+
+    delete serializableItem.badgeIcon
+
+    return serializableItem
+  })
+}
+
+function hydratePromoItems(items) {
+  if (!Array.isArray(items) || !items.length) return promoSlides
+
+  return items.map((item) => ({
+    ...(promoSlides.find((promo) => promo.id === item.id) ?? {}),
+    ...item,
+  }))
+}
+
+function hydrateProducts(items) {
+  if (!Array.isArray(items) || !items.length) return baseProducts
+
+  return items.map((item) => {
+    const baseProduct = baseProducts.find((product) => product.id === item.id)
+    const category = item.category ?? baseProduct?.category ?? 'frutos-do-mar'
+
+    return {
+      ...(baseProduct ?? {}),
+      ...item,
+      category,
+      image: item.image || baseProduct?.image || fallbackImages[category] || categoriaFrutosDoMar,
+      tags: Array.isArray(item.tags) ? item.tags : baseProduct?.tags ?? [],
+      options: Array.isArray(item.options) ? item.options : baseProduct?.options ?? [],
+      active: item.active !== false,
+    }
+  })
 }
 
 function getTableFromUrl() {
   return new URLSearchParams(window.location.search).get('mesa') ?? ''
+}
+
+function getMenuSlugFromHash(hashValue = window.location.hash) {
+  const hash = String(hashValue ?? '')
+
+  return hash.startsWith('#cardapio-')
+    ? slugifyMenuName(hash.replace('#cardapio-', ''))
+    : ''
 }
 
 function getInitialScreen() {
@@ -4567,9 +5319,12 @@ function getInitialScreen() {
   if (hash.startsWith('#produto=')) return 'produto'
   if (hash.startsWith('#promocao=')) return 'promocao'
   if (hash.startsWith('#categoria=')) return 'categoria-pratos'
+  if (hash.startsWith('#cardapio-')) return 'menu'
   if (hash === '#pedido') return 'pedido'
   if (hash === '#menu') return 'menu'
   if (hash === '#categorias') return 'categorias'
+  if (hash.startsWith('#cadastro-administrador')) return 'cadastro-administrador'
+  if (hash.startsWith(`#${getAdminPrincipalHash()}`)) return 'admin-cardapio'
   if (hash.startsWith('#configuracoes')) return 'configuracoes'
   if (hash.startsWith('#admin-cardapio')) return 'admin-cardapio'
 
@@ -4602,10 +5357,10 @@ function getProductFromHash() {
     : baseProducts[0].id
 }
 
-function buildNfcUrl(tableNumber) {
+function buildNfcUrl(tableNumber, slug = defaultRestaurantProfile.slug) {
   const url = new URL(window.location.href)
   url.searchParams.set('mesa', tableNumber)
-  url.hash = 'menu'
+  url.hash = getPublicMenuHash(slug)
   return url.toString()
 }
 

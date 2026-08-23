@@ -11,14 +11,16 @@ npm.cmd run dev
 
 Abra no navegador:
 
-- `http://localhost:5173/` para abrir direto no cardápio.
-- `http://localhost:5173/#menu` para manter um link explícito do cardápio.
+- `http://localhost:5173/` para abrir o acesso administrativo principal.
+- `http://localhost:5173/#admin-principal` para abrir explicitamente o admin.
+- `http://localhost:5173/#cardapio-coco-bambu` para abrir o cardápio público da loja.
+- `http://localhost:5173/#menu` para manter compatibilidade com o link antigo do cardápio.
 - `http://localhost:5173/#produto=cheddar-bacon` para abrir um produto direto.
-- `http://localhost:5173/#configuracoes` para abrir o painel administrativo.
+- `http://localhost:5173/#configuracoes` para abrir o painel administrativo antigo.
 - `http://localhost:5173/?adminTab=vezz#configuracoes` para abrir as métricas/Vezz.
 - `http://localhost:5173/?adminTab=cartao#configuracoes` para abrir o preview do cartão físico.
 - `http://localhost:5173/#pedido` para abrir a tela de pedido.
-- `http://localhost:5173/?mesa=05#menu` para simular abertura por NFC/QR da mesa 05.
+- `http://localhost:5173/?mesa=05#cardapio-coco-bambu` para simular abertura por NFC/QR da mesa 05.
 
 ## MVP implementado
 
@@ -102,7 +104,7 @@ Na Vercel, importe o repositório/projeto e use o preset Vite.
 Para NFC/QR por mesa, grave na etiqueta ou no QR um link neste formato:
 
 ```txt
-https://seu-dominio.vercel.app/?mesa=05#menu
+https://seu-dominio.vercel.app/?mesa=05#cardapio-coco-bambu
 ```
 
 Ao abrir esse link, o cardápio já entra na tela de menu com a mesa preenchida.

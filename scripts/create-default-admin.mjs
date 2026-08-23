@@ -61,6 +61,7 @@ if (adminSnapshot.exists()) {
 
 await setDoc(adminRef, {
   email: adminEmail,
+  username: 'Administrador',
   role: 'owner',
   createdAt: serverTimestamp(),
 })

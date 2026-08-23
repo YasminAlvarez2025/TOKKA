@@ -15,6 +15,23 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/restaurants/$(restaurantId)/admins/$(request.auth.uid));
     }
 
+    function isValidAdminSignup(restaurantId, adminId) {
+      return isKnownRestaurant(restaurantId)
+        && isSignedIn()
+        && request.auth.uid == adminId
+        && request.resource.data.keys().hasOnly(['email', 'username', 'role', 'createdAt'])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.username is string
+        && (
+          request.resource.data.role == 'admin'
+          || (
+            request.auth.token.email == 'admin@tokkafoods.com.br'
+            && request.resource.data.role == 'owner'
+          )
+        )
+        && request.resource.data.createdAt == request.time;
+    }
+
     function hasOnlyAllowedEventFields() {
       return request.resource.data.keys().hasOnly([
         'id',
@@ -152,14 +169,7 @@ service cloud.firestore {
 
     match /restaurants/{restaurantId}/admins/{adminId} {
       allow read: if isSignedIn() && request.auth.uid == adminId;
-      allow create: if isKnownRestaurant(restaurantId)
-        && isSignedIn()
-        && request.auth.uid == adminId
-        && request.auth.token.email == 'admin@tokkafoods.com.br'
-        && request.resource.data.keys().hasOnly(['email', 'role', 'createdAt'])
-        && request.resource.data.email == request.auth.token.email
-        && request.resource.data.role == 'owner'
-        && request.resource.data.createdAt == request.time;
+      allow create: if isValidAdminSignup(restaurantId, adminId);
       allow update, delete: if false;
     }
   }
