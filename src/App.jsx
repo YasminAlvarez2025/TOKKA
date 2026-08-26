@@ -3842,8 +3842,8 @@ function AdminCoverDialog({ cover, onCancel, onSave }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-white/80 px-6 backdrop-blur-[2px] md:absolute">
-      <section className="w-full rounded-[22px] border border-[#4b160e] bg-white p-5 shadow-2xl shadow-[#4b160e]/15">
+    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-white/80 px-6 backdrop-blur-[2px]">
+      <section className="w-full max-w-[390px] rounded-[22px] border border-[#4b160e] bg-white p-5 shadow-2xl shadow-[#4b160e]/15">
         <div className="flex items-center justify-between gap-4">
           <h2 className="font-montserrat text-lg font-medium text-[#4b160e]">Trocar foto da capa</h2>
           <button type="button" onClick={onCancel} className="grid size-9 place-items-center rounded-lg bg-slate-100 text-[#6b433a]" aria-label="Fechar">
@@ -3905,8 +3905,8 @@ function AdminLogoDialog({ logo, onCancel, onSave }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-white/80 px-6 backdrop-blur-[2px] md:absolute">
-      <section className="w-full rounded-[22px] border border-[#4b160e] bg-white p-5 shadow-2xl shadow-[#4b160e]/15">
+    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-white/80 px-6 backdrop-blur-[2px]">
+      <section className="w-full max-w-[390px] rounded-[22px] border border-[#4b160e] bg-white p-5 shadow-2xl shadow-[#4b160e]/15">
         <div className="flex items-center justify-between gap-4">
           <h2 className="font-montserrat text-lg font-medium text-[#4b160e]">Trocar foto da logo</h2>
           <button type="button" onClick={onCancel} className="grid size-9 place-items-center rounded-lg bg-slate-100 text-[#6b433a]" aria-label="Fechar">
