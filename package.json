@@ -14,6 +14,7 @@
     "firebase:projects": "firebase projects:list",
     "firebase:emulators": "firebase emulators:start --only auth,firestore,storage",
     "firebase:create-admin": "node scripts/create-default-admin.mjs",
+    "firebase:create-restaurant": "node scripts/create-restaurant.mjs",
     "firebase:deploy:firestore-rules": "firebase deploy --only firestore:rules",
     "firebase:deploy:storage-rules": "firebase deploy --only storage",
     "firebase:deploy:rules": "firebase deploy --only firestore:rules,storage",
