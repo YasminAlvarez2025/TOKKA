@@ -1,13 +1,19 @@
 import {
+  EmailAuthProvider,
   createUserWithEmailAndPassword,
+  getAuth,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updateEmail,
+  updatePassword,
   updateProfile,
 } from 'firebase/auth'
+import { deleteApp, initializeApp } from 'firebase/app'
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
-import { auth, db } from './firebase'
+import { auth, db, firebaseConfig } from './firebase'
 
 export const bootstrapAdminEmail = 'admin@tokkafoods.com.br'
 
@@ -101,6 +107,62 @@ export function logoutAdmin() {
   return signOut(auth)
 }
 
+export async function changeAdminCredentials(restaurantId, { currentPassword, email, password }) {
+  const user = auth.currentUser
+  if (!user?.email) throw new Error('auth/user-not-found')
+
+  await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, currentPassword))
+
+  const normalizedEmail = email.trim().toLowerCase()
+  if (normalizedEmail && normalizedEmail !== user.email) await updateEmail(user, normalizedEmail)
+  if (password) await updatePassword(user, password)
+
+  await setDoc(doc(db, 'restaurants', restaurantId, 'admins', user.uid), {
+    email: normalizedEmail || user.email,
+    updatedAt: serverTimestamp(),
+  }, { merge: true })
+}
+
+export async function createRestaurantWithAdmin({ ownerRestaurantId, name, slug, adminName, email, password, menuState }) {
+  const secondaryApp = initializeApp(firebaseConfig, `restaurant-admin-${Date.now()}`)
+  const secondaryAuth = getAuth(secondaryApp)
+
+  try {
+    const credential = await createUserWithEmailAndPassword(secondaryAuth, email.trim().toLowerCase(), password)
+    if (adminName.trim()) await updateProfile(credential.user, { displayName: adminName.trim() })
+
+    await setDoc(doc(db, 'restaurants', slug), {
+      name: name.trim(),
+      slug,
+      active: true,
+      createdBy: auth.currentUser.uid,
+      createdAt: serverTimestamp(),
+    })
+    await setDoc(doc(db, 'restaurants', slug, 'admins', credential.user.uid), {
+      email: email.trim().toLowerCase(),
+      username: adminName.trim(),
+      role: 'owner',
+      createdAt: serverTimestamp(),
+    })
+    await setDoc(doc(db, 'menuDirectory', slug), {
+      restaurantId: slug,
+      active: true,
+      createdAt: serverTimestamp(),
+    })
+    await setDoc(doc(db, 'restaurants', slug, 'settings', 'menus', 'items', slug), {
+      ...menuState,
+      slug,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    })
+
+    return { restaurantId: slug, user: credential.user, ownerRestaurantId }
+  } finally {
+    await signOut(secondaryAuth).catch(() => {})
+    await deleteApp(secondaryApp)
+  }
+}
+
 export function translateAdminAuthError(error) {
   const code = error?.code ?? ''
 
@@ -130,6 +192,10 @@ export function translateAdminAuthError(error) {
 
   if (code.includes('auth/too-many-requests')) {
     return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'
+  }
+
+  if (code.includes('auth/requires-recent-login')) {
+    return 'Confirme sua senha atual para alterar os dados de acesso.'
   }
 
   if (code.includes('permission-denied')) {

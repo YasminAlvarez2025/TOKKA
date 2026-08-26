@@ -6,7 +6,7 @@ import { getStorage } from 'firebase/storage'
 
 const env = import.meta.env
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: env.VITE_FIREBASE_API_KEY || 'AIzaSyBIYG6d79B_puvRCBUB_38vus6ZbyGCi_k',
   authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || 'tokka-eb4ae.firebaseapp.com',
   projectId: env.VITE_FIREBASE_PROJECT_ID || 'tokka-eb4ae',

@@ -8,3 +8,32 @@
 .font-montserrat {
   font-family: 'Montserrat', sans-serif;
 }
+
+/* Reaplica automaticamente a identidade extraída da logo nos componentes legados. */
+.brand-theme > section {
+  background-color: var(--brand-surface);
+}
+
+.brand-theme [class~="text-[#4b160e]"] {
+  color: var(--brand-primary) !important;
+}
+
+.brand-theme [class~="bg-[#4b160e]"] {
+  background-color: var(--brand-primary) !important;
+}
+
+.brand-theme [class~="border-[#4b160e]"] {
+  border-color: var(--brand-primary) !important;
+}
+
+.brand-theme [class~="ring-[#4b160e]"] {
+  --tw-ring-color: var(--brand-primary) !important;
+}
+
+.brand-theme [class~="text-[#d8ad61]"] {
+  color: var(--brand-accent) !important;
+}
+
+.brand-theme [class~="bg-[#d8ad61]"] {
+  background-color: var(--brand-accent) !important;
+}

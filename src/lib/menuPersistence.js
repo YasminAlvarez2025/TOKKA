@@ -41,6 +41,19 @@ export async function loadMenuState(restaurantId, slug) {
   return cachedState
 }
 
+export async function resolveRestaurantId(slug, fallbackRestaurantId = 'tokka-foods') {
+  if (!firebaseEnabled || !slug) return fallbackRestaurantId
+
+  try {
+    const directorySnapshot = await getDoc(doc(db, 'menuDirectory', slug))
+    return directorySnapshot.exists() && directorySnapshot.data().active !== false
+      ? directorySnapshot.data().restaurantId
+      : fallbackRestaurantId
+  } catch {
+    return fallbackRestaurantId
+  }
+}
+
 export async function saveMenuState(restaurantId, slug, menuState, { remote = true } = {}) {
   if (!slug || !menuState) return
 

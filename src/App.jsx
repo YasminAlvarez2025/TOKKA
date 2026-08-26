@@ -69,6 +69,8 @@ import allergenOvo from './assets/icons/ovo.png'
 import allergenPeixe from './assets/icons/peixe.png'
 import allergenSoja from './assets/icons/soja.png'
 import {
+  changeAdminCredentials,
+  createRestaurantWithAdmin,
   loginAdmin,
   logoutAdmin,
   recoverAdminPassword,
@@ -77,7 +79,7 @@ import {
   watchAdminSession,
 } from './lib/adminAuth'
 import { persistAnalyticsEvent, persistOrder } from './lib/firebaseEvents'
-import { loadMenuState, readCachedMenuState, saveMenuState } from './lib/menuPersistence'
+import { loadMenuState, readCachedMenuState, resolveRestaurantId, saveMenuState } from './lib/menuPersistence'
 
 const categories = [
   { id: 'entradas', label: 'Entradas', shortLabel: 'Entradas', iconImage: iconEntradas, image: categoriaEntradas },
@@ -426,6 +428,7 @@ function App() {
   const [productReturnScreen, setProductReturnScreen] = useState('menu')
   const [activeMenuSlug, setActiveMenuSlug] = useState(initialMenuSlug)
   const [restaurantProfile, setRestaurantProfile] = useState(initialMenuState.profile)
+  const [activeRestaurantId, setActiveRestaurantId] = useState(restaurantId)
   const [promoItems, setPromoItems] = useState(initialMenuState.promoItems)
   const [products, setProducts] = useState(initialMenuState.products)
   const [favoriteProductIds, setFavoriteProductIds] = useState([])
@@ -552,7 +555,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    return watchAdminSession(restaurantId, (session) => {
+    return watchAdminSession(activeRestaurantId, (session) => {
       if (adminRegistrationPendingRef.current && session.user && !session.isAdmin) {
         return
       }
@@ -565,7 +568,7 @@ function App() {
         setAdminLoginError(session.error)
       }
     })
-  }, [])
+  }, [activeRestaurantId])
 
   useEffect(() => {
     let cancelled = false
@@ -574,11 +577,14 @@ function App() {
     menuStateLoadedRef.current = false
 
     async function hydrateMenuState() {
-      const savedState = await loadMenuState(restaurantId, slug)
+      const resolvedRestaurantId = await resolveRestaurantId(slug, restaurantId)
+      const savedState = await loadMenuState(resolvedRestaurantId, slug)
 
       if (cancelled) return
 
       const nextState = normalizeMenuStateSnapshot(savedState, slug)
+      setActiveRestaurantId(resolvedRestaurantId)
+      analyticsSession.restaurantId = resolvedRestaurantId
 
       setRestaurantProfile(nextState.profile)
       setPromoItems(nextState.promoItems)
@@ -605,7 +611,7 @@ function App() {
     const normalizedProfile = normalizeRestaurantProfile(restaurantProfile)
     const saveTimer = window.setTimeout(() => {
       saveMenuState(
-        restaurantId,
+        activeRestaurantId,
         normalizedProfile.slug,
         buildMenuStateSnapshot(normalizedProfile, promoItems, products),
         { remote: true },
@@ -613,7 +619,7 @@ function App() {
     }, 700)
 
     return () => window.clearTimeout(saveTimer)
-  }, [adminSession.isAdmin, activeMenuSlug, products, promoItems, restaurantProfile])
+  }, [adminSession.isAdmin, activeMenuSlug, activeRestaurantId, products, promoItems, restaurantProfile])
 
   useEffect(() => {
     if (screen === 'pedido') {
@@ -741,7 +747,7 @@ function App() {
     adminRegistrationPendingRef.current = true
 
     try {
-      const credential = await registerAdmin(restaurantId, { username, email, password })
+      const credential = await registerAdmin(activeRestaurantId, { username, email, password })
 
       setAdminSession({
         loading: false,
@@ -946,6 +952,41 @@ function App() {
         )
         .filter((item) => item.quantity > 0),
     )
+  }
+
+  async function handleAdminCredentialsChange(payload) {
+    try {
+      await changeAdminCredentials(activeRestaurantId, payload)
+      pushToast({ title: 'Acesso atualizado', message: 'Seu novo email e senha já podem ser usados.' })
+      return true
+    } catch (error) {
+      pushToast({ title: 'Não foi possível alterar o acesso', message: translateAdminAuthError(error), tone: 'error' })
+      return false
+    }
+  }
+
+  async function handleCreateRestaurant(payload) {
+    const slug = slugifyMenuName(payload.name)
+    const profile = normalizeRestaurantProfile({
+      ...defaultRestaurantProfile,
+      name: payload.name.trim(),
+      slug,
+    })
+
+    try {
+      await createRestaurantWithAdmin({
+        ownerRestaurantId: activeRestaurantId,
+        ...payload,
+        slug,
+        menuState: buildMenuStateSnapshot(profile, promoItems, products),
+      })
+      const publicUrl = buildPublicMenuUrl(slug)
+      pushToast({ title: 'Restaurante criado', message: `O novo cardápio está disponível em ${publicUrl}` })
+      return { slug, publicUrl }
+    } catch (error) {
+      pushToast({ title: 'Não foi possível criar o restaurante', message: translateAdminAuthError(error), tone: 'error' })
+      return null
+    }
   }
 
   function openCartItemEditor(item) {
@@ -1254,7 +1295,7 @@ function App() {
       className="min-h-screen overflow-x-hidden bg-slate-100 text-slate-950 md:grid md:place-items-center md:px-6 md:py-8"
     >
       <div
-        className={`fixed inset-0 h-[100dvh] w-[100dvw] max-w-none overflow-hidden md:static md:mx-auto md:h-[932px] md:w-full md:max-w-[430px] md:rounded-[28px] md:shadow-2xl md:shadow-slate-300/80 ${
+        className={`brand-theme fixed inset-0 h-[100dvh] w-[100dvw] max-w-none overflow-hidden md:static md:mx-auto md:h-[932px] md:w-full md:max-w-[430px] md:rounded-[28px] md:shadow-2xl md:shadow-slate-300/80 ${
           screen === 'entrada' ? 'bg-[#45150d]' : 'bg-white'
         }`}
         style={buildThemeStyle(restaurantProfile)}
@@ -1390,6 +1431,8 @@ function App() {
             onOpenPartnerLink={openPartnerLink}
             onLogout={handleAdminLogout}
             onOpenMenuEditor={openAdminPrincipal}
+            onChangeCredentials={handleAdminCredentialsChange}
+            onCreateRestaurant={handleCreateRestaurant}
           />
         )}
 
@@ -1431,7 +1474,7 @@ function App() {
                 setActiveMenuSlug(normalizedProfile.slug)
                 setRestaurantProfile(normalizedProfile)
                 saveMenuState(
-                  restaurantId,
+                  activeRestaurantId,
                   normalizedProfile.slug,
                   buildMenuStateSnapshot(normalizedProfile, promoItems, products),
                   { remote: adminSession.isAdmin },
@@ -2719,6 +2762,8 @@ function SettingsScreen({
   onOpenPartnerLink,
   onLogout,
   onOpenMenuEditor,
+  onChangeCredentials,
+  onCreateRestaurant,
 }) {
   const [activeTab, setActiveTab] = useState(() => getInitialAdminTab())
 
@@ -2728,6 +2773,7 @@ function SettingsScreen({
     { id: 'mesas', label: 'Mesas', icon: Nfc },
     { id: 'vezz', label: 'Vezz', icon: BarChart3 },
     { id: 'cartao', label: 'Cartão', icon: CreditCard },
+    { id: 'conta', label: 'Conta', icon: UserRound },
   ]
 
   return (
@@ -2757,7 +2803,7 @@ function SettingsScreen({
         <div
           role="tablist"
           aria-label="Áreas de administração"
-          className="mt-4 grid grid-cols-4 gap-1 border-b border-slate-200"
+          className="mt-4 grid grid-cols-5 gap-1 border-b border-slate-200"
         >
           {settingsTabs.map(({ id, label, icon: Icon }) => (
             <button
@@ -2948,7 +2994,88 @@ function SettingsScreen({
             </div>
           </section>
         )}
+
+        {activeTab === 'conta' && (
+          <AdminAccountPanel
+            currentEmail={adminEmail}
+            onChangeCredentials={onChangeCredentials}
+            onCreateRestaurant={onCreateRestaurant}
+          />
+        )}
       </div>
+    </section>
+  )
+}
+
+function AdminAccountPanel({ currentEmail, onChangeCredentials, onCreateRestaurant }) {
+  const [accessForm, setAccessForm] = useState({ currentPassword: '', email: currentEmail, password: '' })
+  const [restaurantForm, setRestaurantForm] = useState({ name: '', adminName: '', email: '', password: '' })
+  const [savingAccess, setSavingAccess] = useState(false)
+  const [creatingRestaurant, setCreatingRestaurant] = useState(false)
+  const [createdRestaurant, setCreatedRestaurant] = useState(null)
+
+  async function submitAccess(event) {
+    event.preventDefault()
+    setSavingAccess(true)
+    const saved = await onChangeCredentials(accessForm)
+    if (saved) setAccessForm((current) => ({ ...current, currentPassword: '', password: '' }))
+    setSavingAccess(false)
+  }
+
+  async function submitRestaurant(event) {
+    event.preventDefault()
+    setCreatingRestaurant(true)
+    const created = await onCreateRestaurant(restaurantForm)
+    setCreatedRestaurant(created)
+    if (created) setRestaurantForm({ name: '', adminName: '', email: '', password: '' })
+    setCreatingRestaurant(false)
+  }
+
+  const fieldClass = 'mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-slate-500'
+
+  return (
+    <section className="mt-5 space-y-4">
+      <form onSubmit={submitAccess} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <h2 className="text-sm font-black text-slate-950">Alterar meu login</h2>
+        <p className="mt-1 text-xs text-slate-500">Confirme a senha atual antes de trocar o email ou a senha.</p>
+        <label className="mt-4 block text-xs font-bold text-slate-600">Senha atual
+          <input required type="password" value={accessForm.currentPassword} onChange={(event) => setAccessForm({ ...accessForm, currentPassword: event.target.value })} className={fieldClass} autoComplete="current-password" />
+        </label>
+        <label className="mt-3 block text-xs font-bold text-slate-600">Novo email
+          <input required type="email" value={accessForm.email} onChange={(event) => setAccessForm({ ...accessForm, email: event.target.value })} className={fieldClass} autoComplete="email" />
+        </label>
+        <label className="mt-3 block text-xs font-bold text-slate-600">Nova senha
+          <input type="password" minLength={6} value={accessForm.password} onChange={(event) => setAccessForm({ ...accessForm, password: event.target.value })} className={fieldClass} placeholder="Deixe vazio para manter a atual" autoComplete="new-password" />
+        </label>
+        <button disabled={savingAccess} className="mt-4 h-10 w-full rounded-full bg-[var(--brand-primary)] text-sm font-bold text-white disabled:opacity-50">
+          {savingAccess ? 'Salvando...' : 'Atualizar acesso'}
+        </button>
+      </form>
+
+      <form onSubmit={submitRestaurant} className="rounded-xl border border-slate-200 bg-white p-4">
+        <h2 className="text-sm font-black text-slate-950">Adicionar restaurante</h2>
+        <p className="mt-1 text-xs leading-4 text-slate-500">Cria uma cópia independente deste cardápio. Depois, o novo administrador poderá trocar fotos, pratos, logo e cores sem alterar o Coco Bambu.</p>
+        <label className="mt-4 block text-xs font-bold text-slate-600">Nome do restaurante
+          <input required value={restaurantForm.name} onChange={(event) => setRestaurantForm({ ...restaurantForm, name: event.target.value })} className={fieldClass} />
+        </label>
+        <label className="mt-3 block text-xs font-bold text-slate-600">Nome do administrador
+          <input required value={restaurantForm.adminName} onChange={(event) => setRestaurantForm({ ...restaurantForm, adminName: event.target.value })} className={fieldClass} />
+        </label>
+        <label className="mt-3 block text-xs font-bold text-slate-600">Email do novo administrador
+          <input required type="email" value={restaurantForm.email} onChange={(event) => setRestaurantForm({ ...restaurantForm, email: event.target.value })} className={fieldClass} />
+        </label>
+        <label className="mt-3 block text-xs font-bold text-slate-600">Senha inicial
+          <input required type="password" minLength={6} value={restaurantForm.password} onChange={(event) => setRestaurantForm({ ...restaurantForm, password: event.target.value })} className={fieldClass} />
+        </label>
+        <button disabled={creatingRestaurant} className="mt-4 h-10 w-full rounded-full bg-[var(--brand-primary)] text-sm font-bold text-white disabled:opacity-50">
+          {creatingRestaurant ? 'Criando...' : 'Criar restaurante'}
+        </button>
+        {createdRestaurant && (
+          <a href={createdRestaurant.publicUrl} className="mt-3 block break-all rounded-lg bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
+            Abrir novo cardápio: {createdRestaurant.publicUrl}
+          </a>
+        )}
+      </form>
     </section>
   )
 }
@@ -3579,8 +3706,8 @@ function AdminMenuEditor({
         <AdminLogoDialog
           logo={editorProfile.logo}
           onCancel={() => setLogoEditorOpen(false)}
-          onSave={(logo) => {
-            const nextProfile = { ...editorProfile, logo }
+          onSave={({ logo, theme }) => {
+            const nextProfile = { ...editorProfile, logo, theme }
             setEditorProfile(nextProfile)
             onUpdateProfile?.(nextProfile)
             setLogoEditorOpen(false)
@@ -3625,6 +3752,79 @@ function readAdminImageFile(file, onReady) {
   const reader = new FileReader()
   reader.onload = () => onReady(String(reader.result || ''))
   reader.readAsDataURL(file)
+}
+
+function rgbToHex(red, green, blue) {
+  return `#${[red, green, blue].map((value) => Math.round(value).toString(16).padStart(2, '0')).join('')}`
+}
+
+function colorLuminance([red, green, blue]) {
+  return (red * 299 + green * 587 + blue * 114) / 1000
+}
+
+function colorDistance(first, second) {
+  return Math.sqrt(first.reduce((total, value, index) => total + (value - second[index]) ** 2, 0))
+}
+
+function extractLogoTheme(imageUrl) {
+  return new Promise((resolve) => {
+    const image = new Image()
+
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      const size = 96
+      canvas.width = size
+      canvas.height = size
+      const context = canvas.getContext('2d', { willReadFrequently: true })
+      context.drawImage(image, 0, 0, size, size)
+
+      const buckets = new Map()
+      const pixels = context.getImageData(0, 0, size, size).data
+
+      for (let index = 0; index < pixels.length; index += 4) {
+        if (pixels[index + 3] < 150) continue
+
+        const color = [pixels[index], pixels[index + 1], pixels[index + 2]]
+        const luminance = colorLuminance(color)
+        if (luminance > 248 || luminance < 7) continue
+
+        const key = color.map((value) => Math.min(255, Math.round(value / 24) * 24)).join(',')
+        const bucket = buckets.get(key) ?? { count: 0, sum: [0, 0, 0] }
+        bucket.count += 1
+        color.forEach((value, channel) => { bucket.sum[channel] += value })
+        buckets.set(key, bucket)
+      }
+
+      const rankedColors = [...buckets.values()]
+        .sort((first, second) => second.count - first.count)
+        .map((bucket) => bucket.sum.map((total) => total / bucket.count))
+
+      const distinctColors = []
+      for (const color of rankedColors) {
+        if (distinctColors.every((selected) => colorDistance(color, selected) >= 55)) distinctColors.push(color)
+        if (distinctColors.length === 3) break
+      }
+
+      if (!distinctColors.length) {
+        resolve(defaultRestaurantProfile.theme)
+        return
+      }
+
+      while (distinctColors.length < 3) {
+        distinctColors.push(distinctColors[distinctColors.length - 1])
+      }
+
+      const byLuminance = [...distinctColors].sort((first, second) => colorLuminance(first) - colorLuminance(second))
+      resolve({
+        primary: rgbToHex(...byLuminance[0]),
+        accent: rgbToHex(...byLuminance[1]),
+        surface: rgbToHex(...byLuminance[2]),
+      })
+    }
+
+    image.onerror = () => resolve(defaultRestaurantProfile.theme)
+    image.src = imageUrl
+  })
 }
 
 function AdminCoverDialog({ cover, onCancel, onSave }) {
@@ -3686,6 +3886,8 @@ function AdminCoverDialog({ cover, onCancel, onSave }) {
 function AdminLogoDialog({ logo, onCancel, onSave }) {
   const [preview, setPreview] = useState(logo)
   const [fileName, setFileName] = useState('')
+  const [detectedTheme, setDetectedTheme] = useState(null)
+  const [analyzing, setAnalyzing] = useState(false)
   const inputRef = useRef(null)
 
   function selectLogo(event) {
@@ -3693,7 +3895,12 @@ function AdminLogoDialog({ logo, onCancel, onSave }) {
     if (!file) return
 
     setFileName(file.name)
-    readAdminImageFile(file, setPreview)
+    setAnalyzing(true)
+    readAdminImageFile(file, async (imageUrl) => {
+      setPreview(imageUrl)
+      setDetectedTheme(await extractLogoTheme(imageUrl))
+      setAnalyzing(false)
+    })
     event.target.value = ''
   }
 
@@ -3721,16 +3928,27 @@ function AdminLogoDialog({ logo, onCancel, onSave }) {
             Escolher foto
           </span>
           <span className="mt-2 block truncate px-3 text-xs font-normal text-[#8b6d66]">
-            {fileName || 'Envie uma imagem JPG ou PNG'}
+            {analyzing ? 'Identificando as três cores principais...' : fileName || 'Envie uma imagem JPG ou PNG'}
           </span>
         </button>
         <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" className="sr-only" onChange={selectLogo} />
+
+        {detectedTheme && (
+          <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-center">
+            <p className="text-xs font-medium text-[#6b433a]">Cores que serão aplicadas ao cardápio</p>
+            <div className="mt-2 flex justify-center gap-3">
+              {Object.values(detectedTheme).map((color) => (
+                <span key={color} className="size-9 rounded-full border-2 border-white shadow ring-1 ring-black/10" style={{ backgroundColor: color }} title={color} />
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button type="button" onClick={onCancel} className="h-10 rounded-full border border-[#4b160e] text-sm font-medium text-[#4b160e]">
             Cancelar
           </button>
-          <button type="button" onClick={() => onSave(preview)} disabled={!fileName} className="h-10 rounded-full bg-[#4b160e] text-sm font-medium text-white disabled:opacity-40">
+          <button type="button" onClick={() => onSave({ logo: preview, theme: detectedTheme })} disabled={!fileName || analyzing || !detectedTheme} className="h-10 rounded-full bg-[#4b160e] text-sm font-medium text-white disabled:opacity-40">
             Usar foto
           </button>
         </div>
@@ -3763,7 +3981,15 @@ function AdminRestaurantProfileDialog({ profile, onCancel, onSave }) {
   function updateImage(field, event) {
     const file = event.target.files?.[0]
 
-    readAdminImageFile(file, (imageUrl) => updateField(field, imageUrl))
+    readAdminImageFile(file, async (imageUrl) => {
+      if (field !== 'logo') {
+        updateField(field, imageUrl)
+        return
+      }
+
+      const theme = await extractLogoTheme(imageUrl)
+      setDraft((current) => ({ ...current, logo: imageUrl, theme }))
+    })
     event.target.value = ''
   }
 
@@ -5170,7 +5396,7 @@ function buildAnalyticsEvent(eventName, session, payload = {}) {
   return {
     id: crypto.randomUUID(),
     event: eventName,
-    restaurantId,
+    restaurantId: session.restaurantId || restaurantId,
     sessionId: session.id,
     cardId: session.cardId,
     source: session.source,
@@ -5182,7 +5408,7 @@ function buildAnalyticsEvent(eventName, session, payload = {}) {
 function buildOrderRecord({ analyticsSession, cartItems, cartTotal, orderData, tableNumber }) {
   return {
     id: crypto.randomUUID(),
-    restaurantId,
+    restaurantId: analyticsSession.restaurantId || restaurantId,
     sessionId: analyticsSession.id,
     tableNumber: tableNumber || '',
     serviceType: orderData.serviceType ?? 'mesa',

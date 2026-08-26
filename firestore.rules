@@ -7,7 +7,17 @@ service cloud.firestore {
     }
 
     function isKnownRestaurant(restaurantId) {
-      return restaurantId == 'tokka-foods';
+      return restaurantId == 'tokka-foods'
+        || (
+          exists(/databases/$(database)/documents/restaurants/$(restaurantId))
+          && get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.active == true
+        );
+    }
+
+    function isPlatformOwner() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/restaurants/tokka-foods/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/restaurants/tokka-foods/admins/$(request.auth.uid)).data.role == 'owner';
     }
 
     function isRestaurantAdmin(restaurantId) {
@@ -16,18 +26,15 @@ service cloud.firestore {
     }
 
     function isValidAdminSignup(restaurantId, adminId) {
-      return isKnownRestaurant(restaurantId)
+      return restaurantId == 'tokka-foods'
         && isSignedIn()
         && request.auth.uid == adminId
+        && request.auth.token.email == 'admin@tokkafoods.com.br'
         && request.resource.data.keys().hasOnly(['email', 'username', 'role', 'createdAt'])
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.username is string
         && (
-          request.resource.data.role == 'admin'
-          || (
-            request.auth.token.email == 'admin@tokkafoods.com.br'
-            && request.resource.data.role == 'owner'
-          )
+          request.resource.data.role == 'owner'
         )
         && request.resource.data.createdAt == request.time;
     }
@@ -159,18 +166,31 @@ service cloud.firestore {
 
     match /restaurants/{restaurantId}/menu/{itemId} {
       allow read: if isKnownRestaurant(restaurantId);
-      allow write: if isRestaurantAdmin(restaurantId);
+      allow write: if isRestaurantAdmin(restaurantId) || isPlatformOwner();
     }
 
     match /restaurants/{restaurantId}/settings/{document=**} {
       allow read: if isKnownRestaurant(restaurantId);
-      allow write: if isRestaurantAdmin(restaurantId);
+      allow write: if isRestaurantAdmin(restaurantId) || isPlatformOwner();
     }
 
     match /restaurants/{restaurantId}/admins/{adminId} {
       allow read: if isSignedIn() && request.auth.uid == adminId;
-      allow create: if isValidAdminSignup(restaurantId, adminId);
-      allow update, delete: if false;
+      allow create: if isValidAdminSignup(restaurantId, adminId) || isPlatformOwner();
+      allow update: if (isSignedIn() && request.auth.uid == adminId) || isPlatformOwner();
+      allow delete: if isPlatformOwner();
+    }
+
+    match /restaurants/{restaurantId} {
+      allow read: if isKnownRestaurant(restaurantId) || isPlatformOwner();
+      allow create, update: if isPlatformOwner();
+      allow delete: if false;
+    }
+
+    match /menuDirectory/{slug} {
+      allow read: if resource.data.active == true || isPlatformOwner();
+      allow create, update: if isPlatformOwner();
+      allow delete: if false;
     }
   }
 }

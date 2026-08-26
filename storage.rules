@@ -7,7 +7,11 @@ service firebase.storage {
     }
 
     function isKnownRestaurant(restaurantId) {
-      return restaurantId == 'tokka-foods';
+      return restaurantId == 'tokka-foods'
+        || (
+          firestore.exists(/databases/(default)/documents/restaurants/$(restaurantId))
+          && firestore.get(/databases/(default)/documents/restaurants/$(restaurantId)).data.active == true
+        );
     }
 
     function isRestaurantAdmin(restaurantId) {
