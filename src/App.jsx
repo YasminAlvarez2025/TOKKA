@@ -202,7 +202,7 @@ const baseProducts = [
     badgeIcon: Flame,
     badgeIconTone: 'fill-amber-500 text-amber-500',
     description:
-      'Camarões empanados e recheados com catupiry, sobre um cremoso arroz de moqueca com camarões e coentro.',
+      'Camarões empanados e recheados com catupiry, sobre um cremoso arroz de moqueca com camarões.',
     voiceDescription:
       'Imagine uma travessa larga chegando à mesa. Na borda, camarões empanados formam uma coroa dourada, com casquinha crocante e recheio cremoso de catupiry. No centro, há arroz de moqueca bem úmido, perfumado com coentro e camarões menores. A batata palha aparece por cima como uma camada fina e crocante, criando contraste entre o molho quente, o queijo macio e o empanado.',
     tags: ['Ovo', 'Glúten', 'Peixe', 'Crustáceos', 'Lactose'],
@@ -614,6 +614,12 @@ function App() {
 
     return () => window.clearTimeout(saveTimer)
   }, [adminSession.isAdmin, activeMenuSlug, products, promoItems, restaurantProfile])
+
+  useEffect(() => {
+    if (screen === 'pedido') {
+      setOrderSent(false)
+    }
+  }, [screen])
 
   useEffect(() => {
     function syncRouteFromHash() {
@@ -1626,7 +1632,7 @@ function CategoryDishCard({ product, onOpen }) {
         <span className="block truncate text-[13px] font-bold leading-tight" title={product.name}>
           {product.name.toUpperCase()}
         </span>
-        <span className="line-clamp-2 block self-center text-[12.5px] font-normal leading-[17px]">
+        <span className="line-clamp-3 block max-h-[51px] self-center overflow-hidden text-[12.5px] font-normal leading-[17px]">
           {product.description}
         </span>
         <span className="block text-[13px] font-bold">{formatCurrency(product.price)}</span>
@@ -2141,7 +2147,7 @@ function MenuProductCard({ product, onOpen }) {
         <span className="block truncate text-[13px] font-bold leading-tight" title={product.name}>
           {product.name.toUpperCase()}
         </span>
-        <span className="line-clamp-2 block self-center text-[12.5px] font-normal leading-[17px]">
+        <span className="line-clamp-3 block max-h-[51px] self-center overflow-hidden text-[12.5px] font-normal leading-[17px]">
           {product.description}
         </span>
         <span className="block text-[13px] font-bold">{formatCurrency(product.price)}</span>
@@ -2183,7 +2189,7 @@ function MenuProductGridCard({ product, onOpen }) {
       <span className="mt-3 block truncate text-center text-[12.5px] font-bold leading-tight" title={product.name}>
         {product.name.toUpperCase()}
       </span>
-      <span className="mt-1 line-clamp-3 block h-12 text-center text-[11.5px] font-normal leading-4 text-[#5e332a]">
+      <span className="mt-1 line-clamp-3 block h-12 max-h-12 overflow-hidden text-center text-[11.5px] font-normal leading-4 text-[#5e332a]">
         {product.description}
       </span>
       <span className="mt-1.5 block text-center text-[13px] font-bold">{formatCurrency(product.price)}</span>
@@ -2302,15 +2308,16 @@ function ProductScreen({ product, restaurantProfile = defaultRestaurantProfile, 
         : [{ id: 'base', label: '1 pessoa', detail: 'Porção individual', price: product.price, people: 1 }],
     [product],
   )
-  const [selectedOptionId, setSelectedOptionId] = useState(() => editingCartItem?.optionId || productOptions.at(-1)?.id || 'base')
+  const [selectedOptionId, setSelectedOptionId] = useState(() => editingCartItem?.optionId || '')
   const [quantity, setQuantity] = useState(1)
   const [note, setNote] = useState(() => editingCartItem?.note ?? '')
   const [itemAdded, setItemAdded] = useState(false)
-  const selectedOption =
-    productOptions.find((option) => option.id === selectedOptionId) ?? productOptions.at(-1)
+  const selectedOption = productOptions.find((option) => option.id === selectedOptionId) ?? null
   const itemTotal = (selectedOption?.price ?? product.price) * quantity
 
   function addCurrentItem() {
+    if (!selectedOption) return
+
     if (editingCartItem) {
       onSaveCartItem(selectedOption, note.trim())
       return
@@ -2322,7 +2329,7 @@ function ProductScreen({ product, restaurantProfile = defaultRestaurantProfile, 
   }
 
   return (
-    <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]" aria-labelledby="product-title">
+    <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]" aria-labelledby="product-title">
       <TopPhotoBar
         backgroundImage={restaurantProfile.cover}
         onBack={onBack}
@@ -2330,7 +2337,7 @@ function ProductScreen({ product, restaurantProfile = defaultRestaurantProfile, 
         compact
       />
 
-      <div className="relative z-10 -mt-[38px] min-h-[calc(100%-106px)] rounded-t-[18px] bg-white px-7 pb-8 pt-6 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+      <div className="relative z-10 -mt-[38px] min-h-[calc(100%-106px)] rounded-t-[18px] bg-white px-7 pb-32 pt-6 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <div>
           <ProductImageGallery product={product} />
         </div>
@@ -2365,7 +2372,7 @@ function ProductScreen({ product, restaurantProfile = defaultRestaurantProfile, 
                 aria-pressed={active}
                 className={`grid min-h-[62px] w-full grid-cols-[42px_1fr_auto_18px] items-center gap-2.5 rounded-lg border px-3.5 text-left transition active:scale-[0.99] ${
                   active
-                    ? 'border-[#4b160e] bg-[#f2e3cc]'
+                    ? 'border-[#4b160e] bg-[#f2e3cc] text-[#4b160e]'
                     : 'border-[#bfa8a0] bg-white'
                 }`}
               >
@@ -2399,9 +2406,12 @@ function ProductScreen({ product, restaurantProfile = defaultRestaurantProfile, 
         <button
           type="button"
           onClick={addCurrentItem}
-          className="mx-auto mt-7 flex h-12 w-[86%] items-center justify-center rounded-full bg-[#4b160e] text-[16px] font-medium text-white transition active:scale-[0.99]"
+          disabled={!selectedOption}
+          className="fixed bottom-[calc(14px+env(safe-area-inset-bottom))] left-1/2 z-[80] flex h-12 w-[74vw] max-w-[370px] -translate-x-1/2 items-center justify-center rounded-full bg-[#4b160e] text-[16px] font-medium text-white shadow-[0_8px_24px_rgba(75,22,14,0.22)] transition active:scale-[0.99] disabled:bg-[#c5b5af] disabled:text-white/80 disabled:shadow-none"
         >
-          {editingCartItem ? (
+          {!selectedOption ? (
+            'SELECIONE UMA PORÇÃO'
+          ) : editingCartItem ? (
             'SALVAR ALTERAÇÕES'
           ) : (
             <>ADICIONAR - <strong className="ml-1">{formatCurrency(itemTotal)}</strong></>
@@ -3328,9 +3338,17 @@ function AdminMenuEditor({
       className="relative h-full overflow-y-auto overflow-x-hidden bg-[var(--brand-surface)] pb-8 text-[var(--brand-primary)]"
       style={buildThemeStyle(editorProfile)}
     >
-      <div className="sticky top-0 h-[142px] overflow-visible">
+      <div className="relative h-[142px] overflow-visible">
         <img src={editorProfile.cover} alt="" className="h-full w-full object-cover" draggable="false" />
         <div className="absolute inset-0 bg-black/10" />
+        <button
+          type="button"
+          onClick={() => setCoverEditorOpen(true)}
+          className="absolute bottom-5 right-7 z-20 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-bold text-[#6b433a] shadow-md shadow-black/10 ring-1 ring-white/70 transition active:scale-[0.98]"
+        >
+          <Camera size={15} />
+          Trocar capa
+        </button>
       </div>
 
       <button
@@ -3355,17 +3373,6 @@ function AdminMenuEditor({
             strokeWidth={2}
             className={`transition-transform duration-500 ease-out ${editorActionsOpen ? 'rotate-180' : 'rotate-0'}`}
           />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setCoverEditorOpen(true)}
-          className={`mt-8 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-bold text-[#6b433a] shadow-md shadow-black/10 ring-1 ring-white/70 transition-all duration-300 ${
-            editorActionsOpen ? 'pointer-events-none translate-y-1 opacity-0' : 'translate-y-0 opacity-100'
-          }`}
-        >
-          <Camera size={15} />
-          Trocar capa
         </button>
 
         <div
@@ -3997,7 +4004,7 @@ function AdminProductEditorCard({ product, onEdit, onRemove, onToggle }) {
         <h3 className="truncate text-[13px] font-bold leading-tight text-[#4b160e]" title={product.name}>
           {product.name.toUpperCase()}
         </h3>
-        <p className="mt-1 line-clamp-3 text-[12.5px] font-normal leading-[17px] text-[#4b2a22]">
+        <p className="mt-1 line-clamp-3 max-h-[51px] overflow-hidden text-[12.5px] font-normal leading-[17px] text-[#4b2a22]">
           {product.description}
         </p>
         <p className="mt-1 text-[13px] font-bold text-[#4b160e]">{formatCurrency(product.price)}</p>
@@ -4587,7 +4594,7 @@ function AdminCategoryProductCard({ product, onEdit, onRemove }) {
         <h3 className="truncate text-[13px] font-bold leading-tight" title={product.name}>
           {product.name.toUpperCase()}
         </h3>
-        <p className="line-clamp-2 self-center text-[12.5px] font-normal leading-[17px]">{product.description}</p>
+        <p className="line-clamp-3 max-h-[51px] self-center overflow-hidden text-[12.5px] font-normal leading-[17px]">{product.description}</p>
         <p className="text-[13px] font-bold">{formatCurrency(product.price)}</p>
       </div>
       <div className="relative h-[90px] self-center overflow-hidden rounded-lg bg-[#4b160e]">

@@ -13,13 +13,13 @@ import {
 } from 'firebase/firestore'
 
 const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY || 'AIzaSyDKcC8S9JkN2hcVOvNjKd3zMCARmcMinuc',
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || 'tokka-foods.firebaseapp.com',
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'tokka-foods',
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || 'tokka-foods.firebasestorage.app',
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '810576160609',
-  appId: process.env.VITE_FIREBASE_APP_ID || '1:810576160609:web:c759f9ac88496c187f4720',
-  measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-SCQEHM0EB1',
+  apiKey: process.env.VITE_FIREBASE_API_KEY || 'AIzaSyBIYG6d79B_puvRCBUB_38vus6ZbyGCi_k',
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || 'tokka-eb4ae.firebaseapp.com',
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'tokka-eb4ae',
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || 'tokka-eb4ae.firebasestorage.app',
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '760545643115',
+  appId: process.env.VITE_FIREBASE_APP_ID || '1:760545643115:web:ee2225650bed8bf2d0bf2e',
+  measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-2QG8D1HY1S',
 }
 
 const restaurantId = process.env.FIREBASE_RESTAURANT_ID || 'tokka-foods'

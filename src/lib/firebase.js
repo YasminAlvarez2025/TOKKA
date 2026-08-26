@@ -7,13 +7,13 @@ import { getStorage } from 'firebase/storage'
 const env = import.meta.env
 
 const firebaseConfig = {
-  apiKey: env.VITE_FIREBASE_API_KEY || 'AIzaSyDKcC8S9JkN2hcVOvNjKd3zMCARmcMinuc',
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || 'tokka-foods.firebaseapp.com',
-  projectId: env.VITE_FIREBASE_PROJECT_ID || 'tokka-foods',
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || 'tokka-foods.firebasestorage.app',
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '810576160609',
-  appId: env.VITE_FIREBASE_APP_ID || '1:810576160609:web:c759f9ac88496c187f4720',
-  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || 'G-SCQEHM0EB1',
+  apiKey: env.VITE_FIREBASE_API_KEY || 'AIzaSyBIYG6d79B_puvRCBUB_38vus6ZbyGCi_k',
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || 'tokka-eb4ae.firebaseapp.com',
+  projectId: env.VITE_FIREBASE_PROJECT_ID || 'tokka-eb4ae',
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || 'tokka-eb4ae.firebasestorage.app',
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '760545643115',
+  appId: env.VITE_FIREBASE_APP_ID || '1:760545643115:web:ee2225650bed8bf2d0bf2e',
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || 'G-2QG8D1HY1S',
 }
 
 export const firebaseApp = initializeApp(firebaseConfig)
