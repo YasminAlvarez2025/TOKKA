@@ -35,7 +35,6 @@ import {
   Table2,
   Trash2,
   UserRound,
-  Volume2,
   X,
 } from 'lucide-react'
 import cocoBackground from './assets/images/cocobambu_fundo.png'
@@ -957,6 +956,20 @@ function App() {
         item.id === updatedProduct.id ? { ...item, ...updatedProduct } : item,
       ),
     )
+    setCart((items) =>
+      items.map((item) => {
+        if (item.productId !== updatedProduct.id) return item
+
+        const updatedOption = updatedProduct.options?.find((option) => option.id === item.optionId)
+        return {
+          ...item,
+          optionLabel: updatedOption?.label ?? item.optionLabel,
+          optionDetail: updatedOption?.detail ?? item.optionDetail,
+          people: updatedOption?.people ?? item.people,
+          unitPrice: updatedOption?.price ?? updatedProduct.price,
+        }
+      }),
+    )
     trackEvent('admin_item_updated', {
       productId: updatedProduct.id,
       productName: updatedProduct.name,
@@ -1263,7 +1276,7 @@ function App() {
           <ProductScreen
             key={selectedProduct.id}
             product={selectedProduct}
-            isFavorite={favoriteProductIds.includes(selectedProduct.id)}
+            restaurantProfile={restaurantProfile}
             onBack={() => {
               if (productReturnScreen === 'promocao') {
                 showScreen('promocao', `promocao=${selectedPromoId}`)
@@ -1278,15 +1291,15 @@ function App() {
               showScreen('menu')
             }}
             onAddToCart={addToCart}
-            onOrderNow={() => showScreen('pedido')}
-            onReadProduct={readProductIngredients}
-            onToggleFavorite={() => toggleFavoriteProduct(selectedProduct.id)}
+            onAdded={() => showScreen('menu')}
+            onOpenSettings={openAdminPrincipal}
           />
         )}
 
         {screen === 'promocao' && (
           <PromotionScreen
             promo={selectedPromo}
+            restaurantProfile={restaurantProfile}
             onBack={() => showScreen('menu')}
             onOpenProduct={(productId) => {
               const promoProduct = products.find((product) => product.id === productId) ?? selectedProduct
@@ -1356,6 +1369,7 @@ function App() {
             products={products}
             promoItems={promoItems}
             restaurantProfile={restaurantProfile}
+            onUpdateProfile={(nextProfile) => setRestaurantProfile(normalizeRestaurantProfile(nextProfile))}
             onAddAdminItem={addAdminItem}
             onBack={() => showScreen('menu')}
             onDone={(nextProfile) => {
@@ -1387,6 +1401,7 @@ function App() {
             cartItems={cartItems}
             cartTotal={cartTotal}
             orderSent={orderSent}
+            restaurantProfile={restaurantProfile}
             tableNumber={tableNumber}
             onBack={() => showScreen('menu')}
             onSendOrder={sendOrder}
@@ -1452,7 +1467,7 @@ function CategoriesScreen({ categories, restaurantProfile = defaultRestaurantPro
           decoding="sync"
           className="absolute left-1/2 top-[-70px] z-20 size-[96px] -translate-x-1/2 rounded-full bg-[#4a160f]"
         />
-        <h1 data-screen-title="true" tabIndex={-1} className="font-montserrat text-center text-[17px] font-medium leading-none outline-none">
+        <h1 data-screen-title="true" tabIndex={-1} className="font-anton text-center text-[17px] font-normal leading-none outline-none">
           CATEGORIAS
         </h1>
         <div className="mt-6 grid grid-cols-2 gap-x-2 gap-y-0">
@@ -1464,13 +1479,13 @@ function CategoriesScreen({ categories, restaurantProfile = defaultRestaurantPro
               className="text-center transition active:scale-[0.99]"
             >
               <span className="relative block">
-                <span className="block aspect-[1.47] overflow-hidden rounded-lg border-[3px] border-[#4b160e] bg-white">
+                <span className="block aspect-[1.47] overflow-hidden rounded-lg border-[3px] border-[#4b160e] bg-[#4b160e]">
                   <img
                     src={category.image}
                     alt=""
                     loading="eager"
                     decoding="sync"
-                    className="block size-full object-cover object-center"
+                    className="block size-full scale-[1.04] object-cover object-center"
                   />
                 </span>
                 <img
@@ -1516,18 +1531,15 @@ function CategoryProductsScreen({ category, products, restaurantProfile = defaul
           {category.label.toUpperCase()}
         </h1>
 
-        <div className="mt-2 space-y-5">
+        <div className="-mt-2 space-y-5">
           {groupedProducts.length ? (
             groupedProducts.map((group) => (
               <section key={group.title}>
-                <h2
-                  className={`mb-2 min-h-[20px] px-1 text-[17px] font-black ${
-                    normalizeText(group.title) === normalizeText(category.label) ? 'invisible' : ''
-                  }`}
-                  aria-hidden={normalizeText(group.title) === normalizeText(category.label)}
-                >
-                  {group.title}
-                </h2>
+                {normalizeText(group.title) !== normalizeText(category.label) && (
+                  <h2 className="mb-2 min-h-[20px] px-1 text-[17px] font-black">
+                    {group.title}
+                  </h2>
+                )}
                 <div className="space-y-2.5">
                   {group.products.map((product) => (
                     <CategoryDishCard
@@ -1568,7 +1580,7 @@ function CategoryDishCard({ product, onOpen }) {
         <span className="block text-[13px] font-bold">{formatCurrency(product.price)}</span>
       </span>
       <span className="relative block h-[90px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
-        <img src={product.image} alt="" className="block size-full object-cover" />
+        <img src={product.image} alt="" className="block size-full scale-[1.03] object-cover" />
         <span className="absolute bottom-2 right-2 flex h-5 items-center justify-center whitespace-nowrap rounded-full bg-white/95 px-2 text-[7.5px] font-black leading-none text-[#4b160e] shadow-[0_2px_8px_rgba(67,22,15,0.16)]">
           VER PRATO &gt;
         </span>
@@ -1693,13 +1705,13 @@ function MenuScreen({
         alt={restaurantProfile.name}
         loading="eager"
         decoding="sync"
-        className={`pointer-events-none absolute left-1/2 top-[42px] size-[96px] -translate-x-1/2 rounded-full bg-[var(--brand-primary)] object-cover transition-all duration-500 ease-out ${
+        className={`pointer-events-none absolute left-1/2 top-[50px] size-[96px] -translate-x-1/2 rounded-full bg-[var(--brand-primary)] object-cover transition-all duration-500 ease-out ${
           menuSheetRaised ? 'z-0 -translate-y-5 opacity-0 scale-95' : 'z-30 translate-y-0 opacity-100 scale-100'
         }`}
         draggable="false"
       />
 
-      <div className="relative z-20 -mt-8 rounded-t-[34px] bg-[var(--brand-surface)] px-8 pb-4 pt-[56px] shadow-[0_-18px_42px_rgba(67,22,15,0.12)]">
+      <div className="relative z-20 -mt-8 rounded-t-[34px] bg-[var(--brand-surface)] px-8 pb-4 pt-[48px] shadow-[0_-18px_42px_rgba(67,22,15,0.12)]">
         <div className="text-center">
           <h1 id="menu-title" data-screen-title="true" tabIndex={-1} className="font-anton text-[25px] font-normal uppercase tracking-[0.02em] outline-none">
             {restaurantProfile.name}
@@ -2015,7 +2027,7 @@ function CategoryPreviewCard({ category, active, onClick }) {
       className="min-h-[98px] w-[calc((min(100vw,430px)-48px)/3)] flex-none text-center"
     >
       <span
-        className={`block h-[84px] overflow-hidden rounded-md bg-white transition ${
+        className={`block h-[84px] overflow-hidden rounded-md bg-[#4b160e] transition ${
           active ? 'ring-2 ring-[#4b160e] ring-offset-2 ring-offset-white' : ''
         }`}
       >
@@ -2082,11 +2094,11 @@ function MenuProductCard({ product, onOpen }) {
         </span>
         <span className="block text-[13px] font-bold">{formatCurrency(product.price)}</span>
       </span>
-      <span className="relative block h-[96px] self-center overflow-hidden rounded-lg bg-transparent">
+      <span className="relative block h-[96px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
         <img
           src={product.image}
           alt=""
-          className={`block size-full object-cover object-center ${product.id === 'camarao-coco-brasil' ? 'scale-[1.14]' : ''}`}
+          className={`block size-full object-cover object-center ${product.id === 'camarao-coco-brasil' ? 'scale-[1.14]' : 'scale-[1.03]'}`}
         />
         <span className="absolute bottom-2 right-2 flex h-5 items-center justify-center gap-px whitespace-nowrap rounded-full bg-white/95 px-1.5 text-[9px] font-semibold leading-none tracking-[0.01em] text-[#4b160e] shadow-[0_2px_8px_rgba(67,22,15,0.16)]">
           Ver prato
@@ -2103,37 +2115,37 @@ function MenuProductGridCard({ product, onOpen }) {
       type="button"
       onClick={onOpen}
       aria-label={buildProductAriaLabel(product)}
-      className="h-[204px] overflow-hidden rounded-lg bg-[#f0f0f0] p-2.5 text-left transition active:scale-[0.99]"
+      className="h-[236px] overflow-hidden rounded-lg bg-[#f0f0f0] p-2.5 text-left transition active:scale-[0.99]"
     >
-      <span className="relative block h-[108px] overflow-hidden rounded-lg bg-transparent">
+      <span className="relative block h-[108px] overflow-hidden rounded-lg bg-[#4b160e]">
         <img
           src={product.image}
           alt=""
-          className={`block size-full object-cover object-center ${product.id === 'camarao-coco-brasil' ? 'scale-[1.14]' : ''}`}
+          className={`block size-full object-cover object-center ${product.id === 'camarao-coco-brasil' ? 'scale-[1.14]' : 'scale-[1.03]'}`}
         />
         <span className="absolute bottom-2 right-2 flex h-5 items-center justify-center gap-px whitespace-nowrap rounded-full bg-white/95 px-1.5 text-[9px] font-semibold leading-none tracking-[0.01em] text-[#4b160e] shadow-[0_2px_8px_rgba(67,22,15,0.16)]">
           Ver prato
           <ArrowRight size={9} strokeWidth={1.7} aria-hidden="true" />
         </span>
       </span>
-      <span className="mt-3 block truncate text-[12.5px] font-bold leading-tight" title={product.name}>
+      <span className="mt-3 block truncate text-center text-[12.5px] font-bold leading-tight" title={product.name}>
         {product.name.toUpperCase()}
       </span>
-      <span className="mt-1 line-clamp-1 block h-4 text-[10.5px] font-normal leading-4 text-[#5e332a]">
+      <span className="mt-1 line-clamp-3 block h-12 text-center text-[11.5px] font-normal leading-4 text-[#5e332a]">
         {product.description}
       </span>
-      <span className="mt-1.5 block text-[13px] font-bold">{formatCurrency(product.price)}</span>
+      <span className="mt-1.5 block text-center text-[13px] font-bold">{formatCurrency(product.price)}</span>
     </button>
   )
 }
 
-function PromotionScreen({ promo, onBack, onOpenProduct }) {
+function PromotionScreen({ promo, restaurantProfile = defaultRestaurantProfile, onBack, onOpenProduct }) {
   const includes = promo?.includes ?? ['Oferta especial da casa']
   const conditions = promo?.conditions ?? ['Consulte disponibilidade com o garçom']
 
   return (
     <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]" aria-labelledby="promotion-title">
-      <TopPhotoBar onBack={onBack} onOpenSettings={onBack} compact />
+      <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onBack} compact />
 
       <div className="-mt-9 rounded-t-[36px] bg-white px-6 pb-8 pt-8 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <div className="overflow-hidden rounded-xl bg-[#4b160e] p-2 shadow-lg shadow-[#4b160e]/10">
@@ -2196,25 +2208,14 @@ function PromotionScreen({ promo, onBack, onOpenProduct }) {
 }
 
 function ProductImageGallery({ product }) {
-  const galleryImages = [
-    { id: 'principal', src: product.image, label: product.name },
-    { id: 'categoria', src: fallbackImages[product.category] || product.image, label: `Ambiente visual de ${product.name}` },
-  ].filter((item, index, items) => item.src && items.findIndex((candidate) => candidate.src === item.src) === index)
-
   return (
-    <div className="-mx-7 overflow-x-auto [scrollbar-width:none]" aria-label="Fotos do prato">
-      <div className="flex w-max gap-3 px-7 pb-1">
-        {galleryImages.map((image) => (
-          <div key={image.id} className="relative w-[336px] max-w-[calc(100vw-72px)] shrink-0 overflow-hidden rounded-lg bg-[#4b160e] p-2">
-            <img
-              src={image.src}
-              alt={image.label}
-              className="h-[226px] w-full rounded-md object-cover"
-              draggable="false"
-            />
-          </div>
-        ))}
-      </div>
+    <div className="mx-1 aspect-[1.48] overflow-hidden rounded-lg bg-[#4b160e] p-2" aria-label="Foto do prato">
+      <img
+        src={product.image}
+        alt={product.name}
+        className="size-full rounded-md object-cover"
+        draggable="false"
+      />
     </div>
   )
 }
@@ -2223,15 +2224,14 @@ function DishInfoChips({ product }) {
   const infoTags = buildDishInfoTags(product)
 
   return (
-    <section className="mt-4 rounded-xl border border-[#eadfd9] bg-[#fbf7f2] p-3" aria-label="Informações importantes do prato">
-      <h2 className="text-xs font-black uppercase tracking-wide text-[#6b433a]">Informações do prato</h2>
-      <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+    <section className="mt-1.5" aria-label="Informações importantes do prato">
+      <div className="flex flex-wrap justify-center gap-1.5">
         {infoTags.map((tag) => (
           <span
             key={tag}
-            className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full bg-white px-3 text-xs font-black text-[#4b160e] shadow-sm ring-1 ring-[#eadfd9]"
+            className="inline-flex h-8 min-w-0 items-center gap-1 rounded-full bg-[#edf0f2] px-1.5 text-[9px] font-medium text-[#8c6056]"
           >
-            <BadgePlus size={14} className="text-[#d09a45]" />
+            <span className="size-6 shrink-0">{getAllergenIcon(tag)}</span>
             {tag}
           </span>
         ))}
@@ -2240,7 +2240,7 @@ function DishInfoChips({ product }) {
   )
 }
 
-function ProductScreen({ product, isFavorite = false, onBack, onAddToCart, onOrderNow, onReadProduct, onToggleFavorite }) {
+function ProductScreen({ product, restaurantProfile = defaultRestaurantProfile, onBack, onAddToCart, onAdded, onOpenSettings }) {
   const productOptions = useMemo(
     () =>
       product.options?.length
@@ -2259,82 +2259,42 @@ function ProductScreen({ product, isFavorite = false, onBack, onAddToCart, onOrd
   function addCurrentItem() {
     onAddToCart(product.id, quantity, note.trim(), selectedOption)
     setItemAdded(true)
-    window.setTimeout(() => setItemAdded(false), 1600)
+    window.setTimeout(() => onAdded(), 1300)
   }
 
   return (
     <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]" aria-labelledby="product-title">
       <TopPhotoBar
+        backgroundImage={restaurantProfile.cover}
         onBack={onBack}
-        onOpenSettings={onToggleFavorite}
-        trailingIcon="heart"
-        trailingActive={isFavorite}
+        onOpenSettings={onOpenSettings}
         compact
       />
 
-      <div className="-mt-9 rounded-t-[36px] bg-white px-7 pb-8 pt-10 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
-        <div className="relative">
+      <div className="relative z-10 -mt-[38px] min-h-[calc(100%-106px)] rounded-t-[18px] bg-white px-7 pb-8 pt-6 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <div>
           <ProductImageGallery product={product} />
-          <button
-            type="button"
-            onClick={() => onReadProduct(product)}
-            aria-label={`Ouvir descrição acessível de ${product.name}`}
-            title="Ouvir descrição"
-            className="absolute right-8 top-4 grid size-10 place-items-center rounded-full bg-white/90 text-[#4b160e] shadow-lg"
-          >
-            <Volume2 size={18} />
-          </button>
         </div>
 
         <DishInfoChips product={product} />
 
-        <div className="mt-5 text-center">
+        <div className="mt-4 text-center">
           <h1
             id="product-title"
             data-screen-title="true"
             tabIndex={-1}
-            className="text-[27px] font-black leading-tight outline-none"
+            className="font-montserrat text-[21px] font-normal leading-tight tracking-[-0.01em] outline-none"
           >
             {product.name.toUpperCase()}
           </h1>
-          <p className="mx-auto mt-3 max-w-[340px] text-[15px] font-medium leading-6">
+          <p className="mx-auto mt-1.5 max-w-[360px] text-[15px] font-normal leading-[21px] text-[#5f3730]">
             {product.description}
           </p>
         </div>
 
-        <section className="mt-5 rounded-xl border border-[#eadfd9] bg-[#fbf7f2] p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-black uppercase text-[#6b433a]">Quantidade do pedido</h2>
-              <p className="mt-1 text-xs font-semibold text-[#8b6d66]">
-                {quantity} {quantity === 1 ? 'unidade' : 'unidades'} da porção selecionada
-              </p>
-            </div>
-            <div className="inline-flex h-9 items-center rounded-full border border-[#4b160e] bg-white text-[#4b160e]">
-              <button
-                type="button"
-                onClick={() => setQuantity((current) => Math.max(1, current - 1))}
-                aria-label="Diminuir quantidade"
-                className="grid h-9 w-10 place-items-center"
-              >
-                <Minus size={15} strokeWidth={3} />
-              </button>
-              <span className="w-8 text-center text-sm font-black">{quantity}</span>
-              <button
-                type="button"
-                onClick={() => setQuantity((current) => current + 1)}
-                aria-label="Aumentar quantidade"
-                className="grid h-9 w-10 place-items-center"
-              >
-                <Plus size={15} strokeWidth={3} />
-              </button>
-            </div>
-          </div>
-        </section>
-
         <section className="mt-6">
-          <h2 className="text-sm font-black uppercase text-[#6b433a]">Escolha a porção</h2>
-          <div className="mt-2 space-y-3">
+          <h2 className="font-montserrat mb-2 text-[14px] font-normal text-[#6b3025]">Opções de porções e preços</h2>
+          <div className="space-y-2.5">
           {productOptions.map((option) => {
             const active = selectedOption?.id === option.id
 
@@ -2344,60 +2304,50 @@ function ProductScreen({ product, isFavorite = false, onBack, onAddToCart, onOrd
                 key={option.id}
                 onClick={() => setSelectedOptionId(option.id)}
                 aria-pressed={active}
-                className={`grid min-h-[72px] w-full grid-cols-[40px_1fr_auto] items-center gap-3 rounded-lg border px-4 text-left transition active:scale-[0.99] ${
+                className={`grid min-h-[62px] w-full grid-cols-[42px_1fr_auto_18px] items-center gap-2.5 rounded-lg border px-3.5 text-left transition active:scale-[0.99] ${
                   active
                     ? 'border-[#4b160e] bg-[#f2e3cc]'
                     : 'border-[#bfa8a0] bg-white'
                 }`}
               >
-                <Table2 size={28} strokeWidth={1.8} className="text-[#8b6d63]" />
-                <span className="min-w-0">
-                  <span className="block text-sm font-black">Serve {option.label}</span>
-                  <span className="mt-0.5 block text-xs font-semibold text-[#8b6d66]">Porção: {option.detail}</span>
-                  {active && (
-                    <span className="mt-1 inline-flex rounded-full bg-[#4b160e] px-2 py-0.5 text-[10px] font-black uppercase text-white">
-                      Selecionado
-                    </span>
-                  )}
+                <span className="flex max-w-[42px] flex-wrap justify-center gap-0.5 text-[#8b6d63]" aria-hidden="true">
+                  {Array.from({ length: Math.min(Number(option.people) || 1, 4) }, (_, personIndex) => (
+                    <UserRound key={personIndex} size={17} strokeWidth={1.5} />
+                  ))}
                 </span>
-                <span className="text-base font-black">{formatCurrency(option.price)}</span>
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-medium">{option.label}</span>
+                  <span className="block text-[12px] font-medium text-[#a58f89]">{option.detail}</span>
+                </span>
+                <span className="text-[15px] font-black">{formatCurrency(option.price)}</span>
+                <span className={`size-[18px] rounded-full border ${active ? 'border-[#4b160e] bg-[#4b160e]' : 'border-[#9f8881] bg-white'}`} />
               </button>
             )
           })}
           </div>
         </section>
 
-        <label className="mt-5 block text-sm font-black uppercase text-[#6b433a]">
-          Observação para este prato
-          <textarea
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="Ex.: sem bacon, ponto da carne, molho à parte"
-            className="mt-2 h-[78px] w-full resize-none rounded-lg border border-[#d8c7bf] px-4 py-3 text-base font-semibold normal-case text-[#4b160e] outline-none placeholder:text-[#b6a4a0]"
-          />
-        </label>
-
-        {itemAdded && (
-          <div className="mt-4 rounded-lg bg-[#f2e3cc] px-4 py-3 text-center" role="status">
-            <p className="text-sm font-black text-[#4b160e]">Prato adicionado ao pedido.</p>
-            <button
-              type="button"
-              onClick={onOrderNow}
-              className="mt-2 text-xs font-black uppercase tracking-wide text-[#4b160e] underline underline-offset-4"
-            >
-              Ver meu pedido
-            </button>
-          </div>
-        )}
-
         <button
           type="button"
           onClick={addCurrentItem}
-          className="mx-auto mt-8 flex h-14 w-[86%] items-center justify-center rounded-full bg-[#4b160e] text-base font-black text-white transition active:scale-[0.99]"
+          className="mx-auto mt-7 flex h-12 w-[86%] items-center justify-center rounded-full bg-[#4b160e] text-[16px] font-medium text-white transition active:scale-[0.99]"
         >
-          ADICIONAR AO PEDIDO - {formatCurrency(itemTotal)}
+          ADICIONAR - <strong className="ml-1">{formatCurrency(itemTotal)}</strong>
         </button>
       </div>
+
+      {itemAdded && (
+        <div className="fixed inset-0 z-[220] grid place-items-center bg-black/20 px-7 md:absolute" role="status" aria-live="polite">
+          <div className="w-full max-w-[280px] rounded-[16px] border border-[#d8c7bf] bg-white px-4 py-4 text-center shadow-2xl shadow-[#4b160e]/20">
+            <span className="mx-auto grid size-10 place-items-center rounded-full bg-[#f2e3cc] text-[#4b160e]">
+              <ShoppingCart size={19} />
+            </span>
+            <p className="mt-2.5 text-[13px] font-medium leading-[18px] text-[#4b160e]">
+              O prato <strong>{product.name}</strong> foi adicionado ao seu carrinho.
+            </p>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
@@ -3059,7 +3009,7 @@ function getAllergenIcon(label) {
   const imageKey = Object.keys(allergenImages).find((key) => normalizedLabel.includes(key))
 
   if (imageKey) {
-    return <img src={allergenImages[imageKey]} alt="" className="block size-full object-contain" draggable="false" />
+    return <img src={allergenImages[imageKey]} alt="" className="block size-full object-contain mix-blend-multiply" draggable="false" />
   }
   return '+'
 }
@@ -3069,6 +3019,7 @@ function AdminMenuEditor({
   products,
   promoItems = promoSlides,
   restaurantProfile = defaultRestaurantProfile,
+  onUpdateProfile,
   onAddAdminItem,
   onBack,
   onDone,
@@ -3086,6 +3037,8 @@ function AdminMenuEditor({
   const [editingCategoryId, setEditingCategoryId] = useState('')
   const [productReturnView, setProductReturnView] = useState('home')
   const [profileEditorOpen, setProfileEditorOpen] = useState(false)
+  const [coverEditorOpen, setCoverEditorOpen] = useState(false)
+  const [logoEditorOpen, setLogoEditorOpen] = useState(false)
   const [editorActionsOpen, setEditorActionsOpen] = useState(false)
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(null)
@@ -3135,7 +3088,9 @@ function AdminMenuEditor({
     setPendingDelete({
       title: 'Voce tem certeza que deseja excluir?',
       onConfirm: () => {
-        setEditorPromos((items) => items.filter((item) => item.id !== slide.id))
+        const nextPromos = editorPromos.filter((item) => item.id !== slide.id)
+        setEditorPromos(nextPromos)
+        onUpdatePromos?.(nextPromos)
         setPendingDelete(null)
       },
     })
@@ -3307,32 +3262,31 @@ function AdminMenuEditor({
       <button
         type="button"
         onClick={openExitConfirmation}
-        className="fixed left-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] top-[max(1rem,calc((100vh-932px)/2+1rem))] z-[180] inline-flex h-10 items-center gap-1.5 rounded-full bg-white/88 px-3 text-xs font-black uppercase tracking-wide text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
+        className="fixed left-[max(1.75rem,calc((100vw-430px)/2+1.75rem))] top-[max(3rem,calc((100vh-932px)/2+3rem))] z-[180] grid size-9 place-items-center rounded-full bg-white/85 text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
         aria-label="Voltar ao cardapio"
       >
-        <ArrowLeft size={18} strokeWidth={2.8} />
-        Voltar
+        <ArrowLeft size={20} strokeWidth={2} />
       </button>
 
-      <div className="fixed right-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] top-[max(1rem,calc((100vh-932px)/2+1rem))] z-[180] grid justify-items-end gap-2">
+      <div className="fixed right-[max(1.75rem,calc((100vw-430px)/2+1.75rem))] top-[max(3rem,calc((100vh-932px)/2+3rem))] z-[180] grid justify-items-end gap-2">
         <button
           type="button"
           onClick={() => setEditorActionsOpen((currentValue) => !currentValue)}
-          className="grid size-11 place-items-center rounded-full bg-white/85 text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
+          className="grid size-9 place-items-center rounded-full bg-white/85 text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
           aria-label="Abrir ações do editor"
           aria-expanded={editorActionsOpen}
         >
           <Settings
-            size={24}
-            strokeWidth={2.6}
+            size={20}
+            strokeWidth={2}
             className={`transition-transform duration-500 ease-out ${editorActionsOpen ? 'rotate-180' : 'rotate-0'}`}
           />
         </button>
 
         <button
           type="button"
-          onClick={() => setProfileEditorOpen(true)}
-          className={`inline-flex h-8 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-bold text-[#6b433a] shadow-md shadow-black/10 ring-1 ring-white/70 transition-all duration-300 ${
+          onClick={() => setCoverEditorOpen(true)}
+          className={`mt-8 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-bold text-[#6b433a] shadow-md shadow-black/10 ring-1 ring-white/70 transition-all duration-300 ${
             editorActionsOpen ? 'pointer-events-none translate-y-1 opacity-0' : 'translate-y-0 opacity-100'
           }`}
         >
@@ -3377,7 +3331,7 @@ function AdminMenuEditor({
             />
             <button
               type="button"
-              onClick={() => setProfileEditorOpen(true)}
+              onClick={() => setLogoEditorOpen(true)}
               className="absolute bottom-0 right-2 grid size-9 place-items-center rounded-full bg-slate-100 text-slate-700 ring-2 ring-white"
               aria-label="Alterar logo"
             >
@@ -3388,7 +3342,7 @@ function AdminMenuEditor({
           <button
             type="button"
             onClick={saveEditorProfile}
-            className="absolute -top-3 right-0 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[var(--brand-primary)] px-3.5 text-[11px] font-medium tracking-[0.01em] text-white shadow-md shadow-[#4b160e]/10 transition active:scale-[0.98]"
+            className="absolute top-16 right-0 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[var(--brand-primary)] px-3.5 text-[11px] font-medium tracking-[0.01em] text-white shadow-md shadow-[#4b160e]/10 transition active:scale-[0.98]"
           >
             <Save size={14} strokeWidth={2} />
             Salvar alterações
@@ -3422,17 +3376,17 @@ function AdminMenuEditor({
           </div>
         </div>
 
-        <div className="pr-3">
+        <div>
           <AdminEditorSectionTitle title="Cards de promoção" actionLabel="Adicionar" onAction={addPromo} useBrandFont />
         </div>
-        <div className="-mx-5 mt-3 flex gap-3 overflow-x-auto px-5 pb-1">
+        <div className="-mx-5 mt-1 flex gap-3 overflow-x-auto px-5 pb-1">
           {editorPromos.map((slide) => {
             const locked = slide.id === protectedPromoSlideId
 
             return (
             <div
               key={slide.id}
-              className="grid w-[390px] max-w-[calc(100vw-52px)] shrink-0 grid-cols-[1fr_92px] gap-2 rounded-lg bg-slate-100 p-2"
+              className="grid w-[390px] max-w-[calc(100vw-40px)] shrink-0 grid-cols-[1fr_92px] gap-2 rounded-lg bg-slate-100 p-2"
             >
               <div className="relative">
                 <img
@@ -3478,7 +3432,7 @@ function AdminMenuEditor({
                 >
                   <img src={category.image} alt="" className="h-[112px] w-full object-cover" draggable="false" />
                 </button>
-                <p className="mt-2 truncate text-center text-sm font-black text-[#4b160e]">
+                <p className="font-montserrat mt-2 truncate text-center text-sm font-medium text-[#4b160e]">
                   {category.label.toUpperCase()}
                 </p>
                 <div className="mt-2 grid grid-cols-2 gap-1.5">
@@ -3490,7 +3444,7 @@ function AdminMenuEditor({
           </div>
         </div>
 
-        <AdminEditorSectionTitle title="Destaques" actionLabel="Adicionar" onAction={() => startNewProduct()} />
+        <AdminEditorSectionTitle title="Destaques" actionLabel="Adicionar" onAction={() => startNewProduct()} useBrandFont />
         <div className="mt-3 space-y-3">
           {adminFeaturedProducts.map((product) => (
             <AdminProductEditorCard
@@ -3528,6 +3482,30 @@ function AdminMenuEditor({
           }}
         />
       )}
+      {coverEditorOpen && (
+        <AdminCoverDialog
+          cover={editorProfile.cover}
+          onCancel={() => setCoverEditorOpen(false)}
+          onSave={(cover) => {
+            const nextProfile = { ...editorProfile, cover }
+            setEditorProfile(nextProfile)
+            onUpdateProfile?.(nextProfile)
+            setCoverEditorOpen(false)
+          }}
+        />
+      )}
+      {logoEditorOpen && (
+        <AdminLogoDialog
+          logo={editorProfile.logo}
+          onCancel={() => setLogoEditorOpen(false)}
+          onSave={(logo) => {
+            const nextProfile = { ...editorProfile, logo }
+            setEditorProfile(nextProfile)
+            onUpdateProfile?.(nextProfile)
+            setLogoEditorOpen(false)
+          }}
+        />
+      )}
       {exitConfirmOpen && (
         <AdminExitConfirmDialog
           onCancel={() => setExitConfirmOpen(false)}
@@ -3543,7 +3521,7 @@ function AdminMenuEditor({
 function AdminEditorSectionTitle({ title, actionLabel, onAction, useBrandFont = false }) {
   return (
     <div className="mt-5 flex items-center justify-between gap-3">
-      <h2 className={`${useBrandFont ? 'font-montserrat text-[14px] font-semibold tracking-[0.01em]' : 'text-sm font-black'} uppercase text-[var(--brand-primary)]`}>
+      <h2 className={`${useBrandFont ? 'font-montserrat text-[14px] font-medium tracking-[0.01em]' : 'text-sm font-black'} uppercase text-[var(--brand-primary)]`}>
         {title}
       </h2>
       {onAction && (
@@ -3566,6 +3544,118 @@ function readAdminImageFile(file, onReady) {
   const reader = new FileReader()
   reader.onload = () => onReady(String(reader.result || ''))
   reader.readAsDataURL(file)
+}
+
+function AdminCoverDialog({ cover, onCancel, onSave }) {
+  const [preview, setPreview] = useState(cover)
+  const [fileName, setFileName] = useState('')
+  const inputRef = useRef(null)
+
+  function selectCover(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setFileName(file.name)
+    readAdminImageFile(file, setPreview)
+    event.target.value = ''
+  }
+
+  return (
+    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-white/80 px-6 backdrop-blur-[2px] md:absolute">
+      <section className="w-full rounded-[22px] border border-[#4b160e] bg-white p-5 shadow-2xl shadow-[#4b160e]/15">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="font-montserrat text-lg font-medium text-[#4b160e]">Trocar foto da capa</h2>
+          <button type="button" onClick={onCancel} className="grid size-9 place-items-center rounded-lg bg-slate-100 text-[#6b433a]" aria-label="Fechar">
+            <X size={18} />
+          </button>
+        </div>
+        <p className="mt-2 text-sm font-normal leading-5 text-[#8b6d66]">
+          Escolha uma foto horizontal de 1200 × 400 px para obter melhor resolução.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="mt-5 block w-full overflow-hidden rounded-xl border border-dashed border-[#b7928b] bg-[#faf8f7] p-2 text-center"
+        >
+          <img src={preview} alt="Prévia da capa" className="h-[160px] w-full rounded-lg object-cover" draggable="false" />
+          <span className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-[#4b160e] px-5 text-sm font-medium text-white">
+            <Camera size={17} />
+            Escolher foto
+          </span>
+          <span className="mt-2 block truncate px-3 text-xs font-normal text-[#8b6d66]">
+            {fileName || 'Envie uma imagem JPG ou PNG'}
+          </span>
+        </button>
+        <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" className="sr-only" onChange={selectCover} />
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button type="button" onClick={onCancel} className="h-10 rounded-full border border-[#4b160e] text-sm font-medium text-[#4b160e]">
+            Cancelar
+          </button>
+          <button type="button" onClick={() => onSave(preview)} disabled={!fileName} className="h-10 rounded-full bg-[#4b160e] text-sm font-medium text-white disabled:opacity-40">
+            Usar foto
+          </button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function AdminLogoDialog({ logo, onCancel, onSave }) {
+  const [preview, setPreview] = useState(logo)
+  const [fileName, setFileName] = useState('')
+  const inputRef = useRef(null)
+
+  function selectLogo(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setFileName(file.name)
+    readAdminImageFile(file, setPreview)
+    event.target.value = ''
+  }
+
+  return (
+    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-white/80 px-6 backdrop-blur-[2px] md:absolute">
+      <section className="w-full rounded-[22px] border border-[#4b160e] bg-white p-5 shadow-2xl shadow-[#4b160e]/15">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="font-montserrat text-lg font-medium text-[#4b160e]">Trocar foto da logo</h2>
+          <button type="button" onClick={onCancel} className="grid size-9 place-items-center rounded-lg bg-slate-100 text-[#6b433a]" aria-label="Fechar">
+            <X size={18} />
+          </button>
+        </div>
+        <p className="mt-2 text-sm font-normal leading-5 text-[#8b6d66]">
+          Escolha uma foto quadrada de 800 × 800 px para obter melhor resolução.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="mt-5 block w-full rounded-xl border border-dashed border-[#b7928b] bg-[#faf8f7] p-5 text-center"
+        >
+          <img src={preview} alt="Prévia da logo" className="mx-auto size-[160px] rounded-full bg-[#4b160e] object-cover" draggable="false" />
+          <span className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-[#4b160e] px-5 text-sm font-medium text-white">
+            <Camera size={17} />
+            Escolher foto
+          </span>
+          <span className="mt-2 block truncate px-3 text-xs font-normal text-[#8b6d66]">
+            {fileName || 'Envie uma imagem JPG ou PNG'}
+          </span>
+        </button>
+        <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" className="sr-only" onChange={selectLogo} />
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button type="button" onClick={onCancel} className="h-10 rounded-full border border-[#4b160e] text-sm font-medium text-[#4b160e]">
+            Cancelar
+          </button>
+          <button type="button" onClick={() => onSave(preview)} disabled={!fileName} className="h-10 rounded-full bg-[#4b160e] text-sm font-medium text-white disabled:opacity-40">
+            Usar foto
+          </button>
+        </div>
+      </section>
+    </div>
+  )
 }
 
 function AdminRestaurantProfileDialog({ profile, onCancel, onSave }) {
@@ -3828,15 +3918,15 @@ function AdminMiniAction({ icon: Icon, label, disabled = false, onClick }) {
 
 function AdminProductEditorCard({ product, onEdit, onRemove, onToggle }) {
   return (
-    <article className="grid h-[116px] w-full grid-cols-[1fr_130px] gap-3 overflow-hidden rounded-lg bg-[#f0f0f0] p-3 text-left">
-      <div className="grid min-w-0 grid-rows-[auto_1fr_auto] self-stretch overflow-hidden">
+    <article className="grid h-[120px] w-full grid-cols-[1fr_130px] gap-3 overflow-hidden rounded-lg bg-[#f0f0f0] p-3 text-left">
+      <div className="flex min-w-0 flex-col overflow-hidden">
         <h3 className="truncate text-[13px] font-bold leading-tight text-[#4b160e]" title={product.name}>
           {product.name.toUpperCase()}
         </h3>
-        <p className="line-clamp-2 self-center text-[12.5px] font-normal leading-[17px] text-[#4b2a22]">
+        <p className="mt-1 line-clamp-3 text-[12.5px] font-normal leading-[17px] text-[#4b2a22]">
           {product.description}
         </p>
-        <p className="text-[13px] font-bold text-[#4b160e]">{formatCurrency(product.price)}</p>
+        <p className="mt-1 text-[13px] font-bold text-[#4b160e]">{formatCurrency(product.price)}</p>
       </div>
 
       <div className="relative h-[96px] self-center overflow-hidden rounded-lg bg-transparent">
@@ -4317,7 +4407,7 @@ function AdminCategoriesEditorScreen({
                     draggable="false"
                   />
                 </span>
-                <span className="font-montserrat mt-4 flex min-h-5 items-start justify-center text-center text-[12px] font-semibold leading-tight">
+                <span className="font-montserrat mt-4 flex min-h-5 items-start justify-center text-center text-[12px] font-medium leading-tight">
                   {category.label.toUpperCase()}
                 </span>
               </button>
@@ -4367,30 +4457,24 @@ function AdminCategoryProductsEditorScreen({
   const groupedProducts = groupProductsByMenuSection(products, category)
 
   return (
-    <section className="relative h-full overflow-y-auto bg-white pb-8 text-[#43160f]">
+    <section className="relative h-full overflow-y-auto bg-white pb-8 text-[#43160f]" aria-labelledby="admin-category-products-title">
       <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onBack} compact />
-      <div className="relative z-10 -mt-7 rounded-t-[26px] bg-white px-4 pb-8 pt-[70px] shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
-        <div className="absolute left-1/2 top-[-70px] grid size-[126px] -translate-x-1/2 place-items-center rounded-full border-4 border-[#d8ad61] bg-[#4b160e] shadow-[0_9px_0_rgba(75,22,14,0.18),0_18px_34px_rgba(67,22,15,0.20)] ring-[5px] ring-white">
-          <img src={category.iconImage} alt="" className="w-[78px]" draggable="false" />
+      <div className="relative z-10 -mt-8 rounded-t-[34px] bg-white px-4 pb-8 pt-[60px] shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <div className="absolute left-1/2 top-[-68px] grid size-[92px] -translate-x-1/2 place-items-center">
+          <img src={category.iconImage} alt="" className="block size-[92px] object-contain" draggable="false" />
         </div>
 
-        <h1 data-screen-title="true" tabIndex={-1} className="text-center text-[22px] font-black outline-none">
+        <h1 id="admin-category-products-title" data-screen-title="true" tabIndex={-1} className="font-anton -translate-y-7 text-center text-[21px] font-normal tracking-[0.02em] outline-none">
           {category.label.toUpperCase()}
         </h1>
-        <button
-          type="button"
-          onClick={onAddProduct}
-          className="mx-auto mt-3 flex h-9 w-[68%] items-center justify-center gap-2 rounded-full bg-[#4b160e] text-xs font-black text-[#d8ad61]"
-        >
-          <Plus size={15} />
-          ADICIONAR PRATO
-        </button>
 
-        <div className="mt-5 space-y-5">
+        <div className="-mt-2 space-y-5">
           {groupedProducts.length ? (
             groupedProducts.map((group) => (
               <section key={group.title}>
-                <h2 className="mb-2 px-1 text-[17px] font-black">{group.title}</h2>
+                {normalizeText(group.title) !== normalizeText(category.label) && (
+                  <h2 className="mb-2 min-h-[20px] px-1 text-[17px] font-black">{group.title}</h2>
+                )}
                 <div className="space-y-2.5">
                   {group.products.map((product) => (
                     <AdminCategoryProductCard
@@ -4410,38 +4494,48 @@ function AdminCategoryProductsEditorScreen({
           )}
         </div>
       </div>
+      <button
+        type="button"
+        onClick={onAddProduct}
+        aria-label="Adicionar prato"
+        className="sticky bottom-4 z-30 ml-auto mr-4 grid size-12 place-items-center rounded-full bg-[#4b160e] text-[#d8ad61] shadow-lg"
+      >
+        <Plus size={23} />
+      </button>
     </section>
   )
 }
 
 function AdminCategoryProductCard({ product, onEdit, onRemove }) {
   return (
-    <article className="grid min-h-[112px] grid-cols-[118px_1fr_96px] gap-2 rounded-lg bg-[#f0f0f0] p-2">
-      <img src={product.image} alt="" className="h-[96px] rounded-md object-cover" draggable="false" />
-      <div className="min-w-0 py-1">
-        <h3 className="truncate text-[13px] font-black leading-tight" title={product.name}>
+    <article className="grid h-[116px] w-full grid-cols-[1fr_130px] gap-3 overflow-hidden rounded-lg bg-[#f0f0f0] p-3 text-left">
+      <div className="grid min-w-0 grid-rows-[auto_1fr_auto] self-stretch overflow-hidden">
+        <h3 className="truncate text-[13px] font-bold leading-tight" title={product.name}>
           {product.name.toUpperCase()}
         </h3>
-        <p className="mt-1 line-clamp-3 text-[11px] font-medium leading-[14px]">{product.description}</p>
-        <p className="mt-1 text-sm font-black">{formatCurrency(product.price)}</p>
+        <p className="line-clamp-2 self-center text-[12.5px] font-normal leading-[17px]">{product.description}</p>
+        <p className="text-[13px] font-bold">{formatCurrency(product.price)}</p>
       </div>
-      <div className="grid content-center gap-2">
-        <button
-          type="button"
-          onClick={onRemove}
-          className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-200 text-xs font-bold text-slate-600"
-        >
-          <Trash2 size={15} />
-          Excluir
-        </button>
+      <div className="relative h-[90px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
+        <img src={product.image} alt="" className="block size-full scale-[1.03] object-cover" draggable="false" />
+        <div className="absolute right-1.5 top-1.5 flex gap-1">
         <button
           type="button"
           onClick={onEdit}
-          className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-200 text-xs font-bold text-slate-600"
+          className="grid size-7 place-items-center rounded-full bg-white/95 text-slate-600 shadow-sm"
+          aria-label={`Editar ${product.name}`}
         >
-          <Pencil size={15} />
-          Editar
+          <Pencil size={13} strokeWidth={2} />
         </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="grid size-7 place-items-center rounded-full bg-white/95 text-slate-600 shadow-sm"
+          aria-label={`Excluir ${product.name}`}
+        >
+          <Trash2 size={13} strokeWidth={2} />
+        </button>
+        </div>
       </div>
     </article>
   )
@@ -4679,6 +4773,7 @@ function OrderScreen({
   cartItems,
   cartTotal,
   orderSent,
+  restaurantProfile = defaultRestaurantProfile,
   tableNumber,
   onBack,
   onSendOrder,
@@ -4691,9 +4786,9 @@ function OrderScreen({
 
   return (
     <section className="h-full overflow-y-auto overflow-x-hidden bg-white pb-8 text-[#4b160e]">
-      <TopPhotoBar onBack={onBack} onOpenSettings={() => {}} compact />
+      <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={() => {}} compact />
 
-      <div className="-mt-9 rounded-t-[36px] bg-white px-5 pb-8 pt-9 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+      <div className="relative z-10 -mt-9 rounded-t-[24px] bg-white px-5 pb-8 pt-7 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         {orderSent ? (
           <section className="rounded-lg border border-[#eadfd9] bg-white p-6 text-center">
             <div className="mx-auto grid size-14 place-items-center rounded-full bg-[#4b160e] text-white">
@@ -4706,63 +4801,19 @@ function OrderScreen({
           </section>
         ) : (
           <>
-            <div className="flex items-center gap-4 px-2">
-              <span className="grid size-14 place-items-center rounded-full bg-[#4b160e] text-white">
-                <ReceiptText size={28} />
+            <div className="flex items-center gap-3 px-2">
+              <span className="grid size-12 place-items-center rounded-full bg-[#4b160e] text-white">
+                <ReceiptText size={23} />
               </span>
               <div>
-                <h1 data-screen-title="true" tabIndex={-1} className="text-lg font-black outline-none">
-                  MEU PEDIDO
+                <h1 data-screen-title="true" tabIndex={-1} className="text-[16px] font-bold outline-none">
+                  SEU PEDIDO
                 </h1>
-                <p className="text-sm font-medium">Revise os itens antes de chamar o garçom</p>
+                <p className="text-[11px] font-normal">Confirme os itens do seu pedido</p>
               </div>
             </div>
 
-            <section className="mt-5 rounded-lg border border-[#d8c7bf] bg-white p-4">
-              <div className="flex items-center justify-between gap-3">
-                <label className="min-w-0 flex-1 text-xs font-black text-[#7e6258]">
-                  Nome
-                  <input
-                    value={customerName}
-                    onChange={(event) => setCustomerName(event.target.value)}
-                    placeholder="Opcional"
-                    className="mt-2 h-10 w-full rounded-md border border-[#eadfd9] px-3 text-sm font-bold text-[#4b160e] outline-none placeholder:text-[#b5a7a2]"
-                  />
-                </label>
-                <label className="w-28 text-xs font-black text-[#7e6258]">
-                  Consumo
-                  <select
-                    value={serviceType}
-                    onChange={(event) => setServiceType(event.target.value)}
-                    className="mt-2 h-10 w-full rounded-md border border-[#eadfd9] bg-white px-2 text-sm font-bold text-[#4b160e] outline-none"
-                  >
-                    <option value="mesa">Mesa</option>
-                    <option value="balcao">Balcão</option>
-                  </select>
-                </label>
-              </div>
-
-              <div className="mt-4 grid grid-cols-6 gap-2" aria-label="Selecionar mesa">
-                {tableOptions.map((table) => (
-                  <button
-                    type="button"
-                    key={table}
-                    onClick={() => onTableChange(table)}
-                    aria-pressed={tableNumber === table}
-                    aria-label={`Selecionar mesa ${table}`}
-                    className={`h-9 rounded-md text-xs font-black transition active:scale-[0.98] ${
-                      tableNumber === table
-                        ? 'bg-[#4b160e] text-white'
-                        : 'bg-[#f5eee4] text-[#4b160e]'
-                    }`}
-                  >
-                    {table}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="mt-4 space-y-3">
+            <section className="mt-4 space-y-2.5">
               {cartItems.length === 0 ? (
                 <p className="rounded-lg border border-[#eadfd9] bg-white p-4 text-sm font-bold text-[#9b837a]">
                   Nenhum item adicionado.
@@ -4778,34 +4829,34 @@ function OrderScreen({
               )}
             </section>
 
-            <section className="mt-8">
+            <section className="mt-7">
               <div className="flex items-center gap-3">
-                <span className="grid size-11 place-items-center rounded-full bg-[#4b160e] text-white">
-                  <ReceiptText size={21} />
+                <span className="grid size-9 place-items-center rounded-full bg-[#4b160e] text-white">
+                  <ReceiptText size={17} />
                 </span>
-                <h2 className="text-lg font-black">Observações</h2>
+                <h2 className="text-[15px] font-bold">Observações</h2>
               </div>
               <textarea
                 value={observations}
                 onChange={(event) => setObservations(event.target.value)}
                 placeholder="Ex.: Caldinho de peixe sem azeitona"
-                className="mt-4 h-[68px] w-full resize-none rounded-lg border border-[#d8c7bf] px-4 py-4 text-sm font-semibold text-[#4b160e] outline-none placeholder:text-[#b6a4a0]"
+                className="mt-3 h-[68px] w-full resize-none rounded-lg border border-[#d8c7bf] px-4 py-3 text-[12px] font-normal text-[#4b160e] outline-none placeholder:text-[#b6a4a0]"
               />
             </section>
 
-            <div className="mt-4 rounded-lg border border-[#4b160e] bg-[#f2e3cc] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-3 text-lg font-black">
-                  <ShoppingCart size={24} />
+            <div className="mt-3">
+              <div className="flex h-12 items-center justify-between gap-3 rounded-lg border border-[#8d5a4e] bg-[#f2e3cc] px-4">
+                <span className="flex items-center gap-2.5 text-[14px] font-bold">
+                  <ShoppingCart size={19} />
                   TOTAL
                 </span>
-                <p className="text-xl font-black">{formatCurrency(cartTotal)}</p>
+                <p className="text-[17px] font-bold">{formatCurrency(cartTotal)}</p>
               </div>
               <button
                 type="button"
                 onClick={() => onSendOrder({ customerName, serviceType, paymentType: 'garcom', observations })}
-                disabled={!cartItems.length || !tableNumber}
-                className="mx-auto mt-4 flex h-12 w-[86%] items-center justify-center rounded-full bg-[#4b160e] text-sm font-black text-white transition active:scale-[0.99] disabled:bg-[#b89d94] disabled:text-white/65"
+                disabled={!cartItems.length}
+                className="mx-auto mt-3 flex h-11 w-[82%] items-center justify-center rounded-full bg-[#4b160e] text-[13px] font-medium text-white transition active:scale-[0.99] disabled:bg-[#b89d94] disabled:text-white/65"
               >
                 MOSTRAR AO GARÇOM
               </button>
@@ -4822,71 +4873,74 @@ function OrderItemCard({ item, onUpdateCartItem }) {
   const detail = item.optionLabel || item.optionDetail || 'Porção'
 
   return (
-    <article className="grid min-h-[112px] grid-cols-[124px_1fr_auto] gap-3 rounded-lg border border-[#d8c7bf] bg-white p-2.5">
+    <article className="grid min-h-[108px] grid-cols-[124px_1fr] gap-2.5 rounded-lg border border-[#d8c7bf] bg-white p-2">
       <img
         src={item.product.image}
         alt=""
         aria-hidden="true"
         className="h-[92px] w-full rounded-md object-cover"
       />
-      <div className="min-w-0 py-1">
-        <h2 className="truncate text-sm font-black" title={item.product.name}>
+      <div className="relative min-w-0 py-1">
+        <h2 className="truncate pr-1 text-[13px] font-bold" title={item.product.name}>
           {item.product.name.toUpperCase()}
         </h2>
-        <p className="mt-1 text-sm font-medium">{detail}</p>
+        <p className="mt-1 flex items-center gap-1 text-[11px] font-normal text-[#79574f]">
+          <UserRound size={13} strokeWidth={1.5} />
+          {detail}
+        </p>
         {item.note && (
           <p className="mt-1 line-clamp-2 text-xs font-semibold text-[#8b6d66]">Obs.: {item.note}</p>
         )}
-        <div className="mt-3 inline-flex h-7 items-center rounded-full border border-[#4b160e] bg-[#f7ead7] text-[#4b160e]">
+        <div className="absolute bottom-0 left-0 inline-flex h-6 items-center rounded-full border border-[#8d5a4e] bg-[#f7ead7] text-[#4b160e]">
           <button
             type="button"
             onClick={() => onUpdateCartItem(item.productId, item.quantity - 1, item.optionId, item.note)}
             aria-label={`Diminuir quantidade de ${item.product.name}`}
-            className="grid h-7 w-8 place-items-center"
+            className="grid h-6 w-8 place-items-center"
           >
             <Minus size={14} strokeWidth={3} />
           </button>
-          <span className="w-9 text-center text-sm font-black">{item.quantity}</span>
+          <span className="w-8 text-center text-[12px] font-semibold">{item.quantity}</span>
           <button
             type="button"
             onClick={() => onUpdateCartItem(item.productId, item.quantity + 1, item.optionId, item.note)}
             aria-label={`Aumentar quantidade de ${item.product.name}`}
-            className="grid h-7 w-8 place-items-center"
+            className="grid h-6 w-8 place-items-center"
           >
             <Plus size={14} strokeWidth={3} />
           </button>
         </div>
+        <p className="absolute bottom-1 right-0 text-right text-[13px] font-bold">{formatCurrency(itemPrice)}</p>
       </div>
-      <p className="self-center pr-1 text-right text-base font-black">{formatCurrency(itemPrice)}</p>
     </article>
   )
 }
 
 function CartBar({ quantity, total, onOpenOrder }) {
   return (
-    <div className="absolute bottom-4 left-4 right-4 rounded-lg bg-[#4b160e] p-3 text-white shadow-2xl shadow-black/20">
+    <div className="fixed bottom-4 left-1/2 z-[120] w-[calc(100%-32px)] max-w-[398px] -translate-x-1/2 rounded-2xl border border-[#e2d7d2] bg-white/95 px-3 py-2 text-[#4b160e] shadow-[0_10px_30px_rgba(67,22,15,0.16)] backdrop-blur">
       <button
         type="button"
         onClick={onOpenOrder}
         aria-label={`Fazer pedido com ${quantity} ${quantity === 1 ? 'item' : 'itens'}, total de ${formatCurrency(total)}`}
-        className="flex h-12 w-full items-center justify-between gap-3"
+        className="flex h-11 w-full items-center justify-between gap-3"
       >
-        <span className="flex items-center gap-3">
-          <span className="relative grid size-10 place-items-center">
-            <ShoppingCart size={18} />
-            <span className="absolute -right-1 top-0 grid size-4 place-items-center rounded-full bg-[#f8a91f] text-[10px] font-black text-white">
+        <span className="flex items-center gap-2.5">
+          <span className="relative grid size-9 place-items-center rounded-full bg-[#f4ece8]">
+            <ShoppingCart size={17} strokeWidth={1.8} />
+            <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-[#d8ad61] text-[9px] font-semibold text-white">
               {quantity}
             </span>
           </span>
           <span className="text-left">
-            <span className="block text-[13px] font-medium">
+            <span className="block text-[11px] font-normal text-[#8b6d66]">
               {quantity} {quantity === 1 ? 'item' : 'itens'}
             </span>
-            <span className="block text-base font-black">{formatCurrency(total)}</span>
+            <span className="block text-[14px] font-semibold">{formatCurrency(total)}</span>
           </span>
         </span>
-        <span className="rounded-lg bg-[#f8a91f] px-4 py-3 text-xs font-black text-white">
-          VER PEDIDO
+        <span className="inline-flex h-8 items-center rounded-full bg-[#4b160e] px-4 text-[11px] font-medium text-white">
+          Ver carrinho
         </span>
       </button>
     </div>
@@ -5424,12 +5478,8 @@ function buildNfcUrl(tableNumber, slug = defaultRestaurantProfile.slug) {
 }
 
 function buildDishInfoTags(product) {
-  const tags = [...(product.tags ?? [])]
-  const normalizedCategory = normalizeText(product.category)
-
-  if ((normalizedCategory.includes('sobremesas') || normalizedCategory.includes('bebidas')) && !tags.includes('Açúcar')) {
-    tags.push('Açúcar')
-  }
+  const recognizedAllergens = new Set(allergenOptions.map((allergen) => normalizeText(allergen.id)))
+  const tags = (product.tags ?? []).filter((tag) => recognizedAllergens.has(normalizeText(tag)))
 
   return tags.length ? tags : ['Consultar alergênicos']
 }
