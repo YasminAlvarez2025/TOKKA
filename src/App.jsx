@@ -5678,9 +5678,14 @@ function buildPublicMenuUrl(slugOrName = defaultRestaurantProfile.slug) {
 }
 
 function normalizeRestaurantProfile(profile = defaultRestaurantProfile) {
+  const logo = isLegacyDevelopmentAsset(profile.logo) ? defaultRestaurantProfile.logo : profile.logo
+  const cover = isLegacyDevelopmentAsset(profile.cover) ? defaultRestaurantProfile.cover : profile.cover
+
   return {
     ...defaultRestaurantProfile,
     ...profile,
+    logo: logo || defaultRestaurantProfile.logo,
+    cover: cover || defaultRestaurantProfile.cover,
     slug: slugifyMenuName(profile.slug || profile.name || defaultRestaurantProfile.slug),
     theme: {
       ...defaultRestaurantProfile.theme,
@@ -5742,10 +5747,15 @@ function serializeProducts(items = baseProducts) {
 function hydratePromoItems(items) {
   if (!Array.isArray(items) || !items.length) return promoSlides
 
-  return items.map((item) => ({
-    ...(promoSlides.find((promo) => promo.id === item.id) ?? {}),
-    ...item,
-  }))
+  return items.map((item) => {
+    const basePromo = promoSlides.find((promo) => promo.id === item.id)
+
+    return {
+      ...(basePromo ?? {}),
+      ...item,
+      image: isLegacyDevelopmentAsset(item.image) ? basePromo?.image || promoShrimp : item.image || basePromo?.image || promoShrimp,
+    }
+  })
 }
 
 function hydrateProducts(items) {
@@ -5759,12 +5769,18 @@ function hydrateProducts(items) {
       ...(baseProduct ?? {}),
       ...item,
       category,
-      image: item.image || baseProduct?.image || fallbackImages[category] || categoriaFrutosDoMar,
+      image: isLegacyDevelopmentAsset(item.image)
+        ? baseProduct?.image || fallbackImages[category] || categoriaFrutosDoMar
+        : item.image || baseProduct?.image || fallbackImages[category] || categoriaFrutosDoMar,
       tags: Array.isArray(item.tags) ? item.tags : baseProduct?.tags ?? [],
       options: Array.isArray(item.options) ? item.options : baseProduct?.options ?? [],
       active: item.active !== false,
     }
   })
+}
+
+function isLegacyDevelopmentAsset(value) {
+  return typeof value === 'string' && (value.startsWith('/src/assets/') || value.startsWith('src/assets/'))
 }
 
 function getTableFromUrl() {
