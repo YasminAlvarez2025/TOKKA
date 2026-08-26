@@ -5774,9 +5774,10 @@ function getTableFromUrl() {
 function getMenuSlugFromHash(hashValue = window.location.hash) {
   const hash = String(hashValue ?? '')
 
-  return hash.startsWith('#cardapio-')
-    ? slugifyMenuName(hash.replace('#cardapio-', ''))
-    : ''
+  if (hash.startsWith('#cardapio-')) return slugifyMenuName(hash.replace('#cardapio-', ''))
+  if (hash.startsWith('#menu=')) return slugifyMenuName(hash.replace('#menu=', ''))
+
+  return ''
 }
 
 function getInitialScreen() {
@@ -5786,6 +5787,7 @@ function getInitialScreen() {
   if (hash.startsWith('#promocao=')) return 'promocao'
   if (hash.startsWith('#categoria=')) return 'categoria-pratos'
   if (hash.startsWith('#cardapio-')) return 'menu'
+  if (hash.startsWith('#menu=')) return 'menu'
   if (hash === '#pedido') return 'pedido'
   if (hash === '#menu') return 'menu'
   if (hash === '#categorias') return 'categorias'

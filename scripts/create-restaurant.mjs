@@ -74,7 +74,7 @@ try {
   }, { merge: true })
 
   console.log(`Restaurante criado: ${restaurantName}`)
-  console.log(`Link: https://tokka-eb4ae.web.app/#menu=${restaurantSlug}`)
+  console.log(`Link: https://tokka-eb4ae.web.app/#cardapio-${restaurantSlug}`)
   console.log(`Administrador vinculado: ${adminEmail}`)
 } finally {
   await signOut(ownerAuth).catch(() => {})
