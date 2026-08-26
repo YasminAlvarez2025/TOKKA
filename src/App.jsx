@@ -430,6 +430,7 @@ function App() {
   const [products, setProducts] = useState(initialMenuState.products)
   const [favoriteProductIds, setFavoriteProductIds] = useState([])
   const [cart, setCart] = useState([])
+  const [editingCartItem, setEditingCartItem] = useState(null)
   const [tableNumber, setTableNumber] = useState(initialTable || '')
   const [nfcTable, setNfcTable] = useState(initialTable || '01')
   const [copied, setCopied] = useState(false)
@@ -824,6 +825,7 @@ function App() {
   }
 
   function openProduct(product, returnScreenOverride = '') {
+    setEditingCartItem(null)
     setProductReturnScreen(returnScreenOverride || (screen === 'categoria-pratos' ? 'categoria-pratos' : 'menu'))
     setSelectedProductId(product.id)
     showScreen('produto', `produto=${product.id}`)
@@ -888,6 +890,7 @@ function App() {
   function addToCart(productId, quantity = 1, note = '', option = null) {
     const product = products.find((item) => item.id === productId)
     const optionId = option?.id ?? ''
+    setOrderSent(false)
 
     setCart((items) => {
       const existing = items.find(
@@ -937,6 +940,38 @@ function App() {
         )
         .filter((item) => item.quantity > 0),
     )
+  }
+
+  function openCartItemEditor(item) {
+    setEditingCartItem(item)
+    setProductReturnScreen('pedido')
+    setSelectedProductId(item.productId)
+    showScreen('produto', `produto=${item.productId}`)
+  }
+
+  function saveCartItemEdit(selectedOption, note) {
+    if (!editingCartItem) return
+
+    setCart((items) =>
+      items.map((item) =>
+        item.productId === editingCartItem.productId &&
+        item.optionId === editingCartItem.optionId &&
+        item.note === editingCartItem.note
+          ? {
+              ...item,
+              note,
+              optionId: selectedOption?.id ?? '',
+              optionLabel: selectedOption?.label ?? '',
+              optionDetail: selectedOption?.detail ?? '',
+              people: selectedOption?.people ?? null,
+              unitPrice: selectedOption?.price ?? item.unitPrice,
+            }
+          : item,
+      ),
+    )
+    setEditingCartItem(null)
+    setOrderSent(false)
+    showScreen('pedido')
   }
 
   function addAdminItem(item) {
@@ -1241,7 +1276,10 @@ function App() {
             onOpenSettings={openAdminPrincipal}
             onOpenProduct={openProduct}
             onAddToCart={addToCart}
-            onOpenOrder={() => showScreen('pedido')}
+            onOpenOrder={() => {
+              setOrderSent(false)
+              showScreen('pedido')
+            }}
             onOpenPromotion={openPromotion}
             onOpenVezz={openVezz}
             onStartVoiceCommand={startVoiceCommand}
@@ -1277,6 +1315,7 @@ function App() {
             key={selectedProduct.id}
             product={selectedProduct}
             restaurantProfile={restaurantProfile}
+            editingCartItem={editingCartItem}
             onBack={() => {
               if (productReturnScreen === 'promocao') {
                 showScreen('promocao', `promocao=${selectedPromoId}`)
@@ -1288,10 +1327,17 @@ function App() {
                 return
               }
 
+              if (productReturnScreen === 'pedido') {
+                setEditingCartItem(null)
+                showScreen('pedido')
+                return
+              }
+
               showScreen('menu')
             }}
             onAddToCart={addToCart}
             onAdded={() => showScreen('menu')}
+            onSaveCartItem={saveCartItemEdit}
             onOpenSettings={openAdminPrincipal}
           />
         )}
@@ -1404,6 +1450,12 @@ function App() {
             restaurantProfile={restaurantProfile}
             tableNumber={tableNumber}
             onBack={() => showScreen('menu')}
+            onEditCartItem={openCartItemEditor}
+            onFinishOrder={() => {
+              setOrderSent(false)
+              setCart([])
+              showScreen('menu')
+            }}
             onSendOrder={sendOrder}
             onTableChange={setTableNumber}
             onUpdateCartItem={updateCartItem}
@@ -2223,6 +2275,8 @@ function ProductImageGallery({ product }) {
 function DishInfoChips({ product }) {
   const infoTags = buildDishInfoTags(product)
 
+  if (!infoTags.length) return null
+
   return (
     <section className="mt-1.5" aria-label="Informações importantes do prato">
       <div className="flex flex-wrap justify-center gap-1.5">
@@ -2240,7 +2294,7 @@ function DishInfoChips({ product }) {
   )
 }
 
-function ProductScreen({ product, restaurantProfile = defaultRestaurantProfile, onBack, onAddToCart, onAdded, onOpenSettings }) {
+function ProductScreen({ product, restaurantProfile = defaultRestaurantProfile, editingCartItem = null, onBack, onAddToCart, onAdded, onSaveCartItem, onOpenSettings }) {
   const productOptions = useMemo(
     () =>
       product.options?.length
@@ -2248,15 +2302,20 @@ function ProductScreen({ product, restaurantProfile = defaultRestaurantProfile, 
         : [{ id: 'base', label: '1 pessoa', detail: 'Porção individual', price: product.price, people: 1 }],
     [product],
   )
-  const [selectedOptionId, setSelectedOptionId] = useState(() => productOptions.at(-1)?.id ?? 'base')
+  const [selectedOptionId, setSelectedOptionId] = useState(() => editingCartItem?.optionId || productOptions.at(-1)?.id || 'base')
   const [quantity, setQuantity] = useState(1)
-  const [note, setNote] = useState('')
+  const [note, setNote] = useState(() => editingCartItem?.note ?? '')
   const [itemAdded, setItemAdded] = useState(false)
   const selectedOption =
     productOptions.find((option) => option.id === selectedOptionId) ?? productOptions.at(-1)
   const itemTotal = (selectedOption?.price ?? product.price) * quantity
 
   function addCurrentItem() {
+    if (editingCartItem) {
+      onSaveCartItem(selectedOption, note.trim())
+      return
+    }
+
     onAddToCart(product.id, quantity, note.trim(), selectedOption)
     setItemAdded(true)
     window.setTimeout(() => onAdded(), 1300)
@@ -2327,12 +2386,26 @@ function ProductScreen({ product, restaurantProfile = defaultRestaurantProfile, 
           </div>
         </section>
 
+        <label className="mt-5 block">
+          <span className="font-montserrat text-[14px] font-normal text-[#6b3025]">Observações</span>
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Ex.: sem cebola, molho à parte ou algum pedido especial"
+            className="mt-2 h-[72px] w-full resize-none rounded-lg border border-[#d8c7bf] bg-white px-3.5 py-3 text-[13px] font-normal leading-[18px] text-[#4b160e] outline-none placeholder:text-[#b6a4a0] focus:border-[#8d5a4e]"
+          />
+        </label>
+
         <button
           type="button"
           onClick={addCurrentItem}
           className="mx-auto mt-7 flex h-12 w-[86%] items-center justify-center rounded-full bg-[#4b160e] text-[16px] font-medium text-white transition active:scale-[0.99]"
         >
-          ADICIONAR - <strong className="ml-1">{formatCurrency(itemTotal)}</strong>
+          {editingCartItem ? (
+            'SALVAR ALTERAÇÕES'
+          ) : (
+            <>ADICIONAR - <strong className="ml-1">{formatCurrency(itemTotal)}</strong></>
+          )}
         </button>
       </div>
 
@@ -3006,6 +3079,7 @@ function getAllergenIcon(label) {
     crustaceos: allergenCrustaceos,
     soja: allergenSoja,
   }
+
   const imageKey = Object.keys(allergenImages).find((key) => normalizedLabel.includes(key))
 
   if (imageKey) {
@@ -4776,6 +4850,8 @@ function OrderScreen({
   restaurantProfile = defaultRestaurantProfile,
   tableNumber,
   onBack,
+  onEditCartItem,
+  onFinishOrder,
   onSendOrder,
   onTableChange,
   onUpdateCartItem,
@@ -4790,14 +4866,49 @@ function OrderScreen({
 
       <div className="relative z-10 -mt-9 rounded-t-[24px] bg-white px-5 pb-8 pt-7 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         {orderSent ? (
-          <section className="rounded-lg border border-[#eadfd9] bg-white p-6 text-center">
-            <div className="mx-auto grid size-14 place-items-center rounded-full bg-[#4b160e] text-white">
-              <CircleCheck size={28} />
+          <section aria-labelledby="confirmed-order-title">
+            <div className="flex items-center gap-3 px-2">
+              <div className="grid size-12 place-items-center rounded-full bg-[#4b160e] text-white">
+                <CircleCheck size={24} />
+              </div>
+              <div>
+                <h1 id="confirmed-order-title" className="text-[16px] font-bold">RESUMO DO PEDIDO</h1>
+                <p className="text-[11px] font-normal text-[#79574f]">Confira os itens com o garçom</p>
+              </div>
             </div>
-            <h1 className="mt-4 text-xl font-black">Pedido pronto</h1>
-            <p className="mt-2 text-sm font-medium leading-6 text-[#7e6258]">
-              Mostre esta tela ao garçom para confirmar a mesa {tableNumber || 'selecionada'}.
-            </p>
+
+            <div className="mt-5 space-y-2.5">
+              {cartItems.map((item) => {
+                const unitPrice = item.unitPrice ?? item.product.price
+                const itemTotal = unitPrice * item.quantity
+
+                return (
+                  <article key={`${item.productId}-${item.optionId}-${item.note}`} className="grid grid-cols-[72px_1fr_auto] items-center gap-3 rounded-lg border border-[#d8c7bf] bg-white p-2.5">
+                    <img src={item.product.image} alt="" className="size-[72px] rounded-md object-cover" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <h2 className="truncate text-[12px] font-bold" title={item.product.name}>{item.product.name.toUpperCase()}</h2>
+                      <p className="mt-1 text-[11px] font-normal text-[#79574f]">Quantidade: {item.quantity}</p>
+                      <p className="mt-0.5 text-[11px] font-normal text-[#79574f]">Unitário: {formatCurrency(unitPrice)}</p>
+                      {item.note && <p className="mt-0.5 line-clamp-2 text-[9px] font-normal leading-3 text-[#8b6d66]">Obs.: {item.note}</p>}
+                    </div>
+                    <p className="text-right text-[13px] font-bold">{formatCurrency(itemTotal)}</p>
+                  </article>
+                )
+              })}
+            </div>
+
+            <div className="mt-4 flex h-12 items-center justify-between rounded-lg border border-[#8d5a4e] bg-[#f2e3cc] px-4">
+              <span className="text-[14px] font-bold">TOTAL DO PEDIDO</span>
+              <strong className="text-[17px]">{formatCurrency(cartTotal)}</strong>
+            </div>
+
+            <button
+              type="button"
+              onClick={onFinishOrder}
+              className="mx-auto mt-5 flex h-11 w-[86%] items-center justify-center rounded-full bg-[#4b160e] text-[13px] font-medium text-white transition active:scale-[0.99]"
+            >
+              PEDIDO FEITO AO GARÇOM
+            </button>
           </section>
         ) : (
           <>
@@ -4823,6 +4934,7 @@ function OrderScreen({
                   <OrderItemCard
                     key={`${item.productId}-${item.optionId}-${item.note}`}
                     item={item}
+                    onEdit={() => onEditCartItem(item)}
                     onUpdateCartItem={onUpdateCartItem}
                   />
                 ))
@@ -4868,7 +4980,7 @@ function OrderScreen({
   )
 }
 
-function OrderItemCard({ item, onUpdateCartItem }) {
+function OrderItemCard({ item, onEdit, onUpdateCartItem }) {
   const itemPrice = (item.unitPrice ?? item.product.price) * item.quantity
   const detail = item.optionLabel || item.optionDetail || 'Porção'
 
@@ -4881,15 +4993,23 @@ function OrderItemCard({ item, onUpdateCartItem }) {
         className="h-[92px] w-full rounded-md object-cover"
       />
       <div className="relative min-w-0 py-1">
-        <h2 className="truncate pr-1 text-[13px] font-bold" title={item.product.name}>
+        <h2 className="truncate pr-8 text-[13px] font-bold" title={item.product.name}>
           {item.product.name.toUpperCase()}
         </h2>
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={`Editar porção e observações de ${item.product.name}`}
+          className="absolute right-0 top-0 grid size-7 place-items-center rounded-full bg-[#f4ece8] text-[#79574f]"
+        >
+          <Pencil size={13} strokeWidth={1.8} />
+        </button>
         <p className="mt-1 flex items-center gap-1 text-[11px] font-normal text-[#79574f]">
           <UserRound size={13} strokeWidth={1.5} />
           {detail}
         </p>
         {item.note && (
-          <p className="mt-1 line-clamp-2 text-xs font-semibold text-[#8b6d66]">Obs.: {item.note}</p>
+          <p className="mt-1 line-clamp-2 text-[10px] font-normal leading-3 text-[#8b6d66]">Obs.: {item.note}</p>
         )}
         <div className="absolute bottom-0 left-0 inline-flex h-6 items-center rounded-full border border-[#8d5a4e] bg-[#f7ead7] text-[#4b160e]">
           <button
@@ -5481,7 +5601,7 @@ function buildDishInfoTags(product) {
   const recognizedAllergens = new Set(allergenOptions.map((allergen) => normalizeText(allergen.id)))
   const tags = (product.tags ?? []).filter((tag) => recognizedAllergens.has(normalizeText(tag)))
 
-  return tags.length ? tags : ['Consultar alergênicos']
+  return tags
 }
 
 function buildProductAriaLabel(product) {
