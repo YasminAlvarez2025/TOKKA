@@ -29,7 +29,7 @@ service cloud.firestore {
       return restaurantId == 'tokka-foods'
         && isSignedIn()
         && request.auth.uid == adminId
-        && request.auth.token.email == 'barracadofabio@tokkafoods.com.br'
+        && request.auth.token.email == 'cocobambu@tokka.com.br'
         && request.resource.data.keys().hasOnly(['email', 'username', 'role', 'createdAt'])
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.username is string
