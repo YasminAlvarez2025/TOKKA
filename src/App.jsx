@@ -1680,7 +1680,7 @@ function CategoryDishCard({ product, onOpen }) {
         </span>
         <span className="block text-[13px] font-bold">{formatCurrency(product.price)}</span>
       </span>
-      <span className="relative block h-[90px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
+      <span className="brand-photo-frame relative block h-[90px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
         <img src={product.image} alt="" className="block size-full scale-[1.03] object-cover" />
         <span className="absolute bottom-2 right-2 flex h-5 items-center justify-center whitespace-nowrap rounded-full bg-white/95 px-2 text-[7.5px] font-black leading-none text-[#4b160e] shadow-[0_2px_8px_rgba(67,22,15,0.16)]">
           VER PRATO &gt;
@@ -2128,7 +2128,7 @@ function CategoryPreviewCard({ category, active, onClick }) {
       className="min-h-[98px] w-[calc((min(100vw,430px)-48px)/3)] flex-none text-center"
     >
       <span
-        className={`block h-[84px] overflow-hidden rounded-md bg-[#4b160e] transition ${
+        className={`brand-photo-frame block h-[84px] overflow-hidden rounded-md bg-[#4b160e] transition ${
           active ? 'ring-2 ring-[#4b160e] ring-offset-2 ring-offset-white' : ''
         }`}
       >
@@ -2195,7 +2195,7 @@ function MenuProductCard({ product, onOpen }) {
         </span>
         <span className="block text-[13px] font-bold">{formatCurrency(product.price)}</span>
       </span>
-      <span className="relative block h-[96px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
+      <span className="brand-photo-frame relative block h-[96px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
         <img
           src={product.image}
           alt=""
@@ -2218,7 +2218,7 @@ function MenuProductGridCard({ product, onOpen }) {
       aria-label={buildProductAriaLabel(product)}
       className="h-[236px] overflow-hidden rounded-lg bg-[#f0f0f0] p-2.5 text-left transition active:scale-[0.99]"
     >
-      <span className="relative block h-[108px] overflow-hidden rounded-lg bg-[#4b160e]">
+      <span className="brand-photo-frame relative block h-[108px] overflow-hidden rounded-lg bg-[#4b160e]">
         <img
           src={product.image}
           alt=""
@@ -2310,7 +2310,7 @@ function PromotionScreen({ promo, restaurantProfile = defaultRestaurantProfile, 
 
 function ProductImageGallery({ product }) {
   return (
-    <div className="mx-1 aspect-[1.48] overflow-hidden rounded-lg bg-[#4b160e] p-2" aria-label="Foto do prato">
+    <div className="brand-photo-frame mx-1 aspect-[1.48] overflow-hidden rounded-lg bg-[#4b160e] p-2" aria-label="Foto do prato">
       <img
         src={product.image}
         alt={product.name}
@@ -3955,7 +3955,7 @@ function AdminLogoDialog({ logo, onCancel, onSave }) {
                 </label>
               ))}
             </div>
-            <p className="mt-3 text-[10px] leading-4 text-slate-500">A cor principal será usada nas bordas das fotos, títulos, descrições e preços.</p>
+            <p className="mt-3 text-[10px] leading-4 text-slate-500">A cor principal será usada somente nas bordas das fotos e nos textos. O fundo permanecerá branco.</p>
           </div>
         )}
 
@@ -5715,7 +5715,7 @@ function buildThemeStyle(profile = defaultRestaurantProfile) {
   return {
     '--brand-primary': theme.primary,
     '--brand-accent': theme.accent,
-    '--brand-surface': theme.surface,
+    '--brand-surface': '#ffffff',
     accentColor: theme.primary,
   }
 }
