@@ -119,7 +119,7 @@ const defaultRestaurantProfile = {
     surface: '#ffffff',
   },
 }
-const defaultAdminEmail = 'admin@tokkafoods.com.br'
+const defaultAdminEmail = 'barracadofabio@tokkafoods.com.br'
 const analyticsStorageKey = 'food99like-events'
 const sessionStorageKey = 'food99like-session'
 const cardBaseUrl = 'https://menu.food99like.app/c/8Ks29'

@@ -23,7 +23,7 @@ const firebaseConfig = {
 }
 
 const restaurantId = process.env.FIREBASE_RESTAURANT_ID || 'tokka-foods'
-const adminEmail = process.env.FIREBASE_ADMIN_EMAIL || 'admin@tokkafoods.com.br'
+const adminEmail = process.env.FIREBASE_ADMIN_EMAIL || 'barracadofabio@tokkafoods.com.br'
 const adminPassword = process.env.FIREBASE_ADMIN_PASSWORD
 
 if (!adminPassword) {

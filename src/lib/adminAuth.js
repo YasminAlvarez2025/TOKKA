@@ -15,7 +15,7 @@ import { deleteApp, initializeApp } from 'firebase/app'
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, db, firebaseConfig } from './firebase'
 
-export const bootstrapAdminEmail = 'admin@tokkafoods.com.br'
+export const bootstrapAdminEmail = 'barracadofabio@tokkafoods.com.br'
 
 export function watchAdminSession(restaurantId, onChange) {
   return onAuthStateChanged(auth, async (user) => {
