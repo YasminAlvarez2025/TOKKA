@@ -21,6 +21,7 @@
     "firebase:deploy": "npm run build && firebase deploy"
   },
   "dependencies": {
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.3.3",
     "@tailwindcss/vite": "latest",
     "@vitejs/plugin-react": "latest",
     "firebase": "^12.17.1",

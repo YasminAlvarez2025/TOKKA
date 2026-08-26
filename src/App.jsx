@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
+  ArrowRight,
   BadgePlus,
   BarChart3,
   Camera,
@@ -35,7 +36,6 @@ import {
   Trash2,
   UserRound,
   Volume2,
-  VolumeX,
   X,
 } from 'lucide-react'
 import cocoBackground from './assets/images/cocobambu_fundo.png'
@@ -62,6 +62,13 @@ import iconFrutosDoMar from './assets/icons/icon frutos do mar.png'
 import iconSaladas from './assets/icons/icon salada.png'
 import iconSobremesas from './assets/icons/icon sobremesa.png'
 import iconVeganos from './assets/icons/icon vegano.png'
+import allergenCastanhas from './assets/icons/castanhas.png'
+import allergenCrustaceos from './assets/icons/crustaceos.png'
+import allergenGluten from './assets/icons/gluten.png'
+import allergenLactose from './assets/icons/lactose.png'
+import allergenOvo from './assets/icons/ovo.png'
+import allergenPeixe from './assets/icons/peixe.png'
+import allergenSoja from './assets/icons/soja.png'
 import {
   loginAdmin,
   logoutAdmin,
@@ -1437,35 +1444,43 @@ function CategoriesScreen({ categories, restaurantProfile = defaultRestaurantPro
   return (
     <section className="h-full overflow-y-auto bg-white pb-8 text-[#43160f]">
       <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onOpenSettings} compact />
-      <div className="relative z-10 -mt-8 rounded-t-[34px] bg-white px-5 pb-8 pt-6 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+      <div className="relative z-10 -mt-8 rounded-t-[34px] bg-white px-4 pb-8 pt-10 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <img
           src={restaurantProfile.logo}
           alt={restaurantProfile.name}
           loading="eager"
           decoding="sync"
-          className="relative z-20 mx-auto -mt-[92px] size-[142px] rounded-full border-4 border-[#d8ad61] bg-[#4a160f]"
+          className="absolute left-1/2 top-[-70px] z-20 size-[96px] -translate-x-1/2 rounded-full bg-[#4a160f]"
         />
-        <h1 data-screen-title="true" tabIndex={-1} className="mt-3 text-center text-[28px] font-medium leading-none outline-none">
+        <h1 data-screen-title="true" tabIndex={-1} className="font-montserrat text-center text-[17px] font-medium leading-none outline-none">
           CATEGORIAS
         </h1>
-        <div className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4">
+        <div className="mt-6 grid grid-cols-2 gap-x-2 gap-y-0">
           {categories.map((category) => (
             <button
               type="button"
               key={category.id}
               onClick={() => onSelectCategory(category.id)}
-              className="text-center"
+              className="text-center transition active:scale-[0.99]"
             >
-              <span className="block aspect-[1.47] overflow-hidden rounded-lg border-[3px] border-[#4b160e] bg-white">
+              <span className="relative block">
+                <span className="block aspect-[1.47] overflow-hidden rounded-lg border-[3px] border-[#4b160e] bg-white">
+                  <img
+                    src={category.image}
+                    alt=""
+                    loading="eager"
+                    decoding="sync"
+                    className="block size-full object-cover object-center"
+                  />
+                </span>
                 <img
-                  src={category.image}
+                  src={category.iconImage}
                   alt=""
-                  loading="eager"
-                  decoding="sync"
-                  className="block size-full object-cover"
+                  className="absolute bottom-[-17px] left-1/2 z-10 size-[48px] -translate-x-1/2 object-contain"
+                  draggable="false"
                 />
               </span>
-              <span className="mt-1.5 flex min-h-7 items-start justify-center text-center text-[17px] font-black leading-tight">
+              <span className="font-montserrat mt-5 flex min-h-5 items-start justify-center text-center text-[12px] font-semibold leading-tight">
                 {category.label.toUpperCase()}
               </span>
             </button>
@@ -1483,14 +1498,12 @@ function CategoryProductsScreen({ category, products, restaurantProfile = defaul
     <section className="h-full overflow-y-auto bg-white pb-8 text-[#43160f]" aria-labelledby="category-products-title">
       <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onOpenSettings} compact />
 
-      <div className="relative z-10 -mt-7 rounded-t-[26px] bg-white px-4 pb-8 pt-[70px] shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
-        <div className="absolute left-1/2 top-[-70px] grid size-[126px] -translate-x-1/2 place-items-center rounded-full border-4 border-[#d8ad61] bg-[#4b160e] shadow-[0_9px_0_rgba(75,22,14,0.18),0_18px_34px_rgba(67,22,15,0.20)] ring-[5px] ring-white">
-          <span className="absolute inset-2 rounded-full bg-[radial-gradient(circle_at_34%_24%,rgba(216,173,97,0.28),transparent_42%)]" />
-          <span className="absolute inset-[13px] rounded-full border border-[#d8ad61]/35" />
+      <div className="relative z-10 -mt-8 rounded-t-[34px] bg-white px-4 pb-8 pt-[60px] shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <div className="absolute left-1/2 top-[-68px] grid size-[92px] -translate-x-1/2 place-items-center">
           <img
             src={category.iconImage}
             alt=""
-            className="relative z-10 w-[78px] drop-shadow-[0_3px_0_rgba(0,0,0,0.24)]"
+            className="block size-[92px] object-contain"
           />
         </div>
 
@@ -1498,16 +1511,23 @@ function CategoryProductsScreen({ category, products, restaurantProfile = defaul
           id="category-products-title"
           data-screen-title="true"
           tabIndex={-1}
-          className="text-center text-[22px] font-black outline-none"
+          className="font-anton -translate-y-7 text-center text-[21px] font-normal tracking-[0.02em] outline-none"
         >
           {category.label.toUpperCase()}
         </h1>
 
-        <div className="mt-5 space-y-5">
+        <div className="mt-2 space-y-5">
           {groupedProducts.length ? (
             groupedProducts.map((group) => (
               <section key={group.title}>
-                <h2 className="mb-2 px-1 text-[17px] font-black">{group.title}</h2>
+                <h2
+                  className={`mb-2 min-h-[20px] px-1 text-[17px] font-black ${
+                    normalizeText(group.title) === normalizeText(category.label) ? 'invisible' : ''
+                  }`}
+                  aria-hidden={normalizeText(group.title) === normalizeText(category.label)}
+                >
+                  {group.title}
+                </h2>
                 <div className="space-y-2.5">
                   {group.products.map((product) => (
                     <CategoryDishCard
@@ -1538,14 +1558,14 @@ function CategoryDishCard({ product, onOpen }) {
       aria-label={buildProductAriaLabel(product)}
       className="grid h-[116px] w-full grid-cols-[1fr_130px] gap-3 overflow-hidden rounded-lg bg-[#f0f0f0] p-3 text-left"
     >
-      <span className="flex min-w-0 flex-col overflow-hidden">
-        <span className="block truncate text-[13px] font-black leading-tight" title={product.name}>
+      <span className="grid min-w-0 grid-rows-[auto_1fr_auto] self-stretch overflow-hidden">
+        <span className="block truncate text-[13px] font-bold leading-tight" title={product.name}>
           {product.name.toUpperCase()}
         </span>
-        <span className="mt-1.5 line-clamp-2 block text-[13px] font-medium leading-[18px]">
+        <span className="line-clamp-2 block self-center text-[12.5px] font-normal leading-[17px]">
           {product.description}
         </span>
-        <span className="mt-auto block text-sm font-black">{formatCurrency(product.price)}</span>
+        <span className="block text-[13px] font-bold">{formatCurrency(product.price)}</span>
       </span>
       <span className="relative block h-[90px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
         <img src={product.image} alt="" className="block size-full object-cover" />
@@ -1563,11 +1583,10 @@ function TopPhotoBar({
   onOpenSettings,
   trailingIcon = 'settings',
   trailingActive = false,
-  compact = false,
   showBack = true,
 }) {
   return (
-    <div className={`relative overflow-hidden ${compact ? 'h-[144px]' : 'h-[124px]'}`}>
+    <div className="relative h-[144px] overflow-hidden">
       <img src={backgroundImage} alt="" className="h-full w-full object-cover" draggable="false" />
       <div className="absolute inset-0 bg-black/10" />
       {showBack && (
@@ -1575,25 +1594,21 @@ function TopPhotoBar({
           type="button"
           onClick={onBack}
           aria-label="Voltar"
-          className={`absolute left-7 grid size-11 place-items-center rounded-full bg-white/85 text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95 ${
-            compact ? 'top-6' : 'top-8'
-          }`}
+          className="absolute left-7 top-4 grid size-9 place-items-center rounded-full bg-white/85 text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
         >
-          <ArrowLeft size={25} strokeWidth={2.8} />
+          <ArrowLeft size={20} strokeWidth={2} />
         </button>
       )}
       <button
         type="button"
         onClick={onOpenSettings}
         aria-label={trailingIcon === 'heart' ? (trailingActive ? 'Remover dos favoritos' : 'Favoritar') : 'Configurações'}
-        className={`absolute right-7 grid size-11 place-items-center rounded-full bg-white/85 text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95 ${
-          compact ? 'top-6' : 'top-8'
-        }`}
+        className="absolute right-7 top-4 grid size-9 place-items-center rounded-full bg-white/85 text-[var(--brand-primary)] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
       >
         {trailingIcon === 'heart' ? (
           <Heart size={25} strokeWidth={2.6} fill={trailingActive ? 'var(--brand-primary)' : 'none'} />
         ) : (
-          <Settings size={25} strokeWidth={2.6} />
+          <Settings size={20} strokeWidth={2} />
         )}
       </button>
     </div>
@@ -1620,9 +1635,7 @@ function MenuScreen({
   onOpenPromotion,
   onOpenVezz,
   onStartVoiceCommand,
-  onToggleVoiceReader,
   voiceCommandListening,
-  voiceReaderEnabled,
 }) {
   const [promoIndex, setPromoIndex] = useState(0)
   const [productLayout, setProductLayout] = useState('lista')
@@ -1680,15 +1693,15 @@ function MenuScreen({
         alt={restaurantProfile.name}
         loading="eager"
         decoding="sync"
-        className={`pointer-events-none absolute left-1/2 top-[43px] size-[82px] -translate-x-1/2 rounded-full border-[3px] border-[var(--brand-accent)] bg-[var(--brand-primary)] transition-all duration-500 ease-out ${
+        className={`pointer-events-none absolute left-1/2 top-[42px] size-[96px] -translate-x-1/2 rounded-full bg-[var(--brand-primary)] object-cover transition-all duration-500 ease-out ${
           menuSheetRaised ? 'z-0 -translate-y-5 opacity-0 scale-95' : 'z-30 translate-y-0 opacity-100 scale-100'
         }`}
         draggable="false"
       />
 
-      <div className="relative z-20 -mt-8 rounded-t-[34px] bg-[var(--brand-surface)] px-8 pb-4 pt-9 shadow-[0_-18px_42px_rgba(67,22,15,0.12)]">
+      <div className="relative z-20 -mt-8 rounded-t-[34px] bg-[var(--brand-surface)] px-8 pb-4 pt-[56px] shadow-[0_-18px_42px_rgba(67,22,15,0.12)]">
         <div className="text-center">
-          <h1 id="menu-title" data-screen-title="true" tabIndex={-1} className="text-[22px] font-black outline-none">
+          <h1 id="menu-title" data-screen-title="true" tabIndex={-1} className="font-anton text-[25px] font-normal uppercase tracking-[0.02em] outline-none">
             {restaurantProfile.name}
           </h1>
           <p className="mt-0.5 flex items-center justify-center gap-1 text-[11px] text-[#4b231b]">
@@ -1707,28 +1720,13 @@ function MenuScreen({
           />
         </div>
 
-        <div className="mt-1 flex justify-center gap-1.5" aria-label="Selecionar banner">
-          {promoItems.map((slide, index) => (
-            <button
-              type="button"
-              key={slide.id}
-              onClick={() => setPromoIndex(index)}
-              aria-label={`Mostrar banner ${index + 1}`}
-              aria-current={safePromoIndex === index}
-              className={`size-2 rounded-full transition ${
-                safePromoIndex === index ? 'bg-[#4b160e]' : 'bg-[#d0d0d0]'
-              }`}
-            />
-          ))}
-        </div>
-
-        <div className="relative mt-2.5 h-10 overflow-hidden rounded-full bg-[#eeeeee]">
-          <Search size={20} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#bdb8b5]" />
+        <div className="relative mt-2.5 h-10 overflow-hidden rounded-full border border-[#e8e3e1] bg-white">
+          <Search size={18} strokeWidth={1.6} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#a99d99]" />
           <input
             value={searchQuery}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Buscar pratos..."
-            className="h-full w-full min-w-0 bg-transparent pl-12 pr-24 text-base font-medium text-[#43160f] outline-none placeholder:text-[#bdb8b5]"
+            placeholder="Buscar pratos"
+            className="h-full w-full min-w-0 bg-transparent pl-11 pr-20 text-[14px] font-normal text-[#43160f] outline-none placeholder:font-normal placeholder:text-[#a99d99]"
           />
           {isSearching && (
             <button
@@ -1749,24 +1747,26 @@ function MenuScreen({
               voiceCommandListening ? 'bg-[var(--brand-primary)] text-white shadow-sm' : 'text-[#bdb8b5]'
             }`}
           >
-            <Mic size={20} strokeWidth={2.4} />
-            {!voiceCommandListening && (
-              <span className="pointer-events-none absolute h-[2px] w-7 rotate-45 rounded-full bg-[#bdb8b5]" />
-            )}
+            <Mic size={18} strokeWidth={1.6} />
           </button>
         </div>
 
         {!isSearching && (
           <>
             <div className="mt-2.5 flex items-center justify-between">
-              <h2 className="text-[15px] font-medium">CATEGORIAS</h2>
-              <button type="button" onClick={onOpenCategories} className="text-xs text-[#a98272]">
-                Ver todos &gt;
+              <h2 className="-ml-5 text-[15px] font-medium">CATEGORIAS</h2>
+              <button
+                type="button"
+                onClick={onOpenCategories}
+                className="-mr-7 inline-flex items-center gap-1 text-[12px] font-normal text-[#8f6f64] transition hover:text-[var(--brand-primary)]"
+              >
+                Ver todos
+                <ArrowRight size={15} strokeWidth={1.6} aria-hidden="true" />
               </button>
             </div>
 
             <div className="-mx-8 -mt-2 overflow-x-auto overflow-y-visible pt-3 [scrollbar-width:none]">
-              <div className="flex w-max gap-2 px-8 pb-1">
+              <div className="flex w-max translate-y-1.5 gap-2 px-3 pb-1">
                 {categories.map((category) => (
                   <CategoryPreviewCard
                     key={category.id}
@@ -1791,11 +1791,13 @@ function MenuScreen({
         )}
 
         <div className="mt-1 flex items-center justify-between">
-          <h2 className="text-[15px] font-medium">{menuSectionTitle}</h2>
-          <ViewModeToggle value={productLayout} onChange={setProductLayout} />
+          <h2 className="-ml-5 text-[15px] font-medium">{menuSectionTitle}</h2>
+          <div className="-mr-6">
+            <ViewModeToggle value={productLayout} onChange={setProductLayout} />
+          </div>
         </div>
 
-        <div className={productLayout === 'grade' ? '-mx-4 mt-2 grid grid-cols-2 gap-2.5' : '-mx-4 mt-2 space-y-2.5'}>
+        <div className={productLayout === 'grade' ? 'relative left-1/2 mt-2 grid w-[calc(100%+64px)] -translate-x-1/2 grid-cols-2 gap-2.5 px-2' : 'relative left-1/2 mt-2 w-[calc(100%+64px)] -translate-x-1/2 space-y-2.5 px-2'}>
           {primaryProducts.map((product) => (
             productLayout === 'grade' ? (
               <MenuProductGridCard key={product.id} product={product} onOpen={() => onOpenProduct(product)} />
@@ -1814,7 +1816,7 @@ function MenuScreen({
               </span>
             </div>
 
-            <div className={productLayout === 'grade' ? '-mx-4 mt-2 grid grid-cols-2 gap-2.5' : '-mx-4 mt-2 space-y-2.5'}>
+            <div className={productLayout === 'grade' ? 'relative left-1/2 mt-2 grid w-[calc(100%+64px)] -translate-x-1/2 grid-cols-2 gap-2.5 px-2' : 'relative left-1/2 mt-2 w-[calc(100%+64px)] -translate-x-1/2 space-y-2.5 px-2'}>
               {dailyProducts.map((product) => (
                 productLayout === 'grade' ? (
                   <MenuProductGridCard key={product.id} product={product} onOpen={() => onOpenProduct(product)} />
@@ -1830,17 +1832,6 @@ function MenuScreen({
       {cartQuantity > 0 && (
         <CartBar quantity={cartQuantity} total={cartTotal} onOpenOrder={onOpenOrder} />
       )}
-      <button
-        type="button"
-        onClick={onToggleVoiceReader}
-        aria-label={voiceReaderEnabled ? 'Desativar leitor acessível' : 'Ativar leitor acessível'}
-        aria-pressed={voiceReaderEnabled}
-        className={`absolute right-4 z-40 grid size-12 place-items-center rounded-full shadow-2xl shadow-black/20 transition active:scale-95 ${
-          cartQuantity > 0 ? 'bottom-24' : 'bottom-5'
-        } ${voiceReaderEnabled ? 'bg-[#4b160e] text-white' : 'bg-white text-[#4b160e] ring-1 ring-[#eadfd9]'}`}
-      >
-        {voiceReaderEnabled ? <VolumeX size={21} /> : <Volume2 size={21} />}
-      </button>
     </section>
   )
 }
@@ -2021,10 +2012,10 @@ function CategoryPreviewCard({ category, active, onClick }) {
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className="min-h-[86px] w-[calc((min(100vw,430px)-48px)/3)] flex-none text-center"
+      className="min-h-[98px] w-[calc((min(100vw,430px)-48px)/3)] flex-none text-center"
     >
       <span
-        className={`block aspect-[152/90] overflow-hidden rounded-md bg-white transition ${
+        className={`block h-[84px] overflow-hidden rounded-md bg-white transition ${
           active ? 'ring-2 ring-[#4b160e] ring-offset-2 ring-offset-white' : ''
         }`}
       >
@@ -2033,10 +2024,10 @@ function CategoryPreviewCard({ category, active, onClick }) {
           alt=""
           loading="eager"
           decoding="sync"
-          className="block size-full object-cover"
+          className="block size-full scale-[1.08] object-cover object-center"
         />
       </span>
-      <span className="mt-1.5 flex h-7 items-start justify-center text-center text-[12px] font-black leading-[1.05]">
+      <span className="font-montserrat mt-2 flex h-7 items-start justify-center px-1 text-center text-[11px] font-semibold leading-[1.2] tracking-[0.01em]">
         {category.label.toUpperCase()}
       </span>
     </button>
@@ -2050,7 +2041,7 @@ function ViewModeToggle({ value, onChange }) {
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-1 rounded-lg bg-[#f2eee9] p-1 ring-1 ring-[#e5d8cf]" aria-label="Modo de visualização">
+    <div className="flex items-center gap-1" aria-label="Modo de visualização">
       {options.map(({ id, label, icon: Icon }) => {
         const active = value === id
 
@@ -2062,11 +2053,11 @@ function ViewModeToggle({ value, onChange }) {
             aria-label={label}
             aria-pressed={active}
             title={label}
-            className={`grid size-8 place-items-center rounded-md transition ${
-              active ? 'bg-[#4b160e] text-[#d8ad61] shadow-sm' : 'bg-white text-[#9d857c]'
+            className={`grid size-8 place-items-center rounded-full transition-colors duration-200 ${
+              active ? 'bg-[#4b160e] text-white' : 'bg-transparent text-[#ad9d97] hover:bg-[#f5f1ef] hover:text-[#6f4a41]'
             }`}
           >
-            <Icon size={17} strokeWidth={2.7} />
+            <Icon size={16} strokeWidth={active ? 1.9 : 1.6} />
           </button>
         )
       })}
@@ -2082,19 +2073,24 @@ function MenuProductCard({ product, onOpen }) {
       aria-label={buildProductAriaLabel(product)}
       className="grid h-[116px] w-full grid-cols-[1fr_130px] gap-3 overflow-hidden rounded-lg bg-[#f0f0f0] p-3 text-left"
     >
-      <span className="flex min-w-0 flex-col overflow-hidden">
-        <span className="block truncate text-sm font-black leading-tight" title={product.name}>
+      <span className="grid min-w-0 grid-rows-[auto_1fr_auto] self-stretch overflow-hidden">
+        <span className="block truncate text-[13px] font-bold leading-tight" title={product.name}>
           {product.name.toUpperCase()}
         </span>
-        <span className="mt-1.5 line-clamp-2 block text-[13px] font-medium leading-[18px]">
+        <span className="line-clamp-2 block self-center text-[12.5px] font-normal leading-[17px]">
           {product.description}
         </span>
-        <span className="mt-auto block text-sm font-black">{formatCurrency(product.price)}</span>
+        <span className="block text-[13px] font-bold">{formatCurrency(product.price)}</span>
       </span>
-      <span className="relative block h-[96px] self-center overflow-hidden rounded-lg bg-[#4b160e]">
-        <img src={product.image} alt="" className="block size-full object-cover" />
-        <span className="absolute bottom-2 right-2 flex h-6 items-center justify-center whitespace-nowrap rounded-full bg-white/95 px-2.5 text-[8.5px] font-black leading-none text-[#4b160e] shadow-[0_2px_8px_rgba(67,22,15,0.16)]">
-          VER PRATO &gt;
+      <span className="relative block h-[96px] self-center overflow-hidden rounded-lg bg-transparent">
+        <img
+          src={product.image}
+          alt=""
+          className={`block size-full object-cover object-center ${product.id === 'camarao-coco-brasil' ? 'scale-[1.14]' : ''}`}
+        />
+        <span className="absolute bottom-2 right-2 flex h-5 items-center justify-center gap-px whitespace-nowrap rounded-full bg-white/95 px-1.5 text-[9px] font-semibold leading-none tracking-[0.01em] text-[#4b160e] shadow-[0_2px_8px_rgba(67,22,15,0.16)]">
+          Ver prato
+          <ArrowRight size={9} strokeWidth={1.7} aria-hidden="true" />
         </span>
       </span>
     </button>
@@ -2109,19 +2105,24 @@ function MenuProductGridCard({ product, onOpen }) {
       aria-label={buildProductAriaLabel(product)}
       className="h-[204px] overflow-hidden rounded-lg bg-[#f0f0f0] p-2.5 text-left transition active:scale-[0.99]"
     >
-      <span className="relative block h-[108px] overflow-hidden rounded-lg bg-[#4b160e]">
-        <img src={product.image} alt="" className="block size-full object-cover" />
-        <span className="absolute bottom-2 right-2 flex h-6 items-center justify-center whitespace-nowrap rounded-full bg-white/95 px-2.5 text-[8.5px] font-black leading-none text-[#4b160e] shadow-[0_2px_8px_rgba(67,22,15,0.16)]">
-          VER PRATO &gt;
+      <span className="relative block h-[108px] overflow-hidden rounded-lg bg-transparent">
+        <img
+          src={product.image}
+          alt=""
+          className={`block size-full object-cover object-center ${product.id === 'camarao-coco-brasil' ? 'scale-[1.14]' : ''}`}
+        />
+        <span className="absolute bottom-2 right-2 flex h-5 items-center justify-center gap-px whitespace-nowrap rounded-full bg-white/95 px-1.5 text-[9px] font-semibold leading-none tracking-[0.01em] text-[#4b160e] shadow-[0_2px_8px_rgba(67,22,15,0.16)]">
+          Ver prato
+          <ArrowRight size={9} strokeWidth={1.7} aria-hidden="true" />
         </span>
       </span>
-      <span className="mt-3 block truncate text-[13px] font-black leading-tight" title={product.name}>
+      <span className="mt-3 block truncate text-[12.5px] font-bold leading-tight" title={product.name}>
         {product.name.toUpperCase()}
       </span>
-      <span className="mt-1 line-clamp-1 block h-4 text-[11px] font-medium leading-4 text-[#5e332a]">
+      <span className="mt-1 line-clamp-1 block h-4 text-[10.5px] font-normal leading-4 text-[#5e332a]">
         {product.description}
       </span>
-      <span className="mt-1.5 block text-sm font-black">{formatCurrency(product.price)}</span>
+      <span className="mt-1.5 block text-[13px] font-bold">{formatCurrency(product.price)}</span>
     </button>
   )
 }
@@ -2417,44 +2418,43 @@ function AdminLoginScreen({ error, loading, recoveryLoading = false, onBack, onL
 
   return (
     <section className="h-full overflow-hidden bg-white text-[#4b160e]" aria-labelledby="admin-login-title">
-      <div className="relative h-[177px] overflow-hidden">
+      <div className="relative h-[144px] overflow-hidden">
         <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
         <div className="absolute inset-0 bg-black/10" />
         <button
           type="button"
           onClick={onBack}
           aria-label="Voltar ao cardapio"
-          className="absolute right-7 top-8 grid size-11 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
+          className="absolute left-7 top-5 grid size-9 place-items-center rounded-full bg-white/85 text-[#4b160e] shadow-lg shadow-black/15 ring-1 ring-white/70 transition active:scale-95"
         >
-          <Settings size={25} strokeWidth={2.6} />
+          <ArrowLeft size={20} strokeWidth={2} />
         </button>
       </div>
 
-      <div className="relative z-10 -mt-px min-h-[calc(100%-176px)] rounded-t-[18px] bg-white px-11 pt-[185px]">
+      <div className="relative z-10 -mt-8 min-h-[calc(100%-112px)] rounded-t-[34px] bg-white px-8 pb-10 pt-[78px] shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <img
           src={cocoLogo}
           alt="Coco Bambu"
           loading="eager"
           decoding="sync"
-          className="absolute left-1/2 top-[-88px] size-[184px] -translate-x-1/2 rounded-full border-[11px] border-white bg-[#4b160e]"
+          className="absolute left-1/2 top-[-70px] size-[96px] -translate-x-1/2 rounded-full bg-[#4b160e]"
           draggable="false"
         />
 
-        <div className="text-center">
+        <div className="mx-auto mt-20 w-full max-w-[320px] text-center">
           <h1
             id="admin-login-title"
             data-screen-title="true"
             tabIndex={-1}
-            className="text-[39px] font-black leading-none outline-none"
+            className="text-[31px] font-bold leading-none outline-none"
           >
             LOGIN
           </h1>
-          <p className="mt-4 text-base font-normal uppercase leading-none">ACESSO ADMINISTRATIVO</p>
-        </div>
+          <p className="mt-2.5 text-[13px] font-normal uppercase leading-none">ACESSO ADMINISTRATIVO</p>
 
-        <form onSubmit={submitLogin} className="mt-9 space-y-3">
-          <label className="grid h-[58px] grid-cols-[28px_1fr] items-center gap-3 rounded-[9px] bg-[#eeeeee] px-5 text-[#a9908b]">
-            <Mail size={22} strokeWidth={2} />
+          <form onSubmit={submitLogin} className="mt-7 space-y-2.5 text-left">
+          <label className="grid h-[52px] grid-cols-[24px_1fr] items-center gap-3 rounded-lg bg-[#eeeeee] px-4 text-[#a9908b]">
+            <Mail size={20} strokeWidth={1.8} />
             <span className="sr-only">Email</span>
             <input
               type="email"
@@ -2462,12 +2462,12 @@ function AdminLoginScreen({ error, loading, recoveryLoading = false, onBack, onL
               onChange={(event) => setEmail(event.target.value)}
               placeholder="Email"
               autoComplete="email"
-              className="h-full bg-transparent text-base font-normal text-[#4b160e] outline-none placeholder:text-[#ad9995]"
+              className="h-full bg-transparent text-[15px] font-normal text-[#4b160e] outline-none placeholder:text-[#ad9995]"
             />
           </label>
 
-          <label className="grid h-[58px] grid-cols-[28px_1fr] items-center gap-3 rounded-[9px] bg-[#eeeeee] px-5 text-[#a9908b]">
-            <LockKeyhole size={22} strokeWidth={2} />
+          <label className="grid h-[52px] grid-cols-[24px_1fr] items-center gap-3 rounded-lg bg-[#eeeeee] px-4 text-[#a9908b]">
+            <LockKeyhole size={20} strokeWidth={1.8} />
             <span className="sr-only">Senha</span>
             <input
               type="password"
@@ -2475,7 +2475,7 @@ function AdminLoginScreen({ error, loading, recoveryLoading = false, onBack, onL
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Senha"
               autoComplete="current-password"
-              className="h-full bg-transparent text-base font-normal text-[#4b160e] outline-none placeholder:text-[#ad9995]"
+              className="h-full bg-transparent text-[15px] font-normal text-[#4b160e] outline-none placeholder:text-[#ad9995]"
             />
           </label>
 
@@ -2483,7 +2483,7 @@ function AdminLoginScreen({ error, loading, recoveryLoading = false, onBack, onL
             type="button"
             onClick={() => onRecoverPassword(email)}
             disabled={recoveryLoading}
-            className="ml-auto block text-xs font-normal text-[#7b5148] underline-offset-4 transition hover:underline disabled:opacity-60"
+            className="mx-auto block text-[11px] font-normal text-[#7b5148] underline-offset-4 transition hover:underline disabled:opacity-60"
           >
             {recoveryLoading ? 'Enviando recuperacao...' : 'Esqueci minha senha'}
           </button>
@@ -2497,11 +2497,12 @@ function AdminLoginScreen({ error, loading, recoveryLoading = false, onBack, onL
           <button
             type="submit"
             disabled={loading}
-            className="mx-auto !mt-8 flex h-12 w-[247px] max-w-full items-center justify-center rounded-[9px] bg-[#4b160e] text-base font-black text-white transition active:scale-[0.99] disabled:bg-[#8f6b62]"
+            className="mx-auto !mt-6 flex h-[46px] w-[230px] max-w-full items-center justify-center rounded-lg bg-[#4b160e] text-[15px] font-bold text-white transition active:scale-[0.99] disabled:bg-[#8f6b62]"
           >
             {loading ? 'ENTRANDO...' : 'ENTRAR'}
           </button>
-        </form>
+          </form>
+        </div>
       </div>
     </section>
   )
@@ -2524,7 +2525,7 @@ function AdminRegisterScreen({ defaultEmail = '', error, loading, onBack, onRegi
 
   return (
     <section className="h-full overflow-hidden bg-white text-[#4b160e]" aria-labelledby="admin-register-title">
-      <div className="relative h-[177px] overflow-hidden">
+      <div className="relative h-[144px] overflow-hidden">
         <img src={cocoBackground} alt="" className="h-full w-full object-cover" draggable="false" />
         <div className="absolute inset-0 bg-black/10" />
         <button
@@ -2537,13 +2538,13 @@ function AdminRegisterScreen({ defaultEmail = '', error, loading, onBack, onRegi
         </button>
       </div>
 
-      <div className="relative z-10 -mt-px min-h-[calc(100%-176px)] rounded-t-[18px] bg-white px-11 pt-[166px]">
+      <div className="relative z-10 -mt-8 min-h-[calc(100%-112px)] rounded-t-[34px] bg-white px-11 pt-[84px] shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <img
           src={cocoLogo}
           alt="Coco Bambu"
           loading="eager"
           decoding="sync"
-          className="absolute left-1/2 top-[-88px] size-[184px] -translate-x-1/2 rounded-full border-[11px] border-white bg-[#4b160e]"
+          className="absolute left-1/2 top-[-70px] size-[96px] -translate-x-1/2 rounded-full bg-[#4b160e]"
           draggable="false"
         />
 
@@ -2985,7 +2986,9 @@ function buildAdminProductDraft(product, fallbackCategory = 'frutos-do-mar') {
     category,
     description: product?.description ?? '',
     image: product?.image ?? fallbackImages[category],
-    tags: product?.tags ?? [],
+    tags: (product?.tags ?? []).filter((tag) =>
+      allergenOptions.some((allergen) => normalizeText(allergen.id) === normalizeText(tag)),
+    ),
     options: options.map((option) => ({
       id: option.id,
       label: option.label,
@@ -3022,7 +3025,7 @@ function buildAdminProductPayload(draft, currentProduct) {
     badgeIcon: currentProduct?.badgeIcon ?? Save,
     badgeIconTone: currentProduct?.badgeIconTone ?? 'text-slate-600',
     description: draft.description.trim() || 'Item cadastrado pelo administrador do cardápio.',
-    tags: draft.tags.length ? draft.tags : ['Cadastro admin', 'Disponível', 'Novo item'],
+    tags: draft.tags,
     options,
     active: currentProduct?.active !== false,
   }
@@ -3044,15 +3047,20 @@ function formatAdminPriceInput(value) {
 
 function getAllergenIcon(label) {
   const normalizedLabel = normalizeText(label)
+  const allergenImages = {
+    castanhas: allergenCastanhas,
+    ovo: allergenOvo,
+    gluten: allergenGluten,
+    peixe: allergenPeixe,
+    lactose: allergenLactose,
+    crustaceos: allergenCrustaceos,
+    soja: allergenSoja,
+  }
+  const imageKey = Object.keys(allergenImages).find((key) => normalizedLabel.includes(key))
 
-  if (normalizedLabel.includes('ovo')) return 'O'
-  if (normalizedLabel.includes('gluten')) return 'G'
-  if (normalizedLabel.includes('peixe')) return 'P'
-  if (normalizedLabel.includes('lactose')) return 'L'
-  if (normalizedLabel.includes('crustaceos')) return 'C'
-  if (normalizedLabel.includes('castanhas')) return 'N'
-  if (normalizedLabel.includes('soja')) return 'S'
-
+  if (imageKey) {
+    return <img src={allergenImages[imageKey]} alt="" className="block size-full object-contain" draggable="false" />
+  }
   return '+'
 }
 
@@ -3360,11 +3368,11 @@ function AdminMenuEditor({
 
       <div className="relative z-20 -mt-6 rounded-t-[22px] bg-[var(--brand-surface)] px-5 pb-8 pt-5 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <div className="relative">
-          <div className="relative z-30 mx-auto -mt-[76px] w-fit">
+          <div className="relative z-30 -mt-[68px] ml-0 w-fit">
             <img
               src={editorProfile.logo}
               alt={editorProfile.name}
-              className="size-[124px] rounded-full border-[3px] border-[var(--brand-accent)] bg-[var(--brand-primary)] shadow-[0_3px_0_rgba(75,22,14,0.22)]"
+              className="size-[96px] rounded-full object-cover"
               draggable="false"
             />
             <button
@@ -3377,43 +3385,46 @@ function AdminMenuEditor({
             </button>
           </div>
 
+          <button
+            type="button"
+            onClick={saveEditorProfile}
+            className="absolute -top-3 right-0 inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-[var(--brand-primary)] px-3.5 text-[11px] font-medium tracking-[0.01em] text-white shadow-md shadow-[#4b160e]/10 transition active:scale-[0.98]"
+          >
+            <Save size={14} strokeWidth={2} />
+            Salvar alterações
+          </button>
+
           <div className="mt-3 space-y-2">
             <button
               type="button"
               onClick={() => setProfileEditorOpen(true)}
-              className="h-8 w-full rounded-lg bg-slate-100 px-4 text-left text-sm font-semibold text-slate-600"
+              className="flex h-8 w-full items-center gap-2 rounded-lg bg-slate-100 px-3 text-left text-sm font-semibold text-slate-600"
             >
-              {editorProfile.name}
+              <Pencil size={14} strokeWidth={1.9} className="shrink-0 text-slate-400" aria-hidden="true" />
+              <span className="truncate">{editorProfile.name}</span>
             </button>
             <button
               type="button"
               onClick={() => setProfileEditorOpen(true)}
-              className="h-8 w-full rounded-lg bg-slate-100 px-4 text-left text-sm font-semibold text-slate-600"
+              className="flex h-8 w-full items-center gap-2 rounded-lg bg-slate-100 px-3 text-left text-sm font-semibold text-slate-600"
             >
-              {editorProfile.location}
+              <Pencil size={14} strokeWidth={1.9} className="shrink-0 text-slate-400" aria-hidden="true" />
+              <span className="truncate">{editorProfile.location}</span>
             </button>
             <button
               type="button"
               onClick={() => setProfileEditorOpen(true)}
-              className="h-8 w-full truncate rounded-lg bg-slate-100 px-4 text-left text-xs font-black lowercase text-slate-500"
+              className="flex h-8 w-full items-center gap-2 rounded-lg bg-slate-100 px-3 text-left text-xs font-black lowercase text-slate-500"
             >
-              #{getPublicMenuHash(editorProfile.slug || editorProfile.name)}
+              <LockKeyhole size={14} strokeWidth={1.9} className="shrink-0 text-slate-400" aria-hidden="true" />
+              <span className="truncate">#{getPublicMenuHash(editorProfile.slug || editorProfile.name)}</span>
             </button>
           </div>
         </div>
 
-        <div className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={saveEditorProfile}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--brand-primary)] px-4 text-xs font-black uppercase tracking-wide text-white shadow-lg shadow-[#4b160e]/10 transition active:scale-[0.98]"
-          >
-            <Save size={15} strokeWidth={2.8} />
-            Salvar alterações
-          </button>
+        <div className="pr-3">
+          <AdminEditorSectionTitle title="Cards de promoção" actionLabel="Adicionar" onAction={addPromo} useBrandFont />
         </div>
-
-        <AdminEditorSectionTitle title="Cards promocao" actionLabel="Adicionar" onAction={addPromo} />
         <div className="-mx-5 mt-3 flex gap-3 overflow-x-auto px-5 pb-1">
           {editorPromos.map((slide) => {
             const locked = slide.id === protectedPromoSlideId
@@ -3455,7 +3466,7 @@ function AdminMenuEditor({
           <span className="size-2 rounded-full bg-slate-300" />
         </div>
 
-        <AdminEditorSectionTitle title="Categorias" actionLabel="Editar" onAction={openCategoriesEditor} />
+        <AdminEditorSectionTitle title="Categorias" actionLabel="Editar" onAction={openCategoriesEditor} useBrandFont />
         <div className="-mx-5 mt-3 overflow-hidden">
           <div className="flex gap-4 overflow-x-auto px-5 pb-2">
             {editorCategories.map((category) => (
@@ -3529,10 +3540,12 @@ function AdminMenuEditor({
   )
 }
 
-function AdminEditorSectionTitle({ title, actionLabel, onAction }) {
+function AdminEditorSectionTitle({ title, actionLabel, onAction, useBrandFont = false }) {
   return (
     <div className="mt-5 flex items-center justify-between gap-3">
-      <h2 className="text-sm font-black uppercase text-[var(--brand-primary)]">{title}</h2>
+      <h2 className={`${useBrandFont ? 'font-montserrat text-[14px] font-semibold tracking-[0.01em]' : 'text-sm font-black'} uppercase text-[var(--brand-primary)]`}>
+        {title}
+      </h2>
       {onAction && (
         <button
           type="button"
@@ -3815,44 +3828,47 @@ function AdminMiniAction({ icon: Icon, label, disabled = false, onClick }) {
 
 function AdminProductEditorCard({ product, onEdit, onRemove, onToggle }) {
   return (
-    <article className="grid min-h-[116px] grid-cols-[118px_1fr_98px] gap-3 rounded-lg bg-slate-100 p-2">
-      <img
-        src={product.image}
-        alt=""
-        className="h-full min-h-[100px] rounded-md object-cover"
-        draggable="false"
-      />
-      <div className="min-w-0 py-1">
-        <h3 className="truncate text-sm font-black leading-tight text-[#4b160e]" title={product.name}>
+    <article className="grid h-[116px] w-full grid-cols-[1fr_130px] gap-3 overflow-hidden rounded-lg bg-[#f0f0f0] p-3 text-left">
+      <div className="grid min-w-0 grid-rows-[auto_1fr_auto] self-stretch overflow-hidden">
+        <h3 className="truncate text-[13px] font-bold leading-tight text-[#4b160e]" title={product.name}>
           {product.name.toUpperCase()}
         </h3>
-        <p className="mt-1 line-clamp-3 text-[12px] font-semibold leading-4 text-[#4b2a22]">
+        <p className="line-clamp-2 self-center text-[12.5px] font-normal leading-[17px] text-[#4b2a22]">
           {product.description}
         </p>
-        <p className="mt-1 text-sm font-black text-[#4b160e]">{formatCurrency(product.price)}</p>
+        <p className="text-[13px] font-bold text-[#4b160e]">{formatCurrency(product.price)}</p>
       </div>
-      <div className="grid content-center gap-2">
-        <button
-          type="button"
-          onClick={onRemove}
-          className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-200 text-xs font-bold text-slate-600"
-        >
-          <Trash2 size={15} />
-          Excluir
-        </button>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="flex h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-200 text-xs font-bold text-slate-600"
-        >
-          <Pencil size={15} />
-          Editar
-        </button>
+
+      <div className="relative h-[96px] self-center overflow-hidden rounded-lg bg-transparent">
+        <img
+          src={product.image}
+          alt=""
+          className={`block size-full object-cover object-center ${product.id === 'camarao-coco-brasil' ? 'scale-[1.14]' : ''}`}
+          draggable="false"
+        />
+        <div className="absolute right-1.5 top-1.5 flex gap-1">
+          <button
+            type="button"
+            onClick={onEdit}
+            className="grid size-7 place-items-center rounded-full bg-white/95 text-slate-600 shadow-sm"
+            aria-label={`Editar ${product.name}`}
+          >
+            <Pencil size={13} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="grid size-7 place-items-center rounded-full bg-white/95 text-slate-600 shadow-sm"
+            aria-label={`Excluir ${product.name}`}
+          >
+            <Trash2 size={13} strokeWidth={2} />
+          </button>
+        </div>
         <button
           type="button"
           onClick={onToggle}
-          className={`h-8 rounded-lg text-[10px] font-black ${
-            product.active === false ? 'bg-white text-slate-500' : 'bg-[#4b160e] text-white'
+          className={`absolute bottom-1.5 right-1.5 h-6 rounded-full px-2 text-[8px] font-bold shadow-sm ${
+            product.active === false ? 'bg-white/95 text-slate-500' : 'bg-[#4b160e] text-white'
           }`}
         >
           {product.active === false ? 'INATIVO' : 'ATIVO'}
@@ -3892,11 +3908,11 @@ function AdminPromoEditScreen({ promo, products = [], restaurantProfile = defaul
   }
 
   return (
-    <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-7 text-[#4b160e]">
+    <section className="relative h-full overflow-y-auto overflow-x-hidden bg-white pb-3 text-[#4b160e]">
       <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onBack} compact />
 
-      <div className="relative z-10 -mt-9 rounded-t-[22px] bg-white px-8 pb-8 pt-7 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
-        <div className="relative overflow-hidden rounded-lg bg-[#4b160e]">
+      <div className="relative z-10 -mt-[84px] min-h-[calc(100%-60px)] rounded-t-[20px] bg-white px-7 pb-4 pt-5 shadow-[0_-10px_28px_rgba(67,22,15,0.08)]">
+        <div className="relative overflow-hidden rounded-[8px] bg-[#4b160e]">
           <img
             src={draft.image}
             alt=""
@@ -4101,13 +4117,13 @@ function AdminProductEditScreen({ categories, fallbackCategory, product, restaur
           <img
             src={previewImage}
             alt=""
-            className="h-[178px] w-full object-cover"
+            className="h-[154px] w-full object-cover"
             draggable="false"
           />
           <button
             type="button"
             onClick={() => imageInputRef.current?.click()}
-            className="absolute bottom-3 right-3 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/95 px-3 text-xs font-bold text-[#8f746d] shadow"
+            className="absolute bottom-2.5 right-2.5 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/95 px-3 text-[11px] font-medium text-[#8f746d] shadow"
           >
             <Camera size={15} />
             Trocar foto
@@ -4121,46 +4137,46 @@ function AdminProductEditScreen({ categories, fallbackCategory, product, restaur
           />
         </div>
 
-        <label className="mt-3 block text-sm font-black text-[#6b433a]">
+        <label className="mt-2.5 block text-[13px] font-bold text-[#6b433a]">
           Nome do prato
           <input
             value={draft.name}
             onChange={(event) => updateDraftField('name', event.target.value)}
             placeholder="Nome do prato"
-            className="mt-1 h-10 w-full rounded-lg border border-[#b7928b] px-3 text-sm font-semibold text-[#4b160e] outline-none"
+            className="mt-1 h-9 w-full rounded-[8px] border border-[#b7928b] px-3 text-[13px] font-normal text-[#6b433a] outline-none"
           />
         </label>
 
-        <label className="mt-3 block text-sm font-black text-[#6b433a]">
+        <label className="mt-2.5 block text-[13px] font-bold text-[#6b433a]">
           Descrição
           <textarea
             value={draft.description}
             onChange={(event) => updateDraftField('description', event.target.value)}
             placeholder="Descrição do prato"
-            className="mt-1 h-[112px] w-full resize-none rounded-lg border border-[#b7928b] px-3 py-3 text-sm font-semibold leading-5 text-[#6b433a] outline-none"
+            className="mt-1 h-[100px] w-full resize-none rounded-[8px] border border-[#b7928b] px-3 py-2.5 text-[13px] font-normal leading-[18px] text-[#6b433a] outline-none"
           />
         </label>
 
-        <div className="mt-4">
-          <h2 className="text-sm font-black text-[#6b433a]">Alergênicos</h2>
-          <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-3">
+          <h2 className="text-[13px] font-bold text-[#6b433a]">Alergênicos</h2>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
             {draft.tags.map((tag) => (
               <AdminAllergenChip key={tag} label={tag} onRemove={() => removeTag(tag)} />
             ))}
             <button
               type="button"
               onClick={() => setAllergenOpen(true)}
-              className="inline-flex h-8 items-center gap-1 rounded-full border border-[#b7928b] px-3 text-xs font-bold text-[#8b6d66]"
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[#b7928b] px-3 text-[11px] font-medium text-[#8b6d66]"
             >
               Adicionar
-              <Plus size={13} />
+              <Plus size={14} />
             </button>
           </div>
         </div>
 
-        <div className="mt-5">
-          <h2 className="text-sm font-black text-[#6b433a]">Opções de porções e preços</h2>
-          <div className="mt-2 space-y-2">
+        <div className="mt-3">
+          <h2 className="text-[13px] font-bold text-[#6b433a]">Opções de porções e preços</h2>
+          <div className="mt-1.5 space-y-1.5">
             {draft.options.map((option) => (
               <AdminPortionOptionRow
                 key={option.id}
@@ -4171,35 +4187,35 @@ function AdminProductEditScreen({ categories, fallbackCategory, product, restaur
             ))}
 
             {optionDraft && (
-              <div className="grid grid-cols-[1fr_1.2fr_1.2fr_auto] gap-2 rounded-lg border border-[#b7928b] bg-[#f5e7d2] p-2">
-                <label className="text-[11px] font-semibold">
+              <div className="grid grid-cols-[.8fr_1fr_1.15fr_auto] gap-2 rounded-lg border border-[#b7928b] bg-[#f5e7d2] px-2.5 py-1.5">
+                <label className="text-[10px] font-medium">
                   Pessoas
                   <input
                     value={optionDraft.people}
                     onChange={(event) => setOptionDraft((current) => ({ ...current, people: event.target.value }))}
-                    className="mt-1 h-8 w-full rounded border border-[#b7928b] px-2 text-sm outline-none"
+                    className="mt-0.5 h-6 w-full rounded border border-[#b7928b] px-1.5 text-[11px] outline-none"
                   />
                 </label>
-                <label className="text-[11px] font-semibold">
+                <label className="text-[10px] font-medium">
                   Peso
                   <input
                     value={optionDraft.detail}
                     onChange={(event) => setOptionDraft((current) => ({ ...current, detail: event.target.value }))}
-                    className="mt-1 h-8 w-full rounded border border-[#b7928b] px-2 text-sm outline-none"
+                    className="mt-0.5 h-6 w-full rounded border border-[#b7928b] px-1.5 text-[11px] outline-none"
                   />
                 </label>
-                <label className="text-[11px] font-semibold">
+                <label className="text-[10px] font-medium">
                   Preço
                   <input
                     value={optionDraft.price}
                     onChange={(event) => setOptionDraft((current) => ({ ...current, price: event.target.value }))}
-                    className="mt-1 h-8 w-full rounded border border-[#b7928b] px-2 text-sm outline-none"
+                    className="mt-0.5 h-6 w-full rounded border border-[#b7928b] px-1.5 text-[11px] outline-none"
                   />
                 </label>
                 <button
                   type="button"
                   onClick={concludeOption}
-                  className="mt-[18px] h-9 rounded-lg bg-[#4b160e] px-3 text-xs font-bold text-white"
+                  className="mt-[15px] h-6 rounded bg-[#4b160e] px-3 text-[11px] font-medium text-white"
                 >
                   Concluir
                 </button>
@@ -4211,15 +4227,15 @@ function AdminProductEditScreen({ categories, fallbackCategory, product, restaur
         <button
           type="button"
           onClick={startOption}
-          className="mx-auto mt-4 flex h-10 w-[90%] items-center justify-center gap-2 rounded-full bg-[#4b160e] text-base font-semibold text-white"
+          className="mx-auto mt-3.5 flex h-9 w-[94%] items-center justify-center gap-2 rounded-full bg-[#4b160e] text-[15px] font-medium text-white"
         >
           Adicionar
-          <Plus size={18} />
+          <Plus size={16} fill="white" />
         </button>
         <button
           type="button"
           onClick={() => setSaveConfirmOpen(true)}
-          className="mx-auto mt-2 flex h-10 w-[90%] items-center justify-center rounded-full border border-[#4b160e] bg-white text-base font-semibold text-[#4b160e]"
+          className="mx-auto mt-2 flex h-9 w-[94%] items-center justify-center rounded-full border border-[#4b160e] bg-white text-[15px] font-medium text-[#4b160e]"
         >
           Salvar alterações
         </button>
@@ -4261,51 +4277,80 @@ function AdminCategoriesEditorScreen({
   onRemoveCategory,
 }) {
   return (
-    <section className="relative h-full overflow-y-auto bg-white pb-8 text-[#4b160e]">
+    <section className="relative h-full overflow-y-auto bg-white pb-8 text-[#43160f]">
       <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onBack} compact />
-      <div className="relative z-10 -mt-9 rounded-t-[22px] bg-white px-5 pt-6 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+      <div className="relative z-10 -mt-8 rounded-t-[34px] bg-white px-4 pb-8 pt-10 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
         <img
           src={restaurantProfile.logo}
           alt={restaurantProfile.name}
-          className="relative z-20 mx-auto -mt-20 size-[112px] rounded-full border-4 border-[#d8ad61] bg-[#4a160f]"
+          loading="eager"
+          decoding="sync"
+          className="absolute left-1/2 top-[-70px] z-20 size-[96px] -translate-x-1/2 rounded-full bg-[#4a160f]"
           draggable="false"
         />
-        <h1 data-screen-title="true" tabIndex={-1} className="mt-2 text-center text-xl font-medium outline-none">
+        <h1 data-screen-title="true" tabIndex={-1} className="font-montserrat text-center text-[17px] font-medium leading-none outline-none">
           CATEGORIAS
         </h1>
-        <button
-          type="button"
-          onClick={onAddCategory}
-          className="mx-auto mt-4 flex h-10 w-[66%] items-center justify-center gap-2 rounded-full bg-[#4b160e] text-sm font-black text-[#d8ad61]"
-        >
-          <Plus size={17} />
-          ADICIONAR CATEGORIA
-        </button>
-
-        <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="mt-6 grid grid-cols-2 gap-x-2 gap-y-2">
           {categories.map((category) => (
-            <div key={category.id} className="rounded-lg bg-[#f4f4f4] p-2 text-center">
+            <div key={category.id} className="relative text-center">
               <button
                 type="button"
                 onClick={() => onEditCategory(category)}
-                className="relative block w-full pb-7"
+                className="block w-full text-center transition active:scale-[0.99]"
               >
-                <span className="block aspect-[154/107] overflow-hidden rounded-lg border-[3px] border-[#4b160e] bg-white">
-                  <img src={category.image} alt="" className="block size-full object-cover" draggable="false" />
+                <span className="relative block">
+                  <span className="block aspect-[1.47] overflow-hidden rounded-lg border-[3px] border-[#4b160e] bg-white">
+                    <img
+                      src={category.image}
+                      alt=""
+                      loading="eager"
+                      decoding="sync"
+                      className="block size-full object-cover object-center"
+                      draggable="false"
+                    />
+                  </span>
+                  <img
+                    src={category.iconImage}
+                    alt=""
+                    className="absolute bottom-[-17px] left-1/2 z-10 size-[48px] -translate-x-1/2 object-contain"
+                    draggable="false"
+                  />
                 </span>
-                <span className="absolute bottom-0 left-1/2 grid size-14 -translate-x-1/2 place-items-center rounded-full border-2 border-[#d8ad61] bg-[#4b160e]">
-                  <img src={category.iconImage} alt="" className="w-8" draggable="false" />
+                <span className="font-montserrat mt-4 flex min-h-5 items-start justify-center text-center text-[12px] font-semibold leading-tight">
+                  {category.label.toUpperCase()}
                 </span>
               </button>
-              <p className="mt-1 h-9 text-sm font-black leading-tight">{category.label.toUpperCase()}</p>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <AdminMiniAction icon={Pencil} label="Editar" onClick={() => onEditCategory(category)} />
-                <AdminMiniAction icon={Trash2} label="Excluir" onClick={() => onRemoveCategory(category)} />
+              <div className="absolute right-2 top-2 z-20 flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => onEditCategory(category)}
+                  aria-label={`Editar ${category.label}`}
+                  className="grid size-7 place-items-center rounded-full bg-white/95 text-[#4b160e] shadow"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemoveCategory(category)}
+                  aria-label={`Excluir ${category.label}`}
+                  className="grid size-7 place-items-center rounded-full bg-white/95 text-[#4b160e] shadow"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
           ))}
         </div>
       </div>
+      <button
+        type="button"
+        onClick={onAddCategory}
+        aria-label="Adicionar categoria"
+        className="sticky bottom-4 z-30 ml-auto mr-4 grid size-12 place-items-center rounded-full bg-[#4b160e] text-[#d8ad61] shadow-lg"
+      >
+        <Plus size={23} />
+      </button>
     </section>
   )
 }
@@ -4403,29 +4448,43 @@ function AdminCategoryProductCard({ product, onEdit, onRemove }) {
 }
 
 function AdminPortionOptionRow({ option, onEdit, onRemove }) {
+  const peopleCount = Math.max(1, Number.parseInt(option.people || option.label, 10) || 1)
+
   return (
-    <article className="grid min-h-[64px] grid-cols-[42px_1fr_auto_auto_auto] items-center gap-2 rounded-lg border border-[#b7928b] bg-white p-2">
-      <Table2 size={25} className="text-[#7d5148]" />
+    <article className="grid min-h-[56px] grid-cols-[32px_1fr_auto_auto_auto] items-center gap-1.5 rounded-[8px] border border-[#b7928b] bg-white px-2.5 py-1.5">
+      <span
+        className="grid w-7 grid-cols-2 place-items-center gap-x-0 gap-y-0.5 text-[#7d5148]"
+        aria-label={`${peopleCount} ${peopleCount === 1 ? 'pessoa' : 'pessoas'}`}
+      >
+        {Array.from({ length: peopleCount }, (_, index) => (
+          <UserRound
+            key={index}
+            size={peopleCount > 4 ? 10 : 13}
+            strokeWidth={1.8}
+            className={peopleCount % 2 === 1 && index === peopleCount - 1 ? 'col-span-2 justify-self-center' : ''}
+          />
+        ))}
+      </span>
       <div className="min-w-0">
-        <h3 className="text-sm font-black">{option.label}</h3>
-        <p className="truncate text-xs font-semibold text-[#9d817a]">{option.detail}</p>
+        <h3 className="text-[12px] font-medium">{option.label}</h3>
+        <p className="truncate text-[10px] font-medium text-[#9d817a]">{option.detail}</p>
       </div>
-      <p className="whitespace-nowrap text-sm font-black">{formatCurrency(parseAdminPrice(option.price))}</p>
+      <p className="whitespace-nowrap text-[12px] font-black">{formatCurrency(parseAdminPrice(option.price))}</p>
       <button
         type="button"
         onClick={onEdit}
-        className="grid size-9 place-items-center rounded-lg border border-[#b7928b] text-[#7d5148]"
+        className="grid size-8 place-items-center rounded-[7px] border border-[#b7928b] text-[#7d5148]"
         aria-label="Editar porção"
       >
-        <Pencil size={18} />
+        <Pencil size={17} />
       </button>
       <button
         type="button"
         onClick={onRemove}
-        className="grid size-9 place-items-center rounded-lg border border-[#b7928b] text-[#7d5148]"
+        className="grid size-8 place-items-center rounded-[7px] border border-[#b7928b] text-[#7d5148]"
         aria-label="Excluir porção"
       >
-        <Trash2 size={18} />
+        <Trash2 size={17} />
       </button>
     </article>
   )
@@ -4449,7 +4508,7 @@ function AdminAllergenDialog({ selectedTags, onClose, onToggle }) {
                   : 'border-transparent bg-slate-100 text-[#8e8e8e]'
               }`}
             >
-              <span className="grid size-7 place-items-center rounded-full bg-[#fff2df] text-[13px]">
+              <span className="grid size-8 place-items-center overflow-hidden rounded-full text-[13px]">
                 {getAllergenIcon(option.id)}
               </span>
               {option.label}
@@ -4470,8 +4529,8 @@ function AdminAllergenDialog({ selectedTags, onClose, onToggle }) {
 
 function AdminAllergenChip({ label, onRemove }) {
   return (
-    <span className="inline-flex h-8 items-center gap-1 rounded-full bg-slate-100 px-2 text-xs font-semibold text-[#8b6d66]">
-      <span className="grid size-6 place-items-center rounded-full bg-[#fff2df] text-[11px]">{getAllergenIcon(label)}</span>
+    <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-slate-100 px-2.5 text-[11px] font-medium text-[#8b6d66]">
+      <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-full text-[13px]">{getAllergenIcon(label)}</span>
       {label}
       <button
         type="button"
