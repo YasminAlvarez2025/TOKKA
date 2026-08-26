@@ -3935,12 +3935,27 @@ function AdminLogoDialog({ logo, onCancel, onSave }) {
 
         {detectedTheme && (
           <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-center">
-            <p className="text-xs font-medium text-[#6b433a]">Cores que serão aplicadas ao cardápio</p>
-            <div className="mt-2 flex justify-center gap-3">
-              {Object.values(detectedTheme).map((color) => (
-                <span key={color} className="size-9 rounded-full border-2 border-white shadow ring-1 ring-black/10" style={{ backgroundColor: color }} title={color} />
+            <p className="text-xs font-medium text-[#6b433a]">Selecione ou ajuste as três cores da logo</p>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {[
+                ['primary', 'Principal'],
+                ['accent', 'Destaque'],
+                ['surface', 'Fundo'],
+              ].map(([field, label]) => (
+                <label key={field} className="grid justify-items-center gap-1.5 text-[10px] font-medium text-slate-600">
+                  <input
+                    type="color"
+                    value={detectedTheme[field]}
+                    onChange={(event) => setDetectedTheme((current) => ({ ...current, [field]: event.target.value }))}
+                    className="size-10 cursor-pointer rounded-full border-0 bg-transparent p-0"
+                    aria-label={`Cor ${label.toLowerCase()}`}
+                  />
+                  <span>{label}</span>
+                  <span className="font-mono text-[8px] text-slate-400">{detectedTheme[field]}</span>
+                </label>
               ))}
             </div>
+            <p className="mt-3 text-[10px] leading-4 text-slate-500">A cor principal será usada nas bordas das fotos, títulos, descrições e preços.</p>
           </div>
         )}
 

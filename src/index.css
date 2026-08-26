@@ -18,6 +18,15 @@
   color: var(--brand-primary) !important;
 }
 
+.brand-theme [class~="text-[#43160f]"],
+.brand-theme [class~="text-[#4b2a22]"],
+.brand-theme [class~="text-[#5e332a]"],
+.brand-theme [class~="text-[#5f3730]"],
+.brand-theme [class~="text-[#6b3025]"],
+.brand-theme [class~="text-[#6b433a]"] {
+  color: var(--brand-primary) !important;
+}
+
 .brand-theme [class~="bg-[#4b160e]"] {
   background-color: var(--brand-primary) !important;
 }
