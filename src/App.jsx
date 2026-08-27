@@ -3298,6 +3298,18 @@ function AdminMenuEditor({
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(null)
 
+  useEffect(() => {
+    setEditorProfile(restaurantProfile)
+  }, [restaurantProfile])
+
+  useEffect(() => {
+    setEditorPromos(promoItems)
+  }, [promoItems])
+
+  useEffect(() => {
+    setEditorCategories(categories)
+  }, [categories])
+
   function editProduct(product, returnView = 'home') {
     setEditingProductId(product.id)
     setEditingCategoryId(product.category)
