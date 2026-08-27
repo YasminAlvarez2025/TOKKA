@@ -1878,7 +1878,7 @@ function MenuScreen({
               </button>
             </div>
 
-            <div className="-mx-8 -mt-2 overflow-x-auto overflow-y-visible pt-3 [scrollbar-width:none]">
+            <div className="-mx-8 -mt-2 overflow-x-auto overflow-y-visible pt-3 [scrollbar-width:none] [touch-action:pan-y_pinch-zoom]">
               <div className="flex w-max translate-y-1.5 gap-2 px-3 pb-1">
                 {categories.map((category) => (
                   <CategoryPreviewCard
@@ -3746,11 +3746,33 @@ function AdminEditorSectionTitle({ title, actionLabel, onAction, useBrandFont = 
   )
 }
 
-function readAdminImageFile(file, onReady) {
+function readAdminImageFile(file, onReady, { maxWidth = 900, maxHeight = 900, quality = 0.76 } = {}) {
   if (!file) return
 
   const reader = new FileReader()
-  reader.onload = () => onReady(String(reader.result || ''))
+  reader.onload = () => {
+    const originalUrl = String(reader.result || '')
+    const image = new Image()
+
+    image.onload = () => {
+      const scale = Math.min(1, maxWidth / image.naturalWidth, maxHeight / image.naturalHeight)
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
+
+      const context = canvas.getContext('2d')
+      if (!context) {
+        onReady(originalUrl)
+        return
+      }
+
+      context.drawImage(image, 0, 0, canvas.width, canvas.height)
+      onReady(canvas.toDataURL('image/webp', quality))
+    }
+
+    image.onerror = () => onReady(originalUrl)
+    image.src = originalUrl
+  }
   reader.readAsDataURL(file)
 }
 
@@ -3837,7 +3859,7 @@ function AdminCoverDialog({ cover, onCancel, onSave }) {
     if (!file) return
 
     setFileName(file.name)
-    readAdminImageFile(file, setPreview)
+    readAdminImageFile(file, setPreview, { maxWidth: 1200, maxHeight: 480, quality: 0.78 })
     event.target.value = ''
   }
 
@@ -3900,7 +3922,7 @@ function AdminLogoDialog({ logo, onCancel, onSave }) {
       setPreview(imageUrl)
       setDetectedTheme(await extractLogoTheme(imageUrl))
       setAnalyzing(false)
-    })
+    }, { maxWidth: 640, maxHeight: 640, quality: 0.8 })
     event.target.value = ''
   }
 
@@ -4004,7 +4026,9 @@ function AdminRestaurantProfileDialog({ profile, onCancel, onSave }) {
 
       const theme = await extractLogoTheme(imageUrl)
       setDraft((current) => ({ ...current, logo: imageUrl, theme }))
-    })
+    }, field === 'logo'
+      ? { maxWidth: 640, maxHeight: 640, quality: 0.8 }
+      : { maxWidth: 1200, maxHeight: 480, quality: 0.78 })
     event.target.value = ''
   }
 
@@ -4306,7 +4330,7 @@ function AdminPromoEditScreen({ promo, products = [], restaurantProfile = defaul
 
     readAdminImageFile(file, (imageUrl) => {
       setDraft((current) => ({ ...current, image: imageUrl, fit: 'contain' }))
-    })
+    }, { maxWidth: 960, maxHeight: 540, quality: 0.72 })
     event.target.value = ''
   }
 
@@ -4455,7 +4479,11 @@ function AdminProductEditScreen({ categories, fallbackCategory, product, restaur
   function updateProductImage(event) {
     const file = event.target.files?.[0]
 
-    readAdminImageFile(file, (imageUrl) => updateDraftField('image', imageUrl))
+    readAdminImageFile(
+      file,
+      (imageUrl) => updateDraftField('image', imageUrl),
+      { maxWidth: 720, maxHeight: 720, quality: 0.7 },
+    )
     event.target.value = ''
   }
 
