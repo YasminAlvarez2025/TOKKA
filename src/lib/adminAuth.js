@@ -63,6 +63,17 @@ export function loginAdmin(email, password) {
 export async function resolveAdminRestaurantId(user, preferredRestaurantId = 'tokka-foods') {
   if (!user?.uid) return ''
 
+  try {
+    const directorySnapshot = await getDoc(doc(db, 'adminDirectory', user.uid))
+    const directory = directorySnapshot.data()
+
+    if (directorySnapshot.exists() && directory.active !== false && directory.restaurantId) {
+      return directory.restaurantId
+    }
+  } catch {
+    // Fall back to the legacy checks while existing accounts are migrated.
+  }
+
   const candidates = [...new Set([preferredRestaurantId, 'tokka-foods', 'barraca-do-fabio'])]
 
   for (const candidate of candidates) {
@@ -160,6 +171,13 @@ export async function createRestaurantWithAdmin({ ownerRestaurantId, name, slug,
       username: adminName.trim(),
       role: 'owner',
       createdAt: serverTimestamp(),
+    })
+    await setDoc(doc(db, 'adminDirectory', credential.user.uid), {
+      restaurantId: slug,
+      email: email.trim().toLowerCase(),
+      active: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     })
     await setDoc(doc(db, 'menuDirectory', slug), {
       restaurantId: slug,

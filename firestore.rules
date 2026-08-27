@@ -192,5 +192,10 @@ service cloud.firestore {
       allow create, update: if isPlatformOwner();
       allow delete: if false;
     }
+
+    match /adminDirectory/{adminId} {
+      allow read: if isSignedIn() && request.auth.uid == adminId;
+      allow create, update, delete: if isPlatformOwner();
+    }
   }
 }
