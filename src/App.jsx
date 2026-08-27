@@ -1755,6 +1755,7 @@ function MenuScreen({
   const [menuSheetRaised, setMenuSheetRaised] = useState(false)
   const menuScrollRef = useRef(null)
   const categoryStripRef = useRef(null)
+  const categoryTouchRef = useRef(null)
   const productSearch = searchProducts(products, searchQuery)
   const visibleProducts = productSearch.items
   const isSearching = Boolean(normalizeText(searchQuery))
@@ -1801,6 +1802,39 @@ function MenuScreen({
   function handleMenuScroll(event) {
     const nextValue = event.currentTarget.scrollTop > 24
     setMenuSheetRaised((currentValue) => (currentValue === nextValue ? currentValue : nextValue))
+  }
+
+  function handleCategoryTouchStart(event) {
+    const touch = event.touches[0]
+    categoryTouchRef.current = {
+      axis: '',
+      startX: touch.clientX,
+      startY: touch.clientY,
+      startScrollLeft: event.currentTarget.scrollLeft,
+    }
+  }
+
+  function handleCategoryTouchMove(event) {
+    const gesture = categoryTouchRef.current
+    const touch = event.touches[0]
+    if (!gesture || !touch) return
+
+    const deltaX = touch.clientX - gesture.startX
+    const deltaY = touch.clientY - gesture.startY
+
+    if (!gesture.axis && Math.max(Math.abs(deltaX), Math.abs(deltaY)) > 6) {
+      gesture.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical'
+    }
+
+    if (gesture.axis === 'horizontal') {
+      event.currentTarget.scrollLeft = gesture.startScrollLeft - deltaX
+    } else if (gesture.axis === 'vertical') {
+      event.currentTarget.scrollLeft = gesture.startScrollLeft
+    }
+  }
+
+  function handleCategoryTouchEnd() {
+    categoryTouchRef.current = null
   }
 
   return (
@@ -1898,7 +1932,11 @@ function MenuScreen({
 
             <div
               ref={categoryStripRef}
-              className="-mx-8 -mt-2 overflow-x-auto overflow-y-visible pt-3 [scrollbar-width:none] [touch-action:pan-x_pan-y_pinch-zoom]"
+              className="-mx-8 -mt-2 overflow-x-auto overflow-y-visible pt-3 [scrollbar-width:none] [touch-action:pan-y_pinch-zoom]"
+              onTouchStart={handleCategoryTouchStart}
+              onTouchMove={handleCategoryTouchMove}
+              onTouchEnd={handleCategoryTouchEnd}
+              onTouchCancel={handleCategoryTouchEnd}
             >
               <div className="flex w-max translate-y-1.5 gap-2 px-3 pb-1">
                 {categories.map((category) => (
