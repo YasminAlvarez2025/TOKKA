@@ -3503,7 +3503,7 @@ function AdminMenuEditor({
         <button
           type="button"
           onClick={() => setCoverEditorOpen(true)}
-          className="absolute bottom-5 right-7 z-20 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-bold text-[#6b433a] shadow-md shadow-black/10 ring-1 ring-white/70 transition active:scale-[0.98]"
+          className="absolute bottom-8 right-5 z-20 inline-flex h-8 items-center gap-1.5 rounded-full bg-white/90 px-3 text-xs font-bold text-[#6b433a] shadow-md shadow-black/10 ring-1 ring-white/70 transition active:scale-[0.98]"
         >
           <Camera size={15} />
           Trocar capa
