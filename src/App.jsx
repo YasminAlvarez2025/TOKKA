@@ -1753,6 +1753,8 @@ function MenuScreen({
   const [promoIndex, setPromoIndex] = useState(0)
   const [productLayout, setProductLayout] = useState('lista')
   const [menuSheetRaised, setMenuSheetRaised] = useState(false)
+  const menuScrollRef = useRef(null)
+  const categoryStripRef = useRef(null)
   const productSearch = searchProducts(products, searchQuery)
   const visibleProducts = productSearch.items
   const isSearching = Boolean(normalizeText(searchQuery))
@@ -1781,6 +1783,21 @@ function MenuScreen({
     return () => window.clearInterval(intervalId)
   }, [promoItems.length])
 
+  useEffect(() => {
+    const categoryStrip = categoryStripRef.current
+    if (!categoryStrip) return undefined
+
+    function forwardVerticalWheel(event) {
+      if (event.shiftKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return
+
+      event.preventDefault()
+      menuScrollRef.current?.scrollBy({ top: event.deltaY, behavior: 'auto' })
+    }
+
+    categoryStrip.addEventListener('wheel', forwardVerticalWheel, { passive: false })
+    return () => categoryStrip.removeEventListener('wheel', forwardVerticalWheel)
+  }, [])
+
   function handleMenuScroll(event) {
     const nextValue = event.currentTarget.scrollTop > 24
     setMenuSheetRaised((currentValue) => (currentValue === nextValue ? currentValue : nextValue))
@@ -1788,6 +1805,7 @@ function MenuScreen({
 
   return (
     <section
+      ref={menuScrollRef}
       className="relative h-full overflow-y-auto bg-white pb-28 text-[var(--brand-primary)]"
       aria-labelledby="menu-title"
       onScroll={handleMenuScroll}
@@ -1878,7 +1896,10 @@ function MenuScreen({
               </button>
             </div>
 
-            <div className="-mx-8 -mt-2 overflow-x-hidden overflow-y-visible pt-3 [touch-action:pan-y_pinch-zoom]">
+            <div
+              ref={categoryStripRef}
+              className="-mx-8 -mt-2 overflow-x-auto overflow-y-visible pt-3 [scrollbar-width:none] [touch-action:pan-x_pan-y_pinch-zoom]"
+            >
               <div className="flex w-max translate-y-1.5 gap-2 px-3 pb-1">
                 {categories.map((category) => (
                   <CategoryPreviewCard
