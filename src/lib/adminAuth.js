@@ -28,7 +28,7 @@ export function watchAdminSession(restaurantId, onChange) {
       const adminRef = doc(db, 'restaurants', restaurantId, 'admins', user.uid)
       let adminSnapshot = await getDoc(adminRef)
 
-      if (!adminSnapshot.exists() && user.email === bootstrapAdminEmail) {
+      if (!adminSnapshot.exists() && restaurantId === 'tokka-foods' && user.email === bootstrapAdminEmail) {
         await setDoc(adminRef, {
           email: user.email,
           username: user.displayName || 'Administrador',
@@ -58,6 +58,23 @@ export function watchAdminSession(restaurantId, onChange) {
 
 export function loginAdmin(email, password) {
   return signInWithEmailAndPassword(auth, email.trim(), password)
+}
+
+export async function resolveAdminRestaurantId(user, preferredRestaurantId = 'tokka-foods') {
+  if (!user?.uid) return ''
+
+  const candidates = [...new Set([preferredRestaurantId, 'tokka-foods', 'barraca-do-fabio'])]
+
+  for (const candidate of candidates) {
+    try {
+      const adminSnapshot = await getDoc(doc(db, 'restaurants', candidate, 'admins', user.uid))
+      if (adminSnapshot.exists()) return candidate
+    } catch {
+      // Continue checking the remaining restaurants available to this account.
+    }
+  }
+
+  return ''
 }
 
 export async function registerAdmin(restaurantId, { username, email, password }) {
@@ -164,7 +181,11 @@ export async function createRestaurantWithAdmin({ ownerRestaurantId, name, slug,
 }
 
 export function translateAdminAuthError(error) {
-  const code = error?.code ?? ''
+  const code = error?.code ?? error?.message ?? ''
+
+  if (code.includes('auth/admin-permission-denied')) {
+    return 'Esta conta nao possui permissao administrativa em nenhum restaurante.'
+  }
 
   if (code.includes('auth/invalid-credential') || code.includes('auth/wrong-password')) {
     return 'Email ou senha incorretos.'

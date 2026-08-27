@@ -75,6 +75,7 @@ import {
   logoutAdmin,
   recoverAdminPassword,
   registerAdmin,
+  resolveAdminRestaurantId,
   translateAdminAuthError,
   watchAdminSession,
 } from './lib/adminAuth'
@@ -732,7 +733,18 @@ function App() {
     setAdminLoginLoading(true)
 
     try {
-      await loginAdmin(email, password)
+      const credential = await loginAdmin(email, password)
+      const adminRestaurantId = await resolveAdminRestaurantId(credential.user, activeRestaurantId)
+
+      if (!adminRestaurantId) {
+        await logoutAdmin().catch(() => {})
+        throw new Error('auth/admin-permission-denied')
+      }
+
+      const adminMenuSlug = adminRestaurantId === 'tokka-foods' ? 'coco-bambu' : adminRestaurantId
+      setActiveRestaurantId(adminRestaurantId)
+      setActiveMenuSlug(adminMenuSlug)
+      setAdminSession({ loading: false, user: credential.user, isAdmin: true, error: '' })
       trackEvent('admin_login', { email })
       pushToast({
         title: 'Login confirmado',
