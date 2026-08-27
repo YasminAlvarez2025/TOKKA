@@ -716,6 +716,17 @@ function App() {
     showScreen('admin-cardapio', getAdminPrincipalHash())
   }
 
+  async function requestAdminAccess() {
+    setAdminLoginError('')
+
+    if (adminSession.user) {
+      await logoutAdmin().catch(() => {})
+      setAdminSession({ loading: false, user: null, isAdmin: false, error: '' })
+    }
+
+    showScreen('admin-cardapio', getAdminPrincipalHash())
+  }
+
   async function handleAdminLogin({ email, password }) {
     setAdminLoginError('')
     setAdminLoginLoading(true)
@@ -1320,7 +1331,7 @@ function App() {
             onCategoryChange={(categoryId) => openCategoryProducts(categoryId)}
             onSearchChange={changeSearchQuery}
             onOpenCategories={() => showScreen('categorias')}
-            onOpenSettings={openAdminPrincipal}
+            onOpenSettings={requestAdminAccess}
             onOpenProduct={openProduct}
             onAddToCart={addToCart}
             onOpenOrder={() => {
@@ -1341,7 +1352,7 @@ function App() {
             categories={categories}
             restaurantProfile={restaurantProfile}
             onBack={() => showScreen('menu')}
-            onOpenSettings={openAdminPrincipal}
+            onOpenSettings={requestAdminAccess}
             onSelectCategory={openCategoryProducts}
           />
         )}
@@ -1353,7 +1364,7 @@ function App() {
             restaurantProfile={restaurantProfile}
             onBack={() => showScreen('categorias')}
             onOpenProduct={openProduct}
-            onOpenSettings={openAdminPrincipal}
+            onOpenSettings={requestAdminAccess}
           />
         )}
 
@@ -1385,7 +1396,7 @@ function App() {
             onAddToCart={addToCart}
             onAdded={() => showScreen('menu')}
             onSaveCartItem={saveCartItemEdit}
-            onOpenSettings={openAdminPrincipal}
+            onOpenSettings={requestAdminAccess}
           />
         )}
 
