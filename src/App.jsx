@@ -4360,7 +4360,7 @@ function AdminProductEditorCard({ product, onEdit, onRemove, onToggle }) {
           type="button"
           onClick={onToggle}
           className={`absolute bottom-1.5 right-1.5 h-6 rounded-full px-2 text-[8px] font-bold shadow-sm ${
-            product.active === false ? 'bg-white/95 text-slate-500' : 'bg-[#4b160e] text-white'
+            product.active === false ? 'bg-red-600 text-white' : 'bg-emerald-600 text-white'
           }`}
         >
           {product.active === false ? 'INATIVO' : 'ATIVO'}
