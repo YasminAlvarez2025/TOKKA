@@ -1753,7 +1753,6 @@ function MenuScreen({
   const [promoIndex, setPromoIndex] = useState(0)
   const [productLayout, setProductLayout] = useState('lista')
   const [menuSheetRaised, setMenuSheetRaised] = useState(false)
-  const menuScrollRef = useRef(null)
   const productSearch = searchProducts(products, searchQuery)
   const visibleProducts = productSearch.items
   const isSearching = Boolean(normalizeText(searchQuery))
@@ -1787,17 +1786,8 @@ function MenuScreen({
     setMenuSheetRaised((currentValue) => (currentValue === nextValue ? currentValue : nextValue))
   }
 
-  function handleCategoryWheel(event) {
-    if (event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return
-
-    event.preventDefault()
-    event.stopPropagation()
-    if (menuScrollRef.current) menuScrollRef.current.scrollTop += event.deltaY
-  }
-
   return (
     <section
-      ref={menuScrollRef}
       className="relative h-full overflow-y-auto bg-white pb-28 text-[var(--brand-primary)]"
       aria-labelledby="menu-title"
       onScroll={handleMenuScroll}
@@ -1888,10 +1878,7 @@ function MenuScreen({
               </button>
             </div>
 
-            <div
-              className="-mx-8 -mt-2 overflow-x-auto overflow-y-visible pt-3 [scrollbar-width:none] [touch-action:pan-y_pinch-zoom]"
-              onWheel={handleCategoryWheel}
-            >
+            <div className="-mx-8 -mt-2 overflow-x-hidden overflow-y-visible pt-3 [touch-action:pan-y_pinch-zoom]">
               <div className="flex w-max translate-y-1.5 gap-2 px-3 pb-1">
                 {categories.map((category) => (
                   <CategoryPreviewCard
