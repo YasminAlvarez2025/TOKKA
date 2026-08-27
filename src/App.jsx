@@ -4288,7 +4288,7 @@ function AdminActionStack({ disabled = false, onEdit, onRemove }) {
         disabled={disabled}
         className="flex h-10 items-center justify-center gap-1.5 rounded-lg bg-slate-200 text-xs font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-70"
       >
-        <Trash2 size={16} />
+        <Trash2 size={16} className="text-red-600" />
         Excluir
       </button>
       <button
@@ -4312,7 +4312,7 @@ function AdminMiniAction({ icon: Icon, label, disabled = false, onClick }) {
       disabled={disabled}
       className="flex h-8 items-center justify-center gap-1 rounded-md bg-slate-200 text-[10px] font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-70"
     >
-      <Icon size={13} />
+      <Icon size={13} className={label === 'Excluir' ? 'text-red-600' : undefined} />
       {label}
     </button>
   )
@@ -4353,7 +4353,7 @@ function AdminProductEditorCard({ product, onEdit, onRemove, onToggle }) {
             className="grid size-7 place-items-center rounded-full bg-white/95 text-slate-600 shadow-sm"
             aria-label={`Excluir ${product.name}`}
           >
-            <Trash2 size={13} strokeWidth={2} />
+            <Trash2 size={13} strokeWidth={2} className="text-red-600" />
           </button>
         </div>
         <button
@@ -4832,7 +4832,7 @@ function AdminCategoriesEditorScreen({
                   aria-label={`Excluir ${category.label}`}
                   className="grid size-7 place-items-center rounded-full bg-white/95 text-[#4b160e] shadow"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={14} className="text-red-600" />
                 </button>
               </div>
             </div>
@@ -4939,7 +4939,7 @@ function AdminCategoryProductCard({ product, onEdit, onRemove }) {
           className="grid size-7 place-items-center rounded-full bg-white/95 text-slate-600 shadow-sm"
           aria-label={`Excluir ${product.name}`}
         >
-          <Trash2 size={13} strokeWidth={2} />
+          <Trash2 size={13} strokeWidth={2} className="text-red-600" />
         </button>
         </div>
       </div>
@@ -4984,7 +4984,7 @@ function AdminPortionOptionRow({ option, onEdit, onRemove }) {
         className="grid size-8 place-items-center rounded-[7px] border border-[#b7928b] text-[#7d5148]"
         aria-label="Excluir porção"
       >
-        <Trash2 size={17} />
+        <Trash2 size={17} className="text-red-600" />
       </button>
     </article>
   )
