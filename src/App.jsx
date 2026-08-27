@@ -430,6 +430,7 @@ function App() {
   const [activeMenuSlug, setActiveMenuSlug] = useState(initialMenuSlug)
   const [restaurantProfile, setRestaurantProfile] = useState(initialMenuState.profile)
   const [activeRestaurantId, setActiveRestaurantId] = useState(restaurantId)
+  const [categories, setCategories] = useState(initialMenuState.categories)
   const [promoItems, setPromoItems] = useState(initialMenuState.promoItems)
   const [products, setProducts] = useState(initialMenuState.products)
   const [favoriteProductIds, setFavoriteProductIds] = useState([])
@@ -588,6 +589,7 @@ function App() {
       analyticsSession.restaurantId = resolvedRestaurantId
 
       setRestaurantProfile(nextState.profile)
+      setCategories(nextState.categories)
       setPromoItems(nextState.promoItems)
       setProducts(nextState.products)
       setSelectedProductId((currentProductId) =>
@@ -614,13 +616,13 @@ function App() {
       saveMenuState(
         activeRestaurantId,
         normalizedProfile.slug,
-        buildMenuStateSnapshot(normalizedProfile, promoItems, products),
+        buildMenuStateSnapshot(normalizedProfile, promoItems, products, categories),
         { remote: true },
       )
     }, 700)
 
     return () => window.clearTimeout(saveTimer)
-  }, [adminSession.isAdmin, activeMenuSlug, activeRestaurantId, products, promoItems, restaurantProfile])
+  }, [adminSession.isAdmin, activeMenuSlug, activeRestaurantId, categories, products, promoItems, restaurantProfile])
 
   useEffect(() => {
     if (screen === 'pedido') {
@@ -1001,7 +1003,7 @@ function App() {
         ownerRestaurantId: activeRestaurantId,
         ...payload,
         slug,
-        menuState: buildMenuStateSnapshot(profile, promoItems, products),
+        menuState: buildMenuStateSnapshot(profile, promoItems, products, categories),
       })
       const publicUrl = buildPublicMenuUrl(slug)
       pushToast({ title: 'Restaurante criado', message: `O novo cardápio está disponível em ${publicUrl}` })
@@ -1499,7 +1501,7 @@ function App() {
                 saveMenuState(
                   activeRestaurantId,
                   normalizedProfile.slug,
-                  buildMenuStateSnapshot(normalizedProfile, promoItems, products),
+                  buildMenuStateSnapshot(normalizedProfile, promoItems, products, categories),
                   { remote: adminSession.isAdmin },
                 )
                 showScreen('menu', getPublicMenuHash(normalizedProfile.slug))
@@ -1509,6 +1511,7 @@ function App() {
             }}
             onRemoveProduct={removeProduct}
             onToggleProductActive={toggleProductActive}
+            onUpdateCategories={setCategories}
             onUpdatePromos={setPromoItems}
             onUpdateProduct={updateProduct}
           />
@@ -3280,6 +3283,7 @@ function AdminMenuEditor({
   onDone,
   onRemoveProduct,
   onToggleProductActive,
+  onUpdateCategories,
   onUpdatePromos,
   onUpdateProduct,
 }) {
@@ -3410,6 +3414,21 @@ function AdminMenuEditor({
     setEditorView('category-products')
   }
 
+  function editCategory(category) {
+    setEditingCategoryId(category.id)
+    setEditorView('category-edit')
+  }
+
+  function saveCategory(updatedCategory) {
+    const nextCategories = editorCategories.map((category) =>
+      category.id === updatedCategory.id ? { ...category, ...updatedCategory } : category,
+    )
+
+    setEditorCategories(nextCategories)
+    onUpdateCategories?.(nextCategories)
+    setEditorView('categories')
+  }
+
   function openCategoriesEditor() {
     setEditingCategoryId('')
     setEditorView('categories')
@@ -3424,14 +3443,20 @@ function AdminMenuEditor({
       image: categoriaEntradas,
     }
 
-    setEditorCategories((items) => [...items, nextCategory])
+    const nextCategories = [...editorCategories, nextCategory]
+    setEditorCategories(nextCategories)
+    onUpdateCategories?.(nextCategories)
+    setEditingCategoryId(nextCategory.id)
+    setEditorView('category-edit')
   }
 
   function requestRemoveCategory(category) {
     setPendingDelete({
       title: 'Voce tem certeza que deseja excluir?',
       onConfirm: () => {
-        setEditorCategories((items) => items.filter((item) => item.id !== category.id))
+        const nextCategories = editorCategories.filter((item) => item.id !== category.id)
+        setEditorCategories(nextCategories)
+        onUpdateCategories?.(nextCategories)
         setPendingDelete(null)
       },
     })
@@ -3483,6 +3508,17 @@ function AdminMenuEditor({
     )
   }
 
+  if (editorView === 'category-edit') {
+    return (
+      <AdminCategoryEditScreen
+        category={editingCategory}
+        restaurantProfile={editorProfile}
+        onBack={() => setEditorView('categories')}
+        onSave={saveCategory}
+      />
+    )
+  }
+
   if (editorView === 'categories') {
     return (
       <div className="relative h-full">
@@ -3491,7 +3527,7 @@ function AdminMenuEditor({
           restaurantProfile={editorProfile}
           onAddCategory={addCategory}
           onBack={() => setEditorView('home')}
-          onEditCategory={(category) => openCategoryProducts(category.id)}
+          onEditCategory={editCategory}
           onRemoveCategory={requestRemoveCategory}
         />
         {deleteDialog}
@@ -3700,7 +3736,7 @@ function AdminMenuEditor({
                   {category.label.toUpperCase()}
                 </p>
                 <div className="mt-2 grid grid-cols-2 gap-1.5">
-                  <AdminMiniAction icon={Pencil} label="Editar" onClick={() => openCategoryProducts(category.id)} />
+                  <AdminMiniAction icon={Pencil} label="Editar" onClick={() => editCategory(category)} />
                   <AdminMiniAction icon={Trash2} label="Excluir" onClick={() => requestRemoveCategory(category)} />
                 </div>
               </div>
@@ -4764,6 +4800,86 @@ function AdminProductEditScreen({ categories, fallbackCategory, product, restaur
   )
 }
 
+function AdminCategoryEditScreen({ category, restaurantProfile = defaultRestaurantProfile, onBack, onSave }) {
+  const [draft, setDraft] = useState(() => ({ ...category }))
+  const imageInputRef = useRef(null)
+
+  function updateCategoryImage(event) {
+    const file = event.target.files?.[0]
+
+    readAdminImageFile(
+      file,
+      (imageUrl) => setDraft((current) => ({ ...current, image: imageUrl })),
+      { maxWidth: 900, maxHeight: 620, quality: 0.76 },
+    )
+    event.target.value = ''
+  }
+
+  function submitCategory(event) {
+    event.preventDefault()
+    const label = draft.label.trim()
+    if (!label) return
+
+    onSave({
+      ...draft,
+      label,
+      shortLabel: label,
+    })
+  }
+
+  return (
+    <section className="relative h-full overflow-y-auto bg-white pb-8 text-[#43160f]">
+      <TopPhotoBar backgroundImage={restaurantProfile.cover} onBack={onBack} onOpenSettings={onBack} compact />
+      <form onSubmit={submitCategory} className="relative z-10 -mt-8 min-h-[calc(100%-88px)] rounded-t-[34px] bg-white px-5 pb-8 pt-7 shadow-[0_-14px_34px_rgba(67,22,15,0.10)]">
+        <h1 data-screen-title="true" tabIndex={-1} className="font-montserrat text-center text-[18px] font-medium outline-none">
+          EDITAR CATEGORIA
+        </h1>
+        <p className="mt-2 text-center text-xs leading-5 text-[#8f746d]">
+          Altere o nome e a imagem exibidos no cardápio.
+        </p>
+
+        <div className="relative mt-6 overflow-hidden rounded-xl border-[3px] border-[var(--brand-primary)] bg-slate-100">
+          <img src={draft.image} alt={`Imagem de ${draft.label}`} className="aspect-[1.47] w-full object-cover" draggable="false" />
+          <button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            className="absolute bottom-3 right-3 inline-flex h-9 items-center gap-2 rounded-full bg-white px-4 text-xs font-semibold text-[var(--brand-primary)] shadow-md"
+          >
+            <Camera size={16} />
+            Trocar imagem
+          </button>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+            className="sr-only"
+            onChange={updateCategoryImage}
+          />
+        </div>
+        <p className="mt-2 text-center text-[11px] text-[#9a7d76]">Use JPG ou PNG, preferencialmente na proporção 900 × 620.</p>
+
+        <label className="mt-6 block text-sm font-medium text-[#6b433a]">
+          Nome da categoria
+          <input
+            type="text"
+            required
+            maxLength={40}
+            value={draft.label}
+            onChange={(event) => setDraft((current) => ({ ...current, label: event.target.value }))}
+            className="mt-2 h-12 w-full rounded-xl border border-[#c9aaa3] bg-white px-4 text-base text-[#43160f] outline-none transition focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[color:var(--brand-primary)]/15"
+            placeholder="Ex.: Entradas"
+          />
+        </label>
+
+        <button type="submit" className="mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--brand-primary)] text-sm font-semibold text-white shadow-sm">
+          <Save size={17} />
+          Salvar alterações
+        </button>
+      </form>
+    </section>
+  )
+}
+
 function AdminCategoriesEditorScreen({
   categories,
   restaurantProfile = defaultRestaurantProfile,
@@ -5804,12 +5920,13 @@ function buildThemeStyle(profile = defaultRestaurantProfile) {
   }
 }
 
-function buildMenuStateSnapshot(profile = defaultRestaurantProfile, promoItems = promoSlides, products = baseProducts) {
+function buildMenuStateSnapshot(profile = defaultRestaurantProfile, promoItems = promoSlides, products = baseProducts, categoryItems = categories) {
   const normalizedProfile = normalizeRestaurantProfile(profile)
 
   return {
     version: 1,
     profile: normalizedProfile,
+    categories: serializeCategories(categoryItems),
     promoItems: serializePromoItems(promoItems),
     products: serializeProducts(products),
   }
@@ -5824,9 +5941,33 @@ function normalizeMenuStateSnapshot(menuState, fallbackSlug = defaultRestaurantP
 
   return {
     profile,
+    categories: hydrateCategories(menuState?.categories),
     promoItems: hydratePromoItems(menuState?.promoItems),
     products: hydrateProducts(menuState?.products),
   }
+}
+
+function serializeCategories(items = categories) {
+  return items.map((item) => ({ ...item }))
+}
+
+function hydrateCategories(items) {
+  if (!Array.isArray(items) || !items.length) return categories
+
+  return items.map((item) => {
+    const baseCategory = categories.find((category) => category.id === item.id)
+
+    return {
+      ...(baseCategory ?? {}),
+      ...item,
+      label: item.label || baseCategory?.label || 'Categoria',
+      shortLabel: item.shortLabel || item.label || baseCategory?.shortLabel || 'Categoria',
+      iconImage: item.iconImage || baseCategory?.iconImage || iconEntradas,
+      image: isLegacyDevelopmentAsset(item.image)
+        ? baseCategory?.image || categoriaEntradas
+        : item.image || baseCategory?.image || categoriaEntradas,
+    }
+  })
 }
 
 function serializePromoItems(items = promoSlides) {
