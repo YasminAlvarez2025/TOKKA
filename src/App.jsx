@@ -4803,6 +4803,7 @@ function AdminProductEditScreen({ categories, fallbackCategory, product, restaur
 function AdminCategoryEditScreen({ category, restaurantProfile = defaultRestaurantProfile, onBack, onSave }) {
   const [draft, setDraft] = useState(() => ({ ...category }))
   const imageInputRef = useRef(null)
+  const iconInputRef = useRef(null)
 
   function updateCategoryImage(event) {
     const file = event.target.files?.[0]
@@ -4811,6 +4812,17 @@ function AdminCategoryEditScreen({ category, restaurantProfile = defaultRestaura
       file,
       (imageUrl) => setDraft((current) => ({ ...current, image: imageUrl })),
       { maxWidth: 900, maxHeight: 620, quality: 0.76 },
+    )
+    event.target.value = ''
+  }
+
+  function updateCategoryIcon(event) {
+    const file = event.target.files?.[0]
+
+    readAdminImageFile(
+      file,
+      (iconImage) => setDraft((current) => ({ ...current, iconImage })),
+      { maxWidth: 360, maxHeight: 360, quality: 0.82 },
     )
     event.target.value = ''
   }
@@ -4835,7 +4847,7 @@ function AdminCategoryEditScreen({ category, restaurantProfile = defaultRestaura
           EDITAR CATEGORIA
         </h1>
         <p className="mt-2 text-center text-xs leading-5 text-[#8f746d]">
-          Altere o nome e a imagem exibidos no cardápio.
+          Altere o nome, a foto e o ícone exibidos no cardápio.
         </p>
 
         <div className="relative mt-6 overflow-hidden rounded-xl border-[3px] border-[var(--brand-primary)] bg-slate-100">
@@ -4857,6 +4869,33 @@ function AdminCategoryEditScreen({ category, restaurantProfile = defaultRestaura
           />
         </div>
         <p className="mt-2 text-center text-[11px] text-[#9a7d76]">Use JPG ou PNG, preferencialmente na proporção 900 × 620.</p>
+
+        <div className="mt-6 rounded-2xl border border-[#dcc7c2] bg-[#fbf8f7] p-4">
+          <p className="text-sm font-medium text-[#6b433a]">Ícone da categoria</p>
+          <div className="mt-3 flex items-center gap-4">
+            <div className="grid size-24 shrink-0 place-items-center rounded-full bg-white shadow-sm">
+              <img src={draft.iconImage} alt={`Ícone de ${draft.label}`} className="size-20 object-contain" draggable="false" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => iconInputRef.current?.click()}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-[var(--brand-primary)] bg-white px-3 text-xs font-semibold text-[var(--brand-primary)]"
+              >
+                <Camera size={16} />
+                Trocar ícone
+              </button>
+              <p className="mt-2 text-[10px] leading-4 text-[#9a7d76]">Prefira PNG quadrado, 360 × 360, com fundo transparente.</p>
+            </div>
+          </div>
+          <input
+            ref={iconInputRef}
+            type="file"
+            accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+            className="sr-only"
+            onChange={updateCategoryIcon}
+          />
+        </div>
 
         <label className="mt-6 block text-sm font-medium text-[#6b433a]">
           Nome da categoria
